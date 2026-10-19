@@ -1,0 +1,34 @@
+import { createRouter, createWebHashHistory } from 'vue-router'
+import EntryView from '../views/EntryView.vue'
+import LoginView from '../views/LoginView.vue'
+import RegisterView from '../views/RegisterView.vue'
+import ForgotView from '../views/ForgotView.vue'
+import HomeView from '../views/HomeView.vue'
+import RestaurantView from '../views/RestaurantView.vue'
+import { isLoggedIn } from '../store.js'
+
+const routes = [
+  { path: '/', name: 'entry', component: EntryView },
+  { path: '/login', name: 'login', component: LoginView },
+  { path: '/register', name: 'register', component: RegisterView },
+  { path: '/forgot', name: 'forgot', component: ForgotView },
+  { path: '/home', name: 'home', component: HomeView },
+  { path: '/restaurant/:id', name: 'restaurant', component: RestaurantView }
+]
+
+const router = createRouter({
+  history: createWebHashHistory(),
+  routes
+})
+
+// 路由守卫：未登录访问 /home 或 /restaurant 时跳回登录页；已登录访问进入页直接进入首页
+router.beforeEach((to) => {
+  if ((to.name === 'home' || to.name === 'restaurant') && !isLoggedIn()) {
+    return { name: 'login' }
+  }
+  if (to.name === 'entry' && isLoggedIn()) {
+    return { name: 'home' }
+  }
+})
+
+export default router
