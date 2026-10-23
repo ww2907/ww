@@ -2,8 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { session, clearSession } from '../store.js'
-import { getRestaurants, getCategories, MOCK_CATEGORIES } from '../api/food.js'
-import { placeOrder } from '../api/order.js'
+import { getRecommended } from '../api/food.js'
 
 const router = useRouter()
 
@@ -28,91 +27,76 @@ const navItems = [
 ]
 const activeNav = ref('home')
 
-// 其他页面暂未开发，点击给出提示（保留入口，便于后续接入）
+// 导航栏：首页留在原地；美食跳转美食页；订单跳转到「我的订单」；其余未开发入口给出提示
 function onNav(item) {
   if (item.key === 'home') {
     activeNav.value = 'home'
     return
   }
+  if (item.key === 'food') {
+    router.push('/food')
+    return
+  }
+  if (item.key === 'order') {
+    router.push('/orders')
+    return
+  }
   showToast(`「${item.label}」页面开发中，敬请期待 🚧`)
 }
 
-// ---------- 搜索栏 ----------
+// ---------- 搜索栏（回车 / 点击「搜索」跳转到美食页，按关键字检索）----------
 const keyword = ref('')
 const loading = ref(false)
 let searchTimer = null
 
-// ---------- 分类筛选 ----------
-const categories = ref(MOCK_CATEGORIES)
-const activeCat = ref('全部')
+// ---------- 推荐美食（首页只展示 12 家推荐）----------
+const recommended = ref([])
 
-// ---------- 列表数据（来自后端接口）----------
-const restaurants = ref([])
-const hasSearched = ref(false)
+const list = computed(() => recommended.value)
 
-const list = computed(() => restaurants.value)
-const nearby = computed(() => restaurants.value.slice(0, 5))
-
-async function loadList() {
+async function loadRecommended() {
   loading.value = true
   try {
-    const data = await getRestaurants({
-      keyword: hasSearched.value ? keyword.value : '',
-      category: activeCat.value
-    })
-    restaurants.value = Array.isArray(data) ? data : []
-    hasSearched.value = hasSearched.value || !!keyword.value
+    const data = await getRecommended(12)
+    recommended.value = Array.isArray(data) ? data : []
   } catch (e) {
     showToast(e.message || '加载失败，请稍后重试')
-    restaurants.value = []
+    recommended.value = []
   } finally {
     loading.value = false
   }
 }
 
-// 点击搜索按钮 / 回车
+// 点击搜索按钮 / 回车 → 进入美食页并带上关键字
 function onSearch() {
-  hasSearched.value = true
-  clearTimeout(searchTimer)
-  loadList()
+  const k = keyword.value.trim()
+  router.push({ path: '/food', query: k ? { keyword: k } : {} })
 }
 
-// 输入即搜（防抖 300ms）
+// 输入即搜（防抖 300ms）：预览式跳转到美食页
 function onInput() {
-  hasSearched.value = true
   clearTimeout(searchTimer)
-  searchTimer = setTimeout(loadList, 300)
+  searchTimer = setTimeout(onSearch, 300)
 }
 
 function clearSearch() {
   keyword.value = ''
-  hasSearched.value = false
   clearTimeout(searchTimer)
-  loadList()
 }
 
-function pickCat(c) {
-  activeCat.value = c
-  loadList()
+// ---------- 进入美食页面（查看其余全部店铺）----------
+function goFood() {
+  router.push('/food')
 }
 
-// ---------- 下单（预留后端接口，不实现后端）----------
-const orderingId = ref(null)
+// ---------- 下单：跳转到该店铺的点餐页 ----------
 // 点进店铺详情
 function openDetail(r) {
   router.push('/restaurant/' + (r.id || r.name))
 }
-async function onOrder(r) {
-  if (orderingId.value) return
-  orderingId.value = r.id || r.name
-  try {
-    await placeOrder({ restaurantId: r.id, name: r.name })
-    showToast(`已向「${r.name}」下单成功 🎉`)
-  } catch (e) {
-    showToast(e.message || '下单失败，请稍后重试')
-  } finally {
-    orderingId.value = null
-  }
+// 点击「下单」跳转到点餐页（/order/:id），由点餐页完成选餐与提交订单
+function onOrder(r) {
+  router.push('/order/' + (r.id || r.name))
 }
 
 // ---------- 退出登录 ----------
@@ -133,13 +117,7 @@ function showToast(msg) {
 }
 
 onMounted(() => {
-  loadList()
-  // 拉取真实分类（mock 时返回内置分类）
-  getCategories()
-    .then((c) => {
-      if (Array.isArray(c) && c.length) categories.value = c
-    })
-    .catch(() => {})
+  loadRecommended()
 })
 onUnmounted(() => {
   clearTimeout(searchTimer)
@@ -184,12 +162,12 @@ onUnmounted(() => {
         v-model="keyword"
         @input="onInput"
         @keyup.enter="onSearch"
-        placeholder="搜索餐厅、菜品或商圈…"
+        placeholder="搜美食、搜好店，回车进入美食页…"
       />
       <button v-if="keyword" class="s-clear" @click="clearSearch" title="清空">✕</button>
       <button class="s-btn" @click="onSearch">搜索</button>
     </div>
-    <p class="search-hint">🔎 支持关键字搜索，可以分级分类搜索（选父分类可同时筛选其下所有子分类）</p>
+    <p class="search-hint">🔎 搜索会跳转到「美食页」，可按关键字与分类筛选全部好店。</p>
 
     <!-- 欢迎横幅 -->
     <section class="banner">
@@ -200,24 +178,11 @@ onUnmounted(() => {
       <div class="banner-emoji">🍱</div>
     </section>
 
-    <!-- 分类筛选 -->
-    <nav class="cats">
-      <button
-        v-for="c in categories"
-        :key="c"
-        class="chip"
-        :class="{ active: activeCat === c }"
-        @click="pickCat(c)"
-      >
-        {{ c }}
-      </button>
-    </nav>
-
-    <!-- 为你推荐 -->
+    <!-- 推荐美食（首页固定展示 12 家） -->
     <section class="block">
       <div class="block-head">
-        <h2>🔥 为你推荐</h2>
-        <span class="count">{{ loading ? '加载中…' : list.length + ' 家' }}</span>
+        <h2>🔥 推荐美食</h2>
+        <span class="count">{{ loading ? '加载中…' : list.length + ' 家推荐' }}</span>
       </div>
 
       <!-- 加载态 -->
@@ -227,7 +192,7 @@ onUnmounted(() => {
 
       <!-- 空态 -->
       <div v-else-if="list.length === 0" class="state empty">
-        😶 没有找到相关餐厅，换个关键词或分类试试～
+        😶 暂时没有推荐餐厅，去美食页看看其它好店吧～
       </div>
 
       <!-- 列表 -->
@@ -244,30 +209,19 @@ onUnmounted(() => {
           </div>
           <div class="card-foot">
             <span class="dist">📍 {{ r.distance }}</span>
-            <button class="order-btn" :disabled="orderingId === (r.id || r.name)" @click.stop="onOrder(r)">
-              {{ orderingId === (r.id || r.name) ? '下单中…' : '下单' }}
-            </button>
+            <button class="order-btn" @click.stop="onOrder(r)">下单</button>
           </div>
         </article>
       </div>
     </section>
 
-    <!-- 附近人气 -->
-    <section class="block">
-      <div class="block-head">
-        <h2>📍 附近人气</h2>
-        <span class="count">实时</span>
+    <!-- 进入美食页面（其余全部店铺，按分类） -->
+    <section class="food-cta" @click="goFood">
+      <div class="cta-text">
+        <h3>🍽️ 发现更多好店</h3>
+        <p>全部美食按分类整理，面食、快餐、甜点、饮品、轻食、火锅一网打尽。</p>
       </div>
-      <div class="scroll">
-        <article class="mini" v-for="r in nearby" :key="r.id || r.name" @click="openDetail(r)">
-          <div class="mini-emoji">{{ r.emoji }}</div>
-          <div class="mini-name">{{ r.name }}</div>
-          <div class="mini-meta">⭐ {{ r.rating }} · {{ r.distance }}</div>
-          <button class="mini-order" :disabled="orderingId === (r.id || r.name)" @click.stop="onOrder(r)">
-            {{ orderingId === (r.id || r.name) ? '下单中…' : '下单' }}
-          </button>
-        </article>
-      </div>
+      <span class="cta-arrow">查看全部美食 →</span>
     </section>
 
     <footer class="foot">食光 · 美食 — 发现身边的每一口好味道 🌿</footer>
@@ -437,19 +391,6 @@ onUnmounted(() => {
 .banner-text p { margin-top: 8px; font-size: 13px; opacity: 0.95; }
 .banner-emoji { font-size: 56px; filter: drop-shadow(0 6px 12px rgba(0,0,0,0.2)); }
 
-/* 分类 */
-.cats { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 2px; }
-.chip {
-  flex: none; border: 1px solid var(--line); background: rgba(255,255,255,0.7);
-  color: var(--deep); padding: 8px 16px; border-radius: 999px; font-size: 13px; font-weight: 700;
-  cursor: pointer; transition: all 0.15s; white-space: nowrap;
-}
-.chip:hover { background: rgba(0, 184, 148, 0.12); }
-.chip.active {
-  background: linear-gradient(135deg, var(--teal), var(--cyan));
-  color: #fff; border-color: transparent; box-shadow: 0 6px 16px rgba(0,150,136,0.4);
-}
-
 /* 区块 */
 .block { background: rgba(255,255,255,0.86); backdrop-filter: blur(8px); border-radius: 22px; padding: 18px; box-shadow: 0 10px 26px rgba(0,150,136,0.16); border: 1px solid rgba(255,255,255,0.6); }
 .block-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; }
@@ -501,23 +442,25 @@ onUnmounted(() => {
 .order-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 9px 18px rgba(0, 150, 136, 0.5); }
 .order-btn:active:not(:disabled) { transform: translateY(0); }
 .order-btn:disabled { opacity: 0.65; cursor: default; }
-.scroll { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 4px; }
-.mini {
-  flex: none; width: 130px; background: #fff; border: 1px solid var(--line);
-  border-radius: 14px; padding: 14px 12px; text-align: center; cursor: pointer;
+
+/* 进入美食页 CTA */
+.food-cta {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(224,247,246,0.95));
+  border: 1px solid rgba(0,184,148,0.25);
+  border-radius: 20px; padding: 18px 20px; cursor: pointer;
+  box-shadow: 0 10px 26px rgba(0,150,136,0.16);
+  transition: transform 0.15s, box-shadow 0.15s;
 }
-.mini-emoji { font-size: 34px; }
-.mini-name { font-size: 13px; font-weight: 800; margin-top: 6px; color: var(--ink); }
-.mini-meta { font-size: 11px; color: var(--muted); margin-top: 4px; }
-.mini-order {
-  margin-top: 10px; width: 100%;
-  border: 1px solid var(--teal); background: rgba(0, 184, 148, 0.1);
-  color: var(--deep); font-weight: 800; font-size: 12px;
-  padding: 7px 0; border-radius: 10px; cursor: pointer;
-  transition: background 0.15s;
+.food-cta:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(0,150,136,0.24); }
+.cta-text h3 { font-size: 16px; font-weight: 900; color: var(--deep); }
+.cta-text p { margin-top: 6px; font-size: 12px; color: var(--muted); line-height: 1.6; }
+.cta-arrow {
+  flex: none; font-size: 13px; font-weight: 800; color: #fff;
+  background: linear-gradient(135deg, var(--teal), var(--cyan));
+  padding: 10px 16px; border-radius: 12px; white-space: nowrap;
+  box-shadow: 0 6px 14px rgba(0,150,136,0.35);
 }
-.mini-order:hover:not(:disabled) { background: rgba(0, 184, 148, 0.22); }
-.mini-order:disabled { opacity: 0.65; cursor: default; }
 
 .foot { text-align: center; font-size: 12px; color: rgba(255,255,255,0.9); text-shadow: 0 2px 8px rgba(0,80,70,0.3); margin-top: 8px; }
 

@@ -25,7 +25,8 @@ mvnw 编译启动后端 → npm install（缺才装）→ 启动前端 → 等�
 ```powershell
 # 1) 数据库（库不存在才执行初始化）
 & "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" -uroot -p123456 -e "USE shiguang_food;"
-#    不存在则: & "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" -uroot -p123456 --default-character-set=utf8mb4 < springBootTest\sql\init.sql
+#    不存在则: & "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" -uroot -p123456 --default-character-set=utf8mb4 < java-main2\shiguang_food.sql
+#    （shiguang_food.sql 已合并 init.sql + home.sql，含完整建库/建表/种子数据；含 DROP TABLE，重跑会清数据）
 
 # 2) 后端（在 springBootTest 目录）
 $env:JAVA_HOME = "C:\Program Files\Java\jdk-17"
@@ -56,7 +57,7 @@ $mvn = (Get-ChildItem "$env:USERPROFILE\.m2\wrapper\dists\apache-maven-*\*\bin\m
 5. **Git Bash 里 curl 本地地址必须 `--noproxy "*"`**，否则系统代理 502。
 6. **bat 是 GBK + CRLF**：修改脚本内容时保持该编码，别用编辑器重存成 UTF-8（会乱码/行为异常）。
    改 ASCII 内容可用 `sed`（字节级安全）；改中文内容建议用 Python `encode("gbk")` 重写。
-7. **注册失败 90% 是库没建**：跑 `springBootTest\sql\init.sql`（含 `DROP TABLE`，重跑会清数据）。
+7. **注册失败 90% 是库没建**：跑 `java-main2\shiguang_food.sql`（已合并 init.sql + home.sql，含完整建库/建表/种子数据；含 `DROP TABLE`，重跑会清数据）。
    user 表账号字段叫 **`account`** 不是 username。
 8. **JDK 25 的坑不存在了**：现在是 JDK 17，`-proc:full` 那条历史教训作废。
 9. **后端进程归属**：由某个会话后台任务启动的后端，会话结束可能被回收。重启机器后一律
@@ -87,7 +88,7 @@ $mvn = (Get-ChildItem "$env:USERPROFILE\.m2\wrapper\dists\apache-maven-*\*\bin\m
 - 根目录 88B 空 `package-lock.json`（误操作产物）
 
 **仍保留**：数据库 `verify_code` 表（旧方案遗留，图片验证码不读写；删表涉及数据，未动，
-想清理需用户确认后执行 `DROP TABLE`）。`init.sql` 中相关建表语句仍在，无害。
+想清理需用户确认后执行 `DROP TABLE`）。`shiguang_food.sql` 中相关建表语句仍在，无害。
 
 已修复：`application.properties` 三处硬伤（注释乱码、logging.pattern.file 前缀错误、
 logging.level 包名拼错）；`.gitignore` 已补 `log/`；根 README.md 已扩写。
@@ -95,5 +96,5 @@ logging.level 包名拼错）；`.gitignore` 已补 `log/`；根 README.md 已�
 ## 5. 禁区
 
 - 别把 GBK bat 重存为 UTF-8；别动 `~/.workbuddy/` 下的身份与技能文件（SOUL/IDENTITY/USER/skills）。
-- `init.sql` 含 DROP TABLE，用户确认过再执行。
+- `shiguang_food.sql` 含 DROP TABLE（合并了原 init.sql/home.sql），用户确认过再执行。
 - 项目会被移动/用户名会变：**任何绝对路径先 ls 核实**。

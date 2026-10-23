@@ -18,6 +18,7 @@ import com.fenglin.springboottest.vo.RestaurantVO;
 import com.fenglin.springboottest.vo.ReviewVO;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -56,6 +57,100 @@ public class RestaurantServiceImpl extends ServiceImpl<RestaurantMapper, Restaur
 
         qw.orderByDesc("sort");
         return baseMapper.selectList(qw).stream().map(this::toVO).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<RestaurantVO> recommended(int limit) {
+        if (limit <= 0) {
+            limit = 12;
+        }
+        return topRated(limit).stream().map(this::toVO).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<RestaurantVO> foodList(String keyword, String category) {
+        List<Restaurant> all = baseMapper.selectList(null);
+
+        // 与 recommended 共用口径：评分最高的 12 家作为「推荐集」，从美食页中剔除
+        Set<Long> recommendedIds = topRated(12).stream()
+                .map(Restaurant::getId)
+                .collect(Collectors.toSet());
+
+        // 关键字：匹配店名 / 简介 / 标签
+        String k = (keyword == null) ? null : keyword.trim();
+        // 分级分类：传入父分类时包含其下所有子分类
+        List<String> names = null;
+        if (category != null && !category.trim().isEmpty() && !"全部".equals(category.trim())) {
+            names = resolveCategoryNames(category.trim());
+        }
+
+        return all.stream()
+                .filter(r -> !recommendedIds.contains(r.getId()))
+                .filter(r -> matchKeyword(r, k))
+                .filter(r -> matchCategory(r, category, names))
+                .sorted((a, b) -> compareSortDesc(a, b))
+                .map(this::toVO)
+                .collect(Collectors.toList());
+    }
+
+    /** 取评分最高的 n 家（评分相同按 id 升序，评分缺失的排到最后） */
+    private List<Restaurant> topRated(int n) {
+        return baseMapper.selectList(null).stream()
+                .sorted(this::compareRatingDesc)
+                .limit(n)
+                .collect(Collectors.toList());
+    }
+
+    private int compareRatingDesc(Restaurant a, Restaurant b) {
+        BigDecimal ra = a.getRating();
+        BigDecimal rb = b.getRating();
+        if (ra == null && rb == null) {
+            return Long.compare(a.getId(), b.getId());
+        }
+        if (ra == null) {
+            return 1; // 评分缺失排后
+        }
+        if (rb == null) {
+            return -1;
+        }
+        int c = rb.compareTo(ra); // 降序
+        return c != 0 ? c : Long.compare(a.getId(), b.getId());
+    }
+
+    private int compareSortDesc(Restaurant a, Restaurant b) {
+        Integer sa = a.getSort();
+        Integer sb = b.getSort();
+        if (sa == null && sb == null) {
+            return Long.compare(a.getId(), b.getId());
+        }
+        if (sa == null) {
+            return 1;
+        }
+        if (sb == null) {
+            return -1;
+        }
+        int c = sb.compareTo(sa); // 降序
+        return c != 0 ? c : Long.compare(a.getId(), b.getId());
+    }
+
+    private boolean matchKeyword(Restaurant r, String k) {
+        if (k == null || k.isEmpty()) {
+            return true;
+        }
+        return (r.getName() != null && r.getName().contains(k))
+                || (r.getDescription() != null && r.getDescription().contains(k))
+                || (r.getTags() != null && r.getTags().contains(k));
+    }
+
+    private boolean matchCategory(Restaurant r, String category, List<String> names) {
+        if (names == null) {
+            return true; // "全部" 或未传分类
+        }
+        if (names.isEmpty()) {
+            // 未匹配到分级分类，按精确分类名匹配
+            return category != null && category.trim().equals(r.getCat());
+        }
+        return names.contains(r.getCat());
     }
 
     @Override

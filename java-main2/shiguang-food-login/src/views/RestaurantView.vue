@@ -2,7 +2,6 @@
 import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getRestaurantDetail } from '../api/restaurant.js'
-import { placeOrder } from '../api/order.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -11,7 +10,7 @@ const store = ref(null)
 const loading = ref(true)
 const errMsg = ref('')
 
-// 每道菜的选购数量（默认 1）
+// 每道菜的选购数量（默认 1），仅用于详情页内展示
 const qty = reactive({})
 const dishQty = (d) => qty[d.id] || 1
 function inc(d) {
@@ -21,23 +20,10 @@ function dec(d) {
   if (dishQty(d) > 1) qty[d.id] = dishQty(d) - 1
 }
 
-// 下单（预留后端接口，不实现后端）
-const orderingId = ref(null)
-async function onOrderDish(d) {
-  if (!store.value || orderingId.value) return
-  orderingId.value = d.id
-  try {
-    await placeOrder({
-      restaurantId: store.value.id,
-      name: store.value.name,
-      items: [{ name: d.name, price: d.price, qty: dishQty(d) }]
-    })
-    showToast(`已下单「${d.name}」×${dishQty(d)} 🎉`)
-  } catch (e) {
-    showToast(e.message || '下单失败，请稍后重试')
-  } finally {
-    orderingId.value = null
-  }
+// 下单：跳转到该店铺的点餐页（/order/:id）完成选餐与提交
+function onOrderDish() {
+  if (!store.value) return
+  router.push('/order/' + store.value.id)
 }
 
 function goBack() {
@@ -137,9 +123,7 @@ onUnmounted(() => clearTimeout(toastTimer))
                   @click="inc(d)"
                   title="增加数量"
                 >+</button>
-                <button class="order-btn" :disabled="orderingId === d.id" @click="onOrderDish(d)">
-                  {{ orderingId === d.id ? '下单中…' : '下单' }}
-                </button>
+                <button class="order-btn" @click="onOrderDish()">点餐</button>
               </div>
             </div>
           </li>
