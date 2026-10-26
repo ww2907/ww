@@ -20,7 +20,14 @@ export const ORDER_API_BASE = import.meta.env.VITE_API_BASE || '/api'
 // 后端路由（统一挂在 /api/orders 下）
 export const ORDER_ENDPOINTS = {
   create: '/orders',
-  list: '/orders'
+  list: '/orders',
+  stats: '/orders/stats',
+  status: '/orders'
+}
+
+// mock 模式下的状态文案
+function statusTextMock(s) {
+  return s === 0 ? '待支付' : s === 1 ? '已支付' : s === 2 ? '已完成' : '已取消'
 }
 
 function delay(ms) {
@@ -121,22 +128,133 @@ export async function createOrder({ restaurantId, restaurantName, account, items
 }
 
 /**
- * 查询我的订单。参数：account
- * 策略：mock 模式返回内存订单（按 account 过滤）；真实模式请求 GET /api/orders?account=。
+ * 查询我的订单。参数：account、status（可选，用于状态筛选）
+ *   status: 0=待支付 1=已支付 2=已完成 3=已取消（不传则全部）
+ * 策略：mock 模式返回内存订单（按 account + status 过滤）；真实模式请求 GET /api/orders?account=&status=。
  */
-export async function getMyOrders(account) {
+export async function getMyOrders(account, status) {
   if (ORDER_USE_MOCK) {
     await delay(400)
     if (!account) return []
-    return mockOrders.filter((o) => o.account === account)
+    return mockOrders.filter(
+      (o) => o.account === account && (status == null || o.status === status)
+    )
   }
   try {
-    return await httpGet(ORDER_ENDPOINTS.list, { account })
+    const params = { account }
+    if (status != null) params.status = status
+    return await httpGet(ORDER_ENDPOINTS.list, params)
   } catch (e) {
     if (ORDER_FALLBACK_MOCK) {
       console.warn('[order] 后端订单查询暂不可用，已回退到本地模拟：', e.message)
       if (!account) return []
-      return mockOrders.filter((o) => o.account === account)
+      return mockOrders.filter(
+        (o) => o.account === account && (status == null || o.status === status)
+      )
+    }
+    throw e
+  }
+}
+
+/**
+ * 订单详情：按 id 查询单个订单（含明细）。
+ * 策略：mock 模式在内存订单中按 id 查找；真实模式请求 GET /api/orders/{id}。
+ */
+export async function getOrderDetail(id) {
+  if (ORDER_USE_MOCK) {
+    await delay(300)
+    return mockOrders.find((o) => o.id === id) || null
+  }
+  try {
+    return await httpGet(`${ORDER_ENDPOINTS.list}/${id}`, {})
+  } catch (e) {
+    if (ORDER_FALLBACK_MOCK) {
+      console.warn('[order] 后端订单详情暂不可用，已回退到本地模拟：', e.message)
+      return mockOrders.find((o) => o.id === id) || null
+    }
+    throw e
+  }
+}
+
+/**
+ * 个人中心统计：订单次数（按状态分组）+ 常点食物。
+ * 参数：account
+ * 策略：mock 模式基于内存订单聚合；真实模式请求 GET /api/orders/stats?account=。
+ */
+export async function getOrderStats(account) {
+  if (ORDER_USE_MOCK) {
+    await delay(400)
+    const mine = !account ? [] : mockOrders.filter((o) => o.account === account)
+    const countBy = { 0: 0, 1: 0, 2: 0, 3: 0 }
+    for (const o of mine) countBy[o.status] = (countBy[o.status] || 0) + 1
+    // 常点食物：按菜品名称聚合数量
+    const map = new Map()
+    for (const o of mine) {
+      for (const it of o.items || []) {
+        const key = it.dishName
+        const cur = map.get(key) || { dishName: key, totalQty: 0, orderTimes: 0, price: it.price, dishId: null }
+        cur.totalQty += it.qty
+        cur.orderTimes += 1
+        cur.price = it.price
+        map.set(key, cur)
+      }
+    }
+    const frequentFoods = Array.from(map.values())
+      .sort((a, b) => b.totalQty - a.totalQty)
+      .slice(0, 10)
+    return {
+      totalOrders: mine.length,
+      unpaidCount: countBy[0],
+      paidCount: countBy[1],
+      completedCount: countBy[2],
+      cancelledCount: countBy[3],
+      frequentFoods
+    }
+  }
+  try {
+    return await httpGet(ORDER_ENDPOINTS.stats, { account })
+  } catch (e) {
+    if (ORDER_FALLBACK_MOCK) {
+      console.warn('[order] 后端统计接口暂不可用，已回退到本地模拟：', e.message)
+      return {
+        totalOrders: 0,
+        unpaidCount: 0,
+        paidCount: 0,
+        completedCount: 0,
+        cancelledCount: 0,
+        frequentFoods: []
+      }
+    }
+    throw e
+  }
+}
+
+/**
+ * 变更订单状态（去支付 / 确认完成 / 取消订单）。
+ * 参数：id（订单 id）、status（1=已支付 2=已完成 3=已取消）
+ * 策略：mock 模式直接改内存订单状态；真实模式请求 POST /api/orders/{id}/status?status=。
+ */
+export async function updateOrderStatus(id, status) {
+  if (ORDER_USE_MOCK) {
+    await delay(300)
+    const o = mockOrders.find((x) => x.id === id)
+    if (o) {
+      o.status = status
+      o.statusText = statusTextMock(status)
+    }
+    return o
+  }
+  try {
+    return await httpPost(`${ORDER_ENDPOINTS.status}/${id}/status?status=${status}`, {})
+  } catch (e) {
+    if (ORDER_FALLBACK_MOCK) {
+      console.warn('[order] 后端状态变更暂不可用，已回退到本地模拟：', e.message)
+      const o = mockOrders.find((x) => x.id === id)
+      if (o) {
+        o.status = status
+        o.statusText = statusTextMock(status)
+      }
+      return o
     }
     throw e
   }

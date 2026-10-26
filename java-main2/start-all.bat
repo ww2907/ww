@@ -56,11 +56,18 @@ if not defined MYSQL_BIN (
     echo [错误] 找不到 mysql.exe，请确认 MySQL 已安装
     pause & exit /b 1
 )
-"%MYSQL_BIN%" -uroot -p123456 -e "USE shiguang_food;" >nul 2>&1
+rem shiguang_food.sql 只含表结构、不含建库语句，先确保库存在
+"%MYSQL_BIN%" -uroot -p123456 -e "CREATE DATABASE IF NOT EXISTS shiguang_food DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;" >nul 2>&1
 if errorlevel 1 (
-    echo [数据库] shiguang_food 不存在，正在执行 springBootTest\sql\init.sql 初始化...
-    "%MYSQL_BIN%" -uroot -p123456 --default-character-set=utf8mb4 < "springBootTest\sql\init.sql"
-    echo [数据库] 初始化完成（含演示账号 demo / 123456）
+    echo [错误] 无法创建/访问数据库 shiguang_food，请确认 MySQL 服务已启动且 root/123456 正确
+    pause & exit /b 1
+)
+rem 检查是否已有表，没有才导入初始化 SQL（避免重复导入清数据）
+"%MYSQL_BIN%" -uroot -p123456 shiguang_food -e "SELECT 1 FROM user LIMIT 1;" >nul 2>&1
+if errorlevel 1 (
+    echo [数据库] shiguang_food 为空，正在导入 shiguang_food.sql 初始化（含演示账号 demo / 123456）...
+    "%MYSQL_BIN%" -uroot -p123456 --default-character-set=utf8mb4 shiguang_food < "shiguang_food.sql"
+    echo [数据库] 初始化完成
 ) else (
     echo [数据库] shiguang_food 已就绪
 )

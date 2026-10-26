@@ -14,7 +14,9 @@ import com.fenglin.springboottest.mapper.OrderMapper;
 import com.fenglin.springboottest.mapper.RestaurantMapper;
 import com.fenglin.springboottest.mapper.UserMapper;
 import com.fenglin.springboottest.service.OrderService;
+import com.fenglin.springboottest.vo.FrequentFoodVO;
 import com.fenglin.springboottest.vo.OrderItemVO;
+import com.fenglin.springboottest.vo.OrderStatsVO;
 import com.fenglin.springboottest.vo.OrderVO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -135,13 +137,19 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     }
 
     @Override
-    public List<OrderVO> listByAccount(String account) {
+    public List<OrderVO> listByAccount(String account, Integer status) {
         List<OrderVO> result = new ArrayList<>();
         if (account == null || account.trim().isEmpty()) {
             return result;
         }
-        List<Order> orders = baseMapper.selectList(
-                new QueryWrapper<Order>().eq("account", account.trim()).orderByDesc("id"));
+        QueryWrapper<Order> qw = new QueryWrapper<Order>()
+                .eq("account", account.trim())
+                .orderByDesc("id");
+        // 状态过滤：0=待支付 1=已支付 2=已完成 3=已取消
+        if (status != null) {
+            qw.eq("status", status);
+        }
+        List<Order> orders = baseMapper.selectList(qw);
         for (Order o : orders) {
             List<OrderItem> its = orderItemMapper.selectList(
                     new QueryWrapper<OrderItem>().eq("order_id", o.getId()));
@@ -157,6 +165,106 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
             result.add(toVO(o, itemVos));
         }
         return result;
+    }
+
+    @Override
+    public OrderStatsVO getStats(String account) {
+        OrderStatsVO stats = new OrderStatsVO();
+        if (account == null || account.trim().isEmpty()) {
+            stats.setTotalOrders(0);
+            stats.setUnpaidCount(0);
+            stats.setPaidCount(0);
+            stats.setCompletedCount(0);
+            stats.setCancelledCount(0);
+            stats.setFrequentFoods(new ArrayList<>());
+            return stats;
+        }
+        List<Order> orders = baseMapper.selectList(
+                new QueryWrapper<Order>().eq("account", account.trim()));
+        int unpaid = 0, paid = 0, completed = 0, cancelled = 0;
+        for (Order o : orders) {
+            Integer s = o.getStatus();
+            if (s == null) continue;
+            switch (s) {
+                case 0: unpaid++; break;
+                case 1: paid++; break;
+                case 2: completed++; break;
+                case 3: cancelled++; break;
+                default: break;
+            }
+        }
+        stats.setUnpaidCount(unpaid);
+        stats.setPaidCount(paid);
+        stats.setCompletedCount(completed);
+        stats.setCancelledCount(cancelled);
+        stats.setTotalOrders(orders.size());
+
+        // 常点食物：按账号聚合订单明细
+        List<FrequentFoodVO> frequent = baseMapper.selectFrequentFoods(account.trim(), 10);
+        stats.setFrequentFoods(frequent == null ? new ArrayList<>() : frequent);
+        return stats;
+    }
+
+    @Override
+    public OrderVO getById(Long id) {
+        if (id == null) {
+            throw new BusinessException(404, "订单不存在");
+        }
+        Order order = baseMapper.selectById(id);
+        if (order == null) {
+            throw new BusinessException(404, "订单不存在");
+        }
+        List<OrderItem> its = orderItemMapper.selectList(
+                new QueryWrapper<OrderItem>().eq("order_id", order.getId()));
+        List<OrderItemVO> itemVos = new ArrayList<>();
+        for (OrderItem oi : its) {
+            OrderItemVO vo = new OrderItemVO();
+            vo.setDishName(oi.getDishName());
+            vo.setPrice(oi.getPrice());
+            vo.setQty(oi.getQty());
+            vo.setSubtotal(oi.getSubtotal());
+            itemVos.add(vo);
+        }
+        return toVO(order, itemVos);
+    }
+
+    @Override
+    public OrderVO updateStatus(Long id, Integer status) {
+        if (id == null) {
+            throw new BusinessException("缺少订单信息");
+        }
+        if (status == null || status < 1 || status > 3) {
+            throw new BusinessException("非法的订单状态");
+        }
+        Order order = baseMapper.selectById(id);
+        if (order == null) {
+            throw new BusinessException(404, "订单不存在");
+        }
+        Integer cur = order.getStatus();
+        // 终态不可变
+        if (cur == 2) throw new BusinessException("订单已完成，无法再变更");
+        if (cur == 3) throw new BusinessException("订单已取消，无法再变更");
+        // 流转校验
+        if (status == 1 && cur != 0) throw new BusinessException("仅待支付订单可以支付");
+        if (status == 2 && cur != 1) throw new BusinessException("仅已支付订单可以标记完成");
+        if (status == 3 && cur == 2) throw new BusinessException("订单已完成，无法取消");
+
+        order.setStatus(status);
+        order.setUpdatedAt(LocalDateTime.now());
+        baseMapper.updateById(order);
+
+        List<OrderItem> its = orderItemMapper.selectList(
+                new QueryWrapper<OrderItem>().eq("order_id", order.getId()));
+        List<OrderItemVO> itemVos = new ArrayList<>();
+        for (OrderItem oi : its) {
+            OrderItemVO vo = new OrderItemVO();
+            vo.setDishName(oi.getDishName());
+            vo.setPrice(oi.getPrice());
+            vo.setQty(oi.getQty());
+            vo.setSubtotal(oi.getSubtotal());
+            itemVos.add(vo);
+        }
+        return toVO(order, itemVos);
     }
 
     private OrderVO toVO(Order o, List<OrderItemVO> itemVos) {

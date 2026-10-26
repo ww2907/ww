@@ -79,10 +79,8 @@ public class RestaurantServiceImpl extends ServiceImpl<RestaurantMapper, Restaur
         // 关键字：匹配店名 / 简介 / 标签
         String k = (keyword == null) ? null : keyword.trim();
         // 分级分类：传入父分类时包含其下所有子分类
-        List<String> names = null;
-        if (category != null && !category.trim().isEmpty() && !"全部".equals(category.trim())) {
-            names = resolveCategoryNames(category.trim());
-        }
+        List<String> names = (category != null && !category.trim().isEmpty() && !"全部".equals(category.trim()))
+                ? resolveCategoryNames(category.trim()) : null;
 
         return all.stream()
                 .filter(r -> !recommendedIds.contains(r.getId()))

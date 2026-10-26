@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { session, clearSession } from '../store.js'
-import { getRecommended } from '../api/food.js'
+import { getNavTop, getNavBottom, getSearchConfig, getRecommendedRestaurants, isAdminLoggedIn } from '../store/admin.js'
 
 const router = useRouter()
 
@@ -18,13 +18,9 @@ const greeting = computed(() => {
   return '晚上好'
 })
 
-// ---------- 导航栏 ----------
-const navItems = [
-  { key: 'home', label: '首页', icon: '🏠' },
-  { key: 'food', label: '美食', icon: '🍽️' },
-  { key: 'order', label: '订单', icon: '🧾' },
-  { key: 'mine', label: '我的', icon: '👤' }
-]
+// ---------- 导航栏（顶部 / 底部均来自后台配置，后台修改实时生效）----------
+const topNav = computed(() => getNavTop().map((n) => ({ key: n.id, label: n.label, icon: n.icon })))
+const bottomNav = computed(() => getNavBottom().map((n) => ({ key: n.id, label: n.label, icon: n.icon })))
 const activeNav = ref('home')
 
 // 导航栏：首页留在原地；美食跳转美食页；订单跳转到「我的订单」；其余未开发入口给出提示
@@ -41,6 +37,10 @@ function onNav(item) {
     router.push('/orders')
     return
   }
+  if (item.key === 'mine') {
+    router.push('/profile')
+    return
+  }
   showToast(`「${item.label}」页面开发中，敬请期待 🚧`)
 }
 
@@ -49,16 +49,22 @@ const keyword = ref('')
 const loading = ref(false)
 let searchTimer = null
 
+// 搜索框占位文案来自后台「搜索管理」配置
+const searchPlaceholder = computed(
+  () => getSearchConfig().placeholder || '搜美食、搜好店，回车进入美食页…'
+)
+
 // ---------- 推荐美食（首页只展示 12 家推荐）----------
 const recommended = ref([])
 
 const list = computed(() => recommended.value)
 
+// 首页「推荐美食」来自后台「推荐管理」配置（勾选哪些店铺就展示哪些）
 async function loadRecommended() {
   loading.value = true
   try {
-    const data = await getRecommended(12)
-    recommended.value = Array.isArray(data) ? data : []
+    await new Promise((r) => setTimeout(r, 300))
+    recommended.value = getRecommendedRestaurants(12)
   } catch (e) {
     showToast(e.message || '加载失败，请稍后重试')
     recommended.value = []
@@ -103,6 +109,11 @@ function onOrder(r) {
 function logout() {
   clearSession()
   router.push('/login')
+}
+
+// ---------- 进入后台管理系统 ----------
+function goAdmin() {
+  router.push(isAdminLoggedIn() ? '/admin' : '/admin-login')
 }
 
 // ---------- 轻提示 ----------

@@ -11,7 +11,7 @@
  Target Server Version : 80039 (8.0.39)
  File Encoding         : 65001
 
- Date: 23/10/2026 16:50:56
+ Date: 26/10/2026 11:56:05
 */
 
 SET NAMES utf8mb4;
@@ -28,7 +28,7 @@ CREATE TABLE `category`  (
   `sort_order` int NOT NULL DEFAULT 0 COMMENT '排序权重',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `uk_cat_name`(`name` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 8 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '分类表（支持分级）' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 8 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '分类表（支持分级）' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of category
@@ -55,7 +55,7 @@ CREATE TABLE `dish`  (
   `sort` int NULL DEFAULT 0 COMMENT '排序权重',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_rest`(`restaurant_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 351 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '菜品表（店内美食）' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 351 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '菜品表（店内美食）' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of dish
@@ -426,11 +426,16 @@ CREATE TABLE `order_item`  (
   `created_at` datetime NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_order`(`order_id` ASC) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '订单明细表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 6 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '订单明细表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of order_item
 -- ----------------------------
+INSERT INTO `order_item` VALUES (1, 1, 346, '蜀大鲜切黄喉', 42.00, 1, 42.00, '2026-10-26 11:43:23');
+INSERT INTO `order_item` VALUES (2, 1, 347, '蜀大手打虾滑', 32.00, 1, 32.00, '2026-10-26 11:43:23');
+INSERT INTO `order_item` VALUES (3, 2, 11, '现烤舒芙蕾', 32.00, 2, 64.00, '2026-10-26 11:45:29');
+INSERT INTO `order_item` VALUES (4, 2, 12, '海盐提拉米苏', 28.00, 2, 56.00, '2026-10-26 11:45:29');
+INSERT INTO `order_item` VALUES (5, 2, 13, '莓果千层', 30.00, 2, 60.00, '2026-10-26 11:45:29');
 
 -- ----------------------------
 -- Table structure for orders
@@ -452,11 +457,13 @@ CREATE TABLE `orders`  (
   UNIQUE INDEX `uk_order_no`(`order_no` ASC) USING BTREE,
   INDEX `idx_account`(`account` ASC) USING BTREE,
   INDEX `idx_rest`(`restaurant_id` ASC) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '订单主表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '订单主表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of orders
 -- ----------------------------
+INSERT INTO `orders` VALUES (1, '17929862034082201', 2, 'www', 70, '蜀大火锅', 74.00, 2, 3, '2026-10-26 11:43:23', '2026-10-26 11:43:27');
+INSERT INTO `orders` VALUES (2, '17929863292598620', 2, 'www', 3, '糖潮甜品铺', 180.00, 6, 2, '2026-10-26 11:45:29', '2026-10-26 11:45:34');
 
 -- ----------------------------
 -- Table structure for restaurant
@@ -477,7 +484,7 @@ CREATE TABLE `restaurant`  (
   `updated_at` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_cat`(`cat` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 71 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '店铺表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 71 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '店铺表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of restaurant
@@ -567,7 +574,7 @@ CREATE TABLE `review`  (
   `created_at` datetime NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_rest`(`restaurant_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 351 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '评价表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 351 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '评价表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of review
@@ -938,12 +945,13 @@ CREATE TABLE `user`  (
   `updated_at` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `uk_account`(`account` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 2 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '用户表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '用户表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of user
 -- ----------------------------
 INSERT INTO `user` VALUES (1, 'demo', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdjwJZgpO60ObfiAvvvbslm9ey', '演示用户', 0, 1, '2026-10-23 16:31:59', '2026-10-23 16:31:59');
+INSERT INTO `user` VALUES (2, 'www', '$2a$10$iaomvtyTAIhWXZA6nSN7FO.vvbfM5uRG.8GOP15SBJ/J6lbJAPfB2', '美食家', 0, 1, '2026-10-26 11:42:42', '2026-10-26 11:42:42');
 
 -- ----------------------------
 -- Table structure for verify_code
@@ -959,7 +967,7 @@ CREATE TABLE `verify_code`  (
   `created_at` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_account_scene`(`account` ASC, `scene` ASC) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '验证码表（旧数字验证码方案遗留，现使用图片验证码，不读写本表）' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '验证码表（旧数字验证码方案遗留，现使用图片验证码，不读写本表）' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of verify_code
