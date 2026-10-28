@@ -8,7 +8,9 @@
 // ============================================================
 import { adminData, setAdminSession, persistAdminData, clearAdminSession } from '../store/admin.js'
 
-export const ADMIN_USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false'
+// 后台是否使用本地模拟：由独立的 VITE_ADMIN_USE_MOCK 控制，
+// 这样可在「用户登录仍走 mock」的前提下，单独把后台管理切到真实后端。
+export const ADMIN_USE_MOCK = import.meta.env.VITE_ADMIN_USE_MOCK !== 'false'
 export const ADMIN_API_BASE = import.meta.env.VITE_API_BASE || '/api'
 
 export const ADMIN_ENDPOINTS = {

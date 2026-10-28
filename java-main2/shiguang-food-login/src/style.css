@@ -158,3 +158,31 @@ html, body, #app { min-height: 100vh; }
   .shell-auth { padding: 16px; }
   .emoji-layer { display: none; }
 }
+
+/* ===== 全局润色 ===== */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+::selection { background: rgba(0, 206, 201, 0.25); color: #063d39; }
+
+/* 自定义滚动条 */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 150, 136, 0.28);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(0, 150, 136, 0.5); background-clip: content-box; }
+* { scrollbar-width: thin; scrollbar-color: rgba(0, 150, 136, 0.35) transparent; }
+
+html { scroll-behavior: smooth; }
+
+/* 路由切换淡入（仅透明度，避免影响 fixed/sticky 定位） */
+.fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+
+/* 后台页面入场动画（全局，供各管理视图复用） */
+@keyframes adIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }

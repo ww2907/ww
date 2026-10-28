@@ -70,14 +70,19 @@ onUnmounted(() => clearTimeout(toastTimer))
 </template>
 
 <style scoped>
-.page { max-width: 980px; }
-.page-head h1 { font-size: 22px; font-weight: 900; color: #0c3d39; }
+.page { max-width: 980px; animation: adIn 0.4s ease both; }
+.page-head h1 { font-size: 22px; font-weight: 900; color: #0c3d39; position: relative; padding-left: 14px; }
+.page-head h1::before { content: ""; position: absolute; left: 0; top: 4px; bottom: 4px; width: 5px; border-radius: 4px; background: linear-gradient(180deg, #00b894, #00cec9); }
 .page-head p { margin-top: 6px; font-size: 13px; color: #6f8c88; line-height: 1.6; }
 .state { text-align: center; padding: 40px; color: #6f8c88; }
-.card { background: #fff; border-radius: 18px; padding: 8px; box-shadow: 0 8px 22px rgba(15,61,57,0.08); border: 1px solid #e6edef; overflow: auto; }
+.card { background: #fff; border-radius: 18px; padding: 8px; box-shadow: 0 8px 22px rgba(15,61,57,0.08); border: 1px solid #e6edef; overflow: auto; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.card:hover { transform: translateY(-2px); box-shadow: 0 14px 32px rgba(15,61,57,0.12); }
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
 th, td { padding: 12px 14px; text-align: left; border-bottom: 1px solid #eef3f3; white-space: nowrap; }
 th { font-size: 12px; color: #94aaa7; font-weight: 700; background: #f6fbfa; position: sticky; top: 0; }
+tbody tr:nth-child(even) { background: #fafdfc; }
+tbody tr { transition: background 0.15s ease; }
+tbody tr:hover { background: #f1fbf9; }
 td.acc { font-weight: 700; color: #0c3d39; }
 td.time { color: #8aa3a0; }
 .badge { padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }

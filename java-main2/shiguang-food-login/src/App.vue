@@ -36,7 +36,11 @@ function onMouseMove(e) {
         <div class="logo"><span class="mark">🍜</span> 食光 · 美食</div>
         <div class="tagline">发现身边的每一口好味道 🌿</div>
       </div>
-      <router-view />
+      <router-view v-slot="{ Component }">
+        <transition name="fade" mode="out-in">
+          <component :is="Component" />
+        </transition>
+      </router-view>
     </div>
   </div>
 </template>

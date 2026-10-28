@@ -1,6 +1,7 @@
 <script setup>
 import { useRouter } from 'vue-router'
-import { adminSession, adminLogout } from '../../store/admin.js'
+import { adminSession } from '../../store/admin.js'
+import { adminLogout } from '../../api/admin.js'
 
 const router = useRouter()
 
@@ -61,7 +62,11 @@ function backHome() {
         </div>
       </header>
       <section class="content">
-        <router-view />
+        <router-view v-slot="{ Component }">
+          <transition name="fade" mode="out-in">
+            <component :is="Component" />
+          </transition>
+        </router-view>
       </section>
     </div>
   </div>
@@ -71,7 +76,9 @@ function backHome() {
 .admin {
   display: flex;
   min-height: 100vh;
-  background: #eef3f4;
+  background:
+    radial-gradient(1100px 560px at 88% -12%, rgba(0, 206, 201, 0.10), transparent 60%),
+    linear-gradient(180deg, #f5faf9 0%, #eef4f3 100%);
   color: #1f2d2b;
 }
 /* 侧边栏 */

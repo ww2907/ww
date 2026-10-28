@@ -105,12 +105,14 @@ onUnmounted(() => clearTimeout(toastTimer))
 </template>
 
 <style scoped>
-.page { max-width: 1000px; }
-.page-head h1 { font-size: 22px; font-weight: 900; color: #0c3d39; }
+.page { max-width: 1000px; animation: adIn 0.4s ease both; }
+.page-head h1 { font-size: 22px; font-weight: 900; color: #0c3d39; position: relative; padding-left: 14px; }
+.page-head h1::before { content: ""; position: absolute; left: 0; top: 4px; bottom: 4px; width: 5px; border-radius: 4px; background: linear-gradient(180deg, #00b894, #00cec9); }
 .page-head p { margin-top: 6px; font-size: 13px; color: #6f8c88; line-height: 1.6; }
 .state { text-align: center; padding: 40px; color: #6f8c88; }
 .stack { display: flex; flex-direction: column; gap: 18px; }
-.card { background: #fff; border-radius: 18px; padding: 18px; box-shadow: 0 8px 22px rgba(15,61,57,0.08); border: 1px solid #e6edef; }
+.card { background: #fff; border-radius: 20px; padding: 18px; box-shadow: 0 10px 30px rgba(15,61,57,0.08); border: 1px solid #e9f0ef; transition: box-shadow 0.2s, transform 0.2s; }
+.card:hover { box-shadow: 0 14px 36px rgba(15,61,57,0.12); transform: translateY(-2px); }
 .card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
 .card-head h2 { font-size: 16px; font-weight: 800; color: #0c3d39; }
 .add { border: 1.5px dashed #bcd9d3; background: #f3fbfa; color: #0c8f7f; border-radius: 10px; padding: 8px 14px; font-weight: 700; cursor: pointer; font-size: 13px; }
@@ -120,8 +122,9 @@ onUnmounted(() => clearTimeout(toastTimer))
 .row { display: grid; grid-template-columns: 1fr 140px 80px 60px; align-items: center; gap: 8px; }
 .row.dish { grid-template-columns: 52px 1fr 90px 130px 70px 56px 60px; }
 .row.head { font-size: 11px; color: #94aaa7; font-weight: 700; padding: 0 4px; }
+.row:not(.head):hover { background: #f3fbfa; border-radius: 12px; }
 .row input, .row select { width: 100%; padding: 9px 10px; border: 1.5px solid #e0e8e7; border-radius: 10px; font-size: 13px; background: #f7fffc; }
-.row input:focus, .row select:focus { border-color: #00cec9; }
+.row input:focus, .row select:focus { border-color: #00cec9; box-shadow: 0 0 0 3px rgba(0,206,201,0.15); outline: none; }
 .row .num { text-align: center; }
 .row .emoji { text-align: center; font-size: 18px; }
 .row .price { text-align: right; }

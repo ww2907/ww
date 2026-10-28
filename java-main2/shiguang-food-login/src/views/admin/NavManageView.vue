@@ -114,26 +114,29 @@ onUnmounted(() => clearTimeout(toastTimer))
 </template>
 
 <style scoped>
-.page { max-width: 1100px; }
+.page { max-width: 1100px; animation: adIn 0.4s ease both; }
 .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
-.page-head h1 { font-size: 22px; font-weight: 900; color: #0c3d39; }
+.page-head h1 { font-size: 22px; font-weight: 900; color: #0c3d39; position: relative; padding-left: 14px; }
+.page-head h1::before { content: ""; position: absolute; left: 0; top: 4px; bottom: 4px; width: 5px; border-radius: 4px; background: linear-gradient(180deg, #00b894, #00cec9); }
 .page-head p { margin-top: 6px; font-size: 13px; color: #6f8c88; max-width: 620px; line-height: 1.6; }
 .save {
   flex: none; border: none; cursor: pointer; padding: 11px 20px; border-radius: 12px;
   background: linear-gradient(135deg, #00b894, #00cec9); color: #fff; font-weight: 800; font-size: 14px;
   box-shadow: 0 8px 18px rgba(0,150,136,0.35); transition: transform 0.15s;
 }
-.save:hover:not(:disabled) { transform: translateY(-1px); }
+.save:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 11px 22px rgba(0,150,136,0.5); }
 .save:disabled { opacity: 0.7; }
 
 .state { text-align: center; padding: 40px; color: #6f8c88; }
 .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
-.card { background: #fff; border-radius: 18px; padding: 18px; box-shadow: 0 8px 22px rgba(15,61,57,0.08); border: 1px solid #e6edef; }
+.card { background: #fff; border-radius: 20px; padding: 20px; box-shadow: 0 10px 30px rgba(15,61,57,0.08); border: 1px solid #e9f0ef; transition: box-shadow 0.2s, transform 0.2s; }
+.card:hover { box-shadow: 0 14px 36px rgba(15,61,57,0.12); transform: translateY(-2px); }
 .card h2 { font-size: 16px; font-weight: 800; color: #0c3d39; }
 .card .hint { font-size: 12px; color: #8aa3a0; margin: 4px 0 14px; }
 .rows { display: flex; flex-direction: column; gap: 8px; }
 .row { display: grid; grid-template-columns: 52px 1fr 64px 56px 56px; align-items: center; gap: 8px; }
 .row.head { font-size: 11px; color: #94aaa7; font-weight: 700; padding: 0 4px; }
+.row:not(.head):hover { background: #f3fbfa; border-radius: 12px; }
 .row input.ic { width: 100%; text-align: center; font-size: 18px; padding: 8px 0; border: 1.5px solid #e0e8e7; border-radius: 10px; background: #f7fffc; }
 .row input.lb { width: 100%; padding: 9px 10px; border: 1.5px solid #e0e8e7; border-radius: 10px; font-size: 14px; background: #f7fffc; }
 .row .sort { display: flex; gap: 4px; justify-content: center; }

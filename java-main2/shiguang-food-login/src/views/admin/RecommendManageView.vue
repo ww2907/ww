@@ -98,15 +98,16 @@ onUnmounted(() => clearTimeout(toastTimer))
 </template>
 
 <style scoped>
-.page { max-width: 880px; }
+.page { max-width: 880px; animation: adIn 0.4s ease both; }
 .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
-.page-head h1 { font-size: 22px; font-weight: 900; color: #0c3d39; }
+.page-head h1 { font-size: 22px; font-weight: 900; color: #0c3d39; position: relative; padding-left: 14px; }
+.page-head h1::before { content: ""; position: absolute; left: 0; top: 4px; bottom: 4px; width: 5px; border-radius: 4px; background: linear-gradient(180deg, #00b894, #00cec9); }
 .page-head p { margin-top: 6px; font-size: 13px; color: #6f8c88; line-height: 1.6; max-width: 560px; }
 .actions { display: flex; gap: 10px; flex: none; }
 .ghost { border: 1.5px solid #cfe6e2; background: #fff; color: #0c8f7f; border-radius: 12px; padding: 10px 14px; font-weight: 700; cursor: pointer; font-size: 13px; }
 .ghost:hover { background: #f0faf8; }
 .save { border: none; cursor: pointer; padding: 11px 18px; border-radius: 12px; background: linear-gradient(135deg, #00b894, #00cec9); color: #fff; font-weight: 800; font-size: 14px; box-shadow: 0 8px 18px rgba(0,150,136,0.35); }
-.save:hover:not(:disabled) { transform: translateY(-1px); }
+.save:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 11px 22px rgba(0,150,136,0.5); }
 .save:disabled { opacity: 0.7; }
 
 .toolbar { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
@@ -118,7 +119,7 @@ onUnmounted(() => clearTimeout(toastTimer))
 .state { text-align: center; padding: 40px; color: #6f8c88; }
 .list { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .item { display: flex; align-items: center; gap: 12px; background: #fff; border: 1.5px solid #e6edef; border-radius: 14px; padding: 12px 14px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; }
-.item:hover { border-color: #bcd9d3; }
+.item:hover { border-color: #00b894; transform: translateY(-2px); box-shadow: 0 10px 22px rgba(0,150,136,0.16); }
 .item.on { border-color: #00b894; box-shadow: 0 6px 16px rgba(0,150,136,0.18); background: #f3fbfa; }
 .cb { position: relative; display: flex; }
 .cb input { width: 18px; height: 18px; accent-color: #00b894; cursor: pointer; }

@@ -35,7 +35,25 @@ function delay(ms) {
 }
 
 // ---------- 本地模拟：内存订单（演示时让「我的订单」也能看到刚下的单）----------
-const mockOrders = []
+// 用 localStorage 持久化，避免刷新页面后订单丢失（演示数据）
+const ORDER_STORAGE_KEY = 'shiguang_mock_orders'
+function loadMockOrders() {
+  try {
+    const raw = localStorage.getItem(ORDER_STORAGE_KEY)
+    if (raw) return JSON.parse(raw)
+  } catch (e) {
+    /* 忽略解析错误 */
+  }
+  return []
+}
+function saveMockOrders() {
+  try {
+    localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify(mockOrders))
+  } catch (e) {
+    /* 忽略存储异常 */
+  }
+}
+const mockOrders = loadMockOrders()
 
 function mockOrderNo() {
   return 'M' + Date.now() + '' + Math.floor(Math.random() * 9000 + 1000)
@@ -48,6 +66,8 @@ function buildMockOrder({ restaurantId, restaurantName, account, items }) {
   const order = {
     id: Date.now(),
     orderNo: mockOrderNo(),
+    // 关键：订单必须记录下单账号，否则「我的订单」按账号筛选时查不到该订单
+    account: account || '',
     restaurantName: restaurantName || ('店铺' + restaurantId),
     totalAmount: Number(total.toFixed(2)),
     itemCount,
@@ -62,6 +82,7 @@ function buildMockOrder({ restaurantId, restaurantName, account, items }) {
     }))
   }
   mockOrders.unshift(order)
+  saveMockOrders()
   return order
 }
 
@@ -241,6 +262,7 @@ export async function updateOrderStatus(id, status) {
     if (o) {
       o.status = status
       o.statusText = statusTextMock(status)
+      saveMockOrders()
     }
     return o
   }

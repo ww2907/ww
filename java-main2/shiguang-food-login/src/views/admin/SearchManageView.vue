@@ -85,16 +85,18 @@ onUnmounted(() => clearTimeout(toastTimer))
 </template>
 
 <style scoped>
-.page { max-width: 760px; }
+.page { max-width: 760px; animation: adIn 0.4s ease both; }
 .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
-.page-head h1 { font-size: 22px; font-weight: 900; color: #0c3d39; }
+.page-head h1 { font-size: 22px; font-weight: 900; color: #0c3d39; position: relative; padding-left: 14px; }
+.page-head h1::before { content: ""; position: absolute; left: 0; top: 4px; bottom: 4px; width: 5px; border-radius: 4px; background: linear-gradient(180deg, #00b894, #00cec9); }
 .page-head p { margin-top: 6px; font-size: 13px; color: #6f8c88; line-height: 1.6; }
 .save { flex: none; border: none; cursor: pointer; padding: 11px 20px; border-radius: 12px; background: linear-gradient(135deg, #00b894, #00cec9); color: #fff; font-weight: 800; font-size: 14px; box-shadow: 0 8px 18px rgba(0,150,136,0.35); }
-.save:hover:not(:disabled) { transform: translateY(-1px); }
+.save:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 11px 22px rgba(0,150,136,0.5); }
 .save:disabled { opacity: 0.7; }
 
 .state { text-align: center; padding: 40px; color: #6f8c88; }
-.card { background: #fff; border-radius: 18px; padding: 22px; box-shadow: 0 8px 22px rgba(15,61,57,0.08); border: 1px solid #e6edef; }
+.card { background: #fff; border-radius: 20px; padding: 22px; box-shadow: 0 10px 30px rgba(15,61,57,0.08); border: 1px solid #e9f0ef; transition: box-shadow 0.2s, transform 0.2s; }
+.card:hover { box-shadow: 0 14px 36px rgba(15,61,57,0.12); transform: translateY(-2px); }
 .field { margin-bottom: 20px; }
 .field label { display: block; font-size: 13px; font-weight: 700; color: #0c3d39; margin-bottom: 8px; }
 .field input, .field textarea {
@@ -104,7 +106,7 @@ onUnmounted(() => clearTimeout(toastTimer))
 .field input:focus, .field textarea:focus { border-color: #00cec9; box-shadow: 0 0 0 3px rgba(0,206,201,0.16); }
 .field small { display: block; margin-top: 6px; font-size: 12px; color: #94aaa7; }
 
-.preview { margin-top: 8px; padding: 18px; border-radius: 14px; background: #f3fbfa; border: 1px dashed #bcd9d3; }
+.preview { margin-top: 8px; padding: 18px; border-radius: 16px; background: linear-gradient(135deg, #f3fbfa, #eaf7f4); border: 1px solid #d4ece7; }
 .pv-title { font-size: 12px; font-weight: 700; color: #0c8f7f; margin-bottom: 10px; }
 .pv-search { display: flex; align-items: center; gap: 10px; background: #fff; padding: 12px 16px; border-radius: 14px; box-shadow: 0 4px 12px rgba(0,150,136,0.12); }
 .pv-ic { opacity: 0.6; }

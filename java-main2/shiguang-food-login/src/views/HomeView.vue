@@ -1,10 +1,12 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { session, clearSession } from '../store.js'
-import { getNavTop, getNavBottom, getSearchConfig, getRecommendedRestaurants, isAdminLoggedIn } from '../store/admin.js'
+import { getNavTop, getNavBottom, getSearchConfig, getRecommendedRestaurants, isAdminLoggedIn, adminData } from '../store/admin.js'
+import { ADMIN_USE_MOCK, getNavConfig, getRecommend, getSearchConfig as fetchSearchConfig } from '../api/admin.js'
 
 const router = useRouter()
+const route = useRoute()
 
 const account = computed(() => session.account || '美食家')
 
@@ -22,6 +24,14 @@ const greeting = computed(() => {
 const topNav = computed(() => getNavTop().map((n) => ({ key: n.id, label: n.label, icon: n.icon })))
 const bottomNav = computed(() => getNavBottom().map((n) => ({ key: n.id, label: n.label, icon: n.icon })))
 const activeNav = ref('home')
+
+// 高亮随路由同步（首页/美食/订单/我的 对应底部 Tab 高亮）
+const ROUTE_NAV = { home: 'home', food: 'food', orders: 'order', profile: 'mine' }
+function syncNav() {
+  const k = ROUTE_NAV[route.name]
+  if (k) activeNav.value = k
+}
+watch(() => route.name, syncNav)
 
 // 导航栏：首页留在原地；美食跳转美食页；订单跳转到「我的订单」；其余未开发入口给出提示
 function onNav(item) {
@@ -127,8 +137,21 @@ function showToast(msg) {
   toastTimer = setTimeout(() => (toastShow.value = false), 2200)
 }
 
-onMounted(() => {
-  loadRecommended()
+onMounted(async () => {
+  syncNav()
+  // 真实后端模式：先从后台拉取导航/搜索/推荐配置，使首页与后台管理保持一致
+  if (!ADMIN_USE_MOCK) {
+    try {
+      const [nav, search, rec] = await Promise.all([getNavConfig(), fetchSearchConfig(), getRecommend()])
+      if (nav) {
+        adminData.navTop = nav.top || adminData.navTop
+        adminData.navBottom = nav.bottom || adminData.navBottom
+      }
+      if (search) adminData.search = search
+      if (rec && Array.isArray(rec.ids)) adminData.recommendedIds = rec.ids
+    } catch (e) { /* 拉取失败则保持本地兜底 */ }
+  }
+  await loadRecommended()
 })
 onUnmounted(() => {
   clearTimeout(searchTimer)
@@ -145,16 +168,17 @@ onUnmounted(() => {
         <span class="brand-name">食光 · 美食</span>
       </div>
       <div class="user">
+        <button class="admin-entry" @click="goAdmin" title="进入后台管理系统">🛡️ 后台管理</button>
         <div class="avatar">{{ account.charAt(0).toUpperCase() }}</div>
         <span class="uname">{{ account }}</span>
         <button class="logout" @click="logout">退出</button>
       </div>
     </header>
 
-    <!-- 导航菜单（导航栏） -->
+    <!-- 导航菜单（顶部横向导航：桌面端显示） -->
     <nav class="nav">
       <button
-        v-for="item in navItems"
+        v-for="item in topNav"
         :key="item.key"
         class="nav-item"
         :class="{ active: activeNav === item.key }"
@@ -240,7 +264,7 @@ onUnmounted(() => {
     <!-- 底部导航栏（移动端主导航） -->
     <nav class="tabbar">
       <button
-        v-for="item in navItems"
+        v-for="item in bottomNav"
         :key="item.key"
         class="tab"
         :class="{ active: activeNav === item.key }"
@@ -261,8 +285,8 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  /* 给底部固定导航栏留出空间 */
-  padding-bottom: 92px;
+  /* 给底部固定导航栏留出空间（移动端） */
+  padding-bottom: 24px;
 }
 
 /* 顶部导航栏 */
@@ -297,6 +321,27 @@ onUnmounted(() => {
   transition: background 0.15s;
 }
 .logout:hover { background: rgba(0, 184, 148, 0.25); }
+.admin-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1.5px solid rgba(0, 150, 136, 0.45);
+  background: rgba(0, 184, 148, 0.1);
+  color: var(--deep);
+  font-weight: 800;
+  font-size: 13px;
+  padding: 7px 14px;
+  border-radius: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+.admin-entry:hover {
+  background: rgba(0, 184, 148, 0.22);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 150, 136, 0.28);
+}
+.admin-entry:active { transform: translateY(0); }
 
 /* 导航栏（顶部菜单） */
 .nav {
@@ -535,9 +580,13 @@ onUnmounted(() => {
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
 
 @media (max-width: 600px) {
+  .nav { display: none; }
+  .home { padding-bottom: 92px; }
   .grid { grid-template-columns: 1fr; }
   .banner-text h1 { font-size: 20px; }
-  .nav-item .nav-label { display: none; }
-  .nav-item { flex: 1; }
+}
+@media (min-width: 601px) {
+  /* 桌面端由顶部横向导航承载，隐藏底部 Tab 栏 */
+  .tabbar { display: none; }
 }
 </style>

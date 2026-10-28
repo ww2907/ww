@@ -131,6 +131,20 @@ onUnmounted(() => {
       </div>
     </header>
 
+    <!-- 顶部横向导航（桌面端显示） -->
+    <nav class="nav">
+      <button
+        v-for="item in navItems"
+        :key="item.key"
+        class="nav-item"
+        :class="{ active: activeNav === item.key }"
+        @click="onNav(item)"
+      >
+        <span class="nav-icon">{{ item.icon }}</span>
+        <span class="nav-label">{{ item.label }}</span>
+      </button>
+    </nav>
+
     <!-- 页面标题 -->
     <section class="page-head">
       <button class="back" @click="router.push('/home')">← 首页</button>
@@ -229,7 +243,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding-bottom: 92px;
+  padding-bottom: 24px;
 }
 
 /* 顶部导航栏 */
@@ -264,6 +278,41 @@ onUnmounted(() => {
   transition: background 0.15s;
 }
 .logout:hover { background: rgba(0, 184, 148, 0.25); }
+
+/* 顶部横向导航（与首页一致） */
+.nav {
+  display: flex;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 16px;
+  padding: 8px;
+  box-shadow: 0 8px 22px rgba(0, 150, 136, 0.14);
+}
+.nav-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  padding: 10px 6px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.nav-item .nav-icon { font-size: 17px; }
+.nav-item:hover { background: rgba(0, 184, 148, 0.12); color: var(--deep); }
+.nav-item.active {
+  background: linear-gradient(135deg, var(--teal), var(--cyan));
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(0, 150, 136, 0.4);
+}
 
 /* 页面标题 */
 .page-head { padding: 4px 4px 0; }
@@ -455,7 +504,12 @@ onUnmounted(() => {
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
 
 @media (max-width: 600px) {
+  .nav { display: none; }
+  .food { padding-bottom: 92px; }
   .grid { grid-template-columns: 1fr; }
   .page-head h1 { font-size: 19px; }
+}
+@media (min-width: 601px) {
+  .tabbar { display: none; }
 }
 </style>
