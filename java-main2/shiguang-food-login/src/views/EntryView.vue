@@ -185,4 +185,16 @@ function goRegister() {
   border-bottom: 1px solid var(--mint);
 }
 .alt a:hover { color: var(--teal); }
+
+/* 小屏收紧内边距与字号，避免内容贴边 */
+@media (max-width: 480px) {
+  .entry { padding: 32px 20px 28px; }
+  .title { font-size: 28px; letter-spacing: 2px; }
+  .badge { width: 72px; height: 72px; font-size: 38px; }
+  .intro { font-size: 13px; line-height: 1.8; }
+}
+@media (max-width: 360px) {
+  .entry { padding: 28px 16px 24px; }
+  .title { font-size: 24px; }
+}
 </style>

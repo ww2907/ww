@@ -10,6 +10,7 @@ const menus = [
   { to: '/admin/search', icon: '🔍', label: '搜索管理', desc: '搜索框与热词' },
   { to: '/admin/recommend', icon: '🔥', label: '推荐管理', desc: '首页推荐美食' },
   { to: '/admin/dish', icon: '🍱', label: '菜品管理', desc: '分类与下单菜品' },
+  { to: '/admin/price', icon: '💰', label: '数字管理', desc: '菜品价格调整' },
   { to: '/admin/user', icon: '👥', label: '用户管理', desc: '用户信息展示' },
   { to: '/admin/order', icon: '🧾', label: '订单管理', desc: '下单点餐记录' }
 ]
@@ -154,4 +155,27 @@ function backHome() {
 .who .name { font-size: 14px; font-weight: 700; color: #0c3d39; }
 
 .content { padding: 24px 26px 40px; overflow: auto; }
+
+/* 小屏：固定侧边栏改为顶部横向导航，主内容占满，避免挤压 */
+@media (max-width: 960px) {
+  .admin { flex-direction: column; }
+  .sidebar {
+    width: 100%; height: auto; position: static;
+    flex-direction: row; align-items: center; flex-wrap: wrap;
+    padding: 12px 14px; gap: 10px;
+  }
+  .logo { padding: 0 10px 0 0; flex: none; }
+  .menu { flex-direction: row; flex-wrap: wrap; gap: 6px; margin-top: 0; flex: 1; }
+  .menu-item { padding: 8px 10px; }
+  .menu-item .mi-text small { display: none; }
+  .side-foot { flex-direction: row; border-top: none; padding-top: 0; flex: none; }
+  .topbar { padding: 0 14px; }
+  .content { padding: 16px 14px 32px; }
+}
+@media (max-width: 600px) {
+  .sidebar { gap: 8px; padding: 10px 12px; }
+  .content { padding: 12px 10px 28px; }
+  .topbar { height: 54px; padding: 0 10px; }
+  .who .role { display: none; }
+}
 </style>

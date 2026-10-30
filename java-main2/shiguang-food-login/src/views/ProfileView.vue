@@ -3,10 +3,20 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getOrderStats } from '../api/order.js'
 import { session } from '../store.js'
+import { useShellNav } from '../composables/useShellNav.js'
+import AppHeader from '../components/layout/AppHeader.vue'
+import AppNav from '../components/layout/AppNav.vue'
+import AppSearch from '../components/layout/AppSearch.vue'
+import AppTabbar from '../components/layout/AppTabbar.vue'
 
 const router = useRouter()
 
-const account = computed(() => session.account || '美食家')
+// 顶部/底部导航、后台入口、退出登录：与首页同一套逻辑与尺寸
+const { topNav, bottomNav, activeNav, account, setActive, onNav, goAdmin, logout } = useShellNav('mine')
+setActive('mine')
+
+const avatarText = computed(() => (account.value || '美').charAt(0).toUpperCase())
+const keyword = ref('')
 
 const stats = ref({
   totalOrders: 0,
@@ -52,46 +62,76 @@ function goOrders() {
   router.push('/orders')
 }
 
-function goHome() {
-  router.push('/home')
+// 搜索：与首页一致，跳转到美食页检索
+function onSearch() {
+  const k = keyword.value.trim()
+  router.push({ path: '/food', query: k ? { keyword: k } : {} })
+}
+function clearSearch() {
+  keyword.value = ''
+}
+
+// 导航点击：未开发入口给出提示
+const toastMsg = ref('')
+const toastShow = ref(false)
+let toastTimer = null
+function showToast(msg) {
+  toastMsg.value = msg
+  toastShow.value = true
+  clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => (toastShow.value = false), 2200)
+}
+function handleNav(item) {
+  if (!onNav(item)) showToast(`「${item.label}」页面开发中，敬请期待 🚧`)
 }
 
 onMounted(loadStats)
-onUnmounted(() => {})
+onUnmounted(() => clearTimeout(toastTimer))
 </script>
 
 <template>
-  <div class="profile">
-    <!-- 顶部：返回 -->
-    <header class="topbar">
-      <button class="back" @click="goHome">‹ 首页</button>
-      <span class="top-title">我的</span>
-      <span class="top-spacer"></span>
-    </header>
+  <div class="sh-page">
+    <!-- 顶部导航栏（四页统一） -->
+    <AppHeader :account="account" @logout="logout" @admin="goAdmin" />
 
-    <!-- 用户信息卡 -->
-    <section class="usercard">
-      <div class="avatar">{{ account.charAt(0).toUpperCase() }}</div>
-      <div class="uinfo">
-        <div class="uname">{{ account }}</div>
-        <div class="usub">食光 · 美食 会员</div>
+    <!-- 顶部横向导航（桌面端） -->
+    <AppNav :items="topNav" :active="activeNav" @select="handleNav" />
+
+    <!-- 搜索栏（尺寸四页统一） -->
+    <AppSearch
+      v-model="keyword"
+      placeholder="想吃点什么？搜店名、菜品或口味…"
+      hint="🔎 搜索结果会跳转到「美食页」，挑一家好店继续回购。"
+      @search="onSearch"
+      @clear="clearSearch"
+    />
+
+    <!-- 用户横幅（与首页欢迎横幅同一尺寸） -->
+    <section class="sh-banner usercard">
+      <div class="sh-banner-text uinfo">
+        <div class="avatar">{{ avatarText }}</div>
+        <div class="utext">
+          <div class="uname">{{ account }}</div>
+          <div class="usub">食光 · 美食 会员</div>
+        </div>
       </div>
+      <div class="sh-banner-emoji">👤</div>
     </section>
 
     <!-- 加载态 -->
-    <div v-if="loading" class="state">
-      <span class="spinner"></span> 正在加载… 
+    <div v-if="loading" class="sh-state">
+      <span class="sh-spinner"></span> 正在加载…
     </div>
 
     <!-- 错误态 -->
-    <div v-else-if="errMsg" class="state empty">😶 {{ errMsg }}</div>
+    <div v-else-if="errMsg" class="sh-state is-empty">😶 {{ errMsg }}</div>
 
     <template v-else>
       <!-- 订单次数 -->
-      <section class="block">
-        <div class="block-head">
+      <section class="sh-block">
+        <div class="sh-block-head">
           <h2>🧾 订单次数</h2>
-          <span class="count">累计 {{ stats.totalOrders }} 单</span>
+          <span class="sh-count">累计 {{ stats.totalOrders }} 单</span>
         </div>
         <div class="count-grid">
           <div
@@ -107,26 +147,26 @@ onUnmounted(() => {})
       </section>
 
       <!-- 常点食物 -->
-      <section class="block">
-        <div class="block-head">
+      <section class="sh-block">
+        <div class="sh-block-head">
           <h2>🍽️ 常点食物</h2>
-          <span class="count">{{ stats.frequentFoods.length }} 种</span>
+          <span class="sh-count">{{ stats.frequentFoods.length }} 种</span>
         </div>
 
-        <div v-if="stats.frequentFoods.length === 0" class="state empty">
+        <div v-if="stats.frequentFoods.length === 0" class="sh-state is-empty">
           🍜 还没有点过餐，去首页挑一家好店吧～
         </div>
 
-        <ul v-else class="freq">
-          <li class="freq-item" v-for="(f, i) in stats.frequentFoods" :key="f.dishId || f.dishName">
+        <div v-else class="sh-grid">
+          <div class="sh-tile freq-item" v-for="(f, i) in stats.frequentFoods" :key="f.dishId || f.dishName">
             <span class="rank">{{ i + 1 }}</span>
             <div class="f-main">
               <div class="f-name">{{ f.dishName }}</div>
               <div class="f-sub">点了 {{ f.orderTimes }} 次 · 共 {{ f.totalQty }} 份</div>
             </div>
             <div class="f-price">¥{{ Number(f.price || 0).toFixed(2) }}</div>
-          </li>
-        </ul>
+          </div>
+        </div>
       </section>
 
       <!-- 我的订单入口 -->
@@ -139,81 +179,40 @@ onUnmounted(() => {})
       </section>
     </template>
 
-    <footer class="foot">食光 · 美食 — 发现身边的每一口好味道 🌿</footer>
+    <footer class="sh-foot">食光 · 美食 — 发现身边的每一口好味道 🌿</footer>
+
+    <!-- 底部导航栏（移动端主导航） -->
+    <AppTabbar :items="bottomNav" :active="activeNav" @select="handleNav" />
   </div>
+
+  <div class="sh-toast" :class="{ show: toastShow }">{{ toastMsg }}</div>
 </template>
 
 <style scoped>
-.profile {
-  color: var(--ink);
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding-bottom: 92px;
-}
-
-/* 顶部返回 */
-.topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(14px);
-  border-radius: 16px;
-  box-shadow: var(--shadow);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-}
-.back {
-  border: none; cursor: pointer; background: rgba(0, 184, 148, 0.12);
-  color: var(--deep); font-weight: 800; font-size: 14px;
-  padding: 8px 14px; border-radius: 11px; transition: background 0.15s;
-}
-.back:hover { background: rgba(0, 184, 148, 0.25); }
-.top-title { font-weight: 900; font-size: 16px; color: var(--deep); }
-.top-spacer { width: 64px; }
-
-/* 用户信息卡 */
-.usercard {
-  display: flex; align-items: center; gap: 14px; padding: 20px;
-  border-radius: 22px;
-  background: linear-gradient(135deg, rgba(0,184,148,0.92), rgba(0,206,201,0.92));
-  color: #fff; box-shadow: var(--shadow);
-}
+/* 用户横幅内部排版（横幅外框由全局 .sh-banner 统一提供） */
+.usercard .uinfo { display: flex; align-items: center; gap: 14px; }
 .usercard .avatar {
-  width: 56px; height: 56px; border-radius: 50%;
+  width: 56px; height: 56px; border-radius: 50%; flex: none;
   background: rgba(255,255,255,0.28); color: #fff;
   font-weight: 900; font-size: 26px; display: grid; place-items: center;
 }
-.uinfo { min-width: 0; }
-.uname { font-size: 20px; font-weight: 900; text-shadow: 0 3px 14px rgba(0,80,70,0.3); }
-.usub { font-size: 12px; opacity: 0.95; margin-top: 4px; }
-
-/* 加载 / 错误 / 空态 */
-.state { text-align: center; padding: 40px 10px; font-size: 14px; color: var(--muted); }
-.state.empty { color: var(--deep); }
-.spinner {
-  display: inline-block; width: 16px; height: 16px;
-  border: 3px solid rgba(0, 150, 136, 0.25); border-top-color: var(--teal);
-  border-radius: 50%; animation: spin 0.7s linear infinite;
-  vertical-align: -3px; margin-right: 6px;
+.usercard .utext { min-width: 0; }
+/* 文字块与首页横幅同结构（24px 标题 + 8px 间距 + 13px 副文案），保证横幅高度一致 */
+.usercard .uname {
+  font-size: 24px; font-weight: 900; line-height: 1.25;
+  text-shadow: 0 3px 14px rgba(0,80,70,0.3);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
+.usercard .usub { font-size: 13px; line-height: 1.6; opacity: 0.95; margin-top: 8px; }
 
-/* 区块 */
-.block { background: rgba(255,255,255,0.86); backdrop-filter: blur(8px); border-radius: 22px; padding: 18px; box-shadow: 0 10px 26px rgba(0,150,136,0.16); border: 1px solid rgba(255,255,255,0.6); }
-.block-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; }
-.block-head h2 { font-size: 17px; font-weight: 900; color: var(--deep); }
-.count { font-size: 12px; color: var(--muted); }
-
-/* 订单次数网格 */
+/* 订单次数网格（列数自适应，卡片尺寸与首页店铺卡同源） */
 .count-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 12px;
 }
 .count-card {
-  background: #fff; border: 1px solid var(--line); border-radius: 14px;
+  background: #fff; border: 1px solid var(--line); border-radius: 16px;
   padding: 14px 10px; text-align: center;
 }
 .count-card .cv { font-size: 24px; font-weight: 900; color: var(--deep); }
@@ -225,21 +224,20 @@ onUnmounted(() => {})
 .count-card.paid .cv { color: #2d7ff9; }
 .count-card.cancel .cv { color: #777; }
 
-/* 常点食物 */
-.freq { list-style: none; display: flex; flex-direction: column; gap: 10px; }
-.freq-item {
-  display: flex; align-items: center; gap: 12px;
-  background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 12px;
-}
+/* 常点食物卡片内部排版（外框尺寸由全局 .sh-tile 统一提供） */
+.freq-item { display: flex; align-items: center; gap: 12px; }
 .rank {
-  width: 26px; height: 26px; flex: none; border-radius: 8px;
+  width: 30px; height: 30px; flex: none; border-radius: 9px;
   background: linear-gradient(135deg, var(--teal), var(--cyan)); color: #fff;
   font-weight: 900; font-size: 13px; display: grid; place-items: center;
 }
 .f-main { flex: 1; min-width: 0; }
-.f-name { font-size: 15px; font-weight: 800; color: var(--ink); }
+.f-name {
+  font-size: 15px; font-weight: 800; color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 .f-sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
-.f-price { font-size: 14px; font-weight: 800; color: #e8730c; }
+.f-price { flex: none; font-size: 14px; font-weight: 800; color: #e8730c; }
 
 /* 我的订单 CTA */
 .order-cta {
@@ -260,9 +258,11 @@ onUnmounted(() => {})
   box-shadow: 0 6px 14px rgba(0,150,136,0.35);
 }
 
-.foot { text-align: center; font-size: 12px; color: rgba(255,255,255,0.9); text-shadow: 0 2px 8px rgba(0,80,70,0.3); margin-top: 8px; }
-
-@media (max-width: 600px) {
-  .count-grid { grid-template-columns: repeat(2, 1fr); }
+@media (max-width: 520px) {
+  .usercard .avatar { width: 48px; height: 48px; font-size: 22px; }
+  .usercard .uname { font-size: 20px; }
+  .count-grid { gap: 10px; }
+  .order-cta { padding: 16px; border-radius: 18px; }
+  .cta-arrow { padding: 9px 12px; font-size: 12px; }
 }
 </style>

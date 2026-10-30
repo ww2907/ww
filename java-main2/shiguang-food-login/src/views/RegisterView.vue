@@ -115,8 +115,12 @@ async function onSubmit() {
       captchaId: captchaId.value,
       captchaCode: captchaCode.value.trim()
     })
-    showToast('注册成功，请登录 🎉')
-    router.push('/login')
+    // 注册成功：自动跳转登录页，并带上用户名自动回填
+    // registered=1 让登录页弹出"注册成功"提示，避免提示随本页销毁而丢失
+    router.push({
+      name: 'login',
+      query: { account: account.value.trim(), registered: '1' }
+    })
   } catch (e) {
     loading.value = false
     showToast(e.message || '注册失败，请重试')

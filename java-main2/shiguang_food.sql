@@ -11,11 +11,141 @@
  Target Server Version : 80039 (8.0.39)
  File Encoding         : 65001
 
- Date: 28/10/2026 09:38:56
+ Date: 30/10/2026 16:51:56
 */
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
+
+-- ----------------------------
+-- Table structure for admin_account
+-- ----------------------------
+DROP TABLE IF EXISTS `admin_account`;
+CREATE TABLE `admin_account`  (
+  `account` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `password` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
+  PRIMARY KEY (`account`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of admin_account
+-- ----------------------------
+INSERT INTO `admin_account` VALUES ('admin', '$2a$10$4gE3JPFqhAfx9oB4E/cbZ.w8Tdj0HM4EylGAywshQUQJJPuAmRiNC');
+
+-- ----------------------------
+-- Table structure for admin_category
+-- ----------------------------
+DROP TABLE IF EXISTS `admin_category`;
+CREATE TABLE `admin_category`  (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
+  `parent_id` bigint NULL DEFAULT NULL,
+  `sort_order` int NULL DEFAULT NULL,
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 8 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of admin_category
+-- ----------------------------
+INSERT INTO `admin_category` VALUES (1, '美食', 0, 0);
+INSERT INTO `admin_category` VALUES (2, '面食', 1, 1);
+INSERT INTO `admin_category` VALUES (3, '快餐', 1, 2);
+INSERT INTO `admin_category` VALUES (4, '甜点', 1, 3);
+INSERT INTO `admin_category` VALUES (5, '饮品', 1, 4);
+INSERT INTO `admin_category` VALUES (6, '轻食', 1, 5);
+INSERT INTO `admin_category` VALUES (7, '火锅', 1, 6);
+
+-- ----------------------------
+-- Table structure for admin_config
+-- ----------------------------
+DROP TABLE IF EXISTS `admin_config`;
+CREATE TABLE `admin_config`  (
+  `config_key` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `config_value` varchar(4000) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
+  PRIMARY KEY (`config_key`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of admin_config
+-- ----------------------------
+INSERT INTO `admin_config` VALUES ('nav', '{\"top\":[{\"id\":\"home\",\"label\":\"首页\",\"icon\":\"🏠\",\"sort\":1,\"enabled\":true},{\"id\":\"food\",\"label\":\"美食\",\"icon\":\"🍽️\",\"sort\":2,\"enabled\":true},{\"id\":\"order\",\"label\":\"订单\",\"icon\":\"🧾\",\"sort\":3,\"enabled\":true},{\"id\":\"mine\",\"label\":\"我的\",\"icon\":\"👤\",\"sort\":4,\"enabled\":true}],\"bottom\":[{\"id\":\"home\",\"label\":\"首页\",\"icon\":\"🏠\",\"sort\":1,\"enabled\":true},{\"id\":\"food\",\"label\":\"美食\",\"icon\":\"🍽️\",\"sort\":2,\"enabled\":true},{\"id\":\"order\",\"label\":\"订单\",\"icon\":\"🧾\",\"sort\":3,\"enabled\":true},{\"id\":\"mine\",\"label\":\"我的\",\"icon\":\"👤\",\"sort\":4,\"enabled\":true}]}');
+INSERT INTO `admin_config` VALUES ('recommend', '{\"ids\":[]}');
+INSERT INTO `admin_config` VALUES ('search', '{\"placeholder\":\"搜美食、搜好店，回车进入美食页…\",\"hotwords\":[\"牛肉面\",\"火锅\",\"轻食\",\"奶茶\",\"沙拉\",\"炸鸡\"]}');
+
+-- ----------------------------
+-- Table structure for admin_dish
+-- ----------------------------
+DROP TABLE IF EXISTS `admin_dish`;
+CREATE TABLE `admin_dish`  (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `name` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
+  `price` decimal(10, 2) NULL DEFAULT NULL,
+  `emoji` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
+  `category_id` bigint NULL DEFAULT NULL,
+  `description` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
+  `sort` int NULL DEFAULT NULL,
+  `enabled` tinyint(1) NULL DEFAULT NULL,
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 11 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of admin_dish
+-- ----------------------------
+INSERT INTO `admin_dish` VALUES (1, '招牌牛肉面', 28.00, '🍜', 2, '牛骨熬汤 8 小时，手工现拉。', 1, 1);
+INSERT INTO `admin_dish` VALUES (2, '红油抄手', 22.00, '🥟', 2, '皮薄馅大，麻辣鲜香。', 2, 1);
+INSERT INTO `admin_dish` VALUES (3, '韩式雪花炸鸡', 36.00, '🍗', 3, '外皮酥到掉渣。', 1, 1);
+INSERT INTO `admin_dish` VALUES (4, '安格斯牛肉堡', 28.00, '🍔', 3, '现煎牛肉饼多汁。', 2, 1);
+INSERT INTO `admin_dish` VALUES (5, '现烤舒芙蕾', 32.00, '🍮', 4, '出炉即食，入口即化。', 1, 1);
+INSERT INTO `admin_dish` VALUES (6, '深烘手冲单品', 28.00, '☕', 5, '埃塞俄比亚豆，风味干净。', 1, 1);
+INSERT INTO `admin_dish` VALUES (7, '生椰拿铁', 22.00, '🥥', 5, '椰香浓郁顺滑。', 2, 1);
+INSERT INTO `admin_dish` VALUES (8, '麻辣牛油锅', 58.00, '🍲', 7, '牛油锅底，越煮越香。', 1, 1);
+INSERT INTO `admin_dish` VALUES (9, '鸡胸蔬菜沙拉', 26.00, '🥗', 6, '高蛋白低脂。', 1, 1);
+INSERT INTO `admin_dish` VALUES (10, '藜麦时蔬碗', 30.00, '🍚', 6, '饱腹无负担。', 2, 1);
+
+-- ----------------------------
+-- Table structure for admin_order
+-- ----------------------------
+DROP TABLE IF EXISTS `admin_order`;
+CREATE TABLE `admin_order`  (
+  `id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `account` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
+  `restaurant` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
+  `items` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
+  `amount` decimal(10, 2) NULL DEFAULT NULL,
+  `status` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
+  `created_at` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of admin_order
+-- ----------------------------
+INSERT INTO `admin_order` VALUES ('OD20261025018', 'demo', '拾光咖啡', '生椰拿铁 x2', 44.00, '已取消', '2026-10-25 18:44:20');
+INSERT INTO `admin_order` VALUES ('OD20261026001', 'demo', '巷子口牛肉面', '招牌牛肉面 x1, 冰镇酸梅汤 x1', 36.00, '已支付', '2026-10-26 11:02:11');
+INSERT INTO `admin_order` VALUES ('OD20261026002', 'xiaoming', '麦奇轻食沙拉', '鸡胸蔬菜沙拉 x1', 26.00, '已完成', '2026-10-26 11:20:45');
+INSERT INTO `admin_order` VALUES ('OD20261026003', 'lili', '老成都火锅', '麻辣牛油锅 x1, 鲜切黄喉 x1', 100.00, '待支付', '2026-10-26 11:35:09');
+
+-- ----------------------------
+-- Table structure for admin_user
+-- ----------------------------
+DROP TABLE IF EXISTS `admin_user`;
+CREATE TABLE `admin_user`  (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `account` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
+  `nickname` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
+  `account_type` int NULL DEFAULT NULL,
+  `status` int NULL DEFAULT NULL,
+  `created_at` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 5 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of admin_user
+-- ----------------------------
+INSERT INTO `admin_user` VALUES (1, 'demo', '演示用户', 0, 1, '2026-10-23 16:31:59');
+INSERT INTO `admin_user` VALUES (2, 'xiaoming', '小明', 0, 1, '2026-10-24 09:12:00');
+INSERT INTO `admin_user` VALUES (3, 'lili', '丽丽', 0, 1, '2026-10-24 10:30:00');
+INSERT INTO `admin_user` VALUES (4, 'blocked_user', '已封禁用户', 0, 0, '2026-10-25 08:05:00');
 
 -- ----------------------------
 -- Table structure for category
@@ -426,7 +556,7 @@ CREATE TABLE `order_item`  (
   `created_at` datetime NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_order`(`order_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 6 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '订单明细表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 7 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '订单明细表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of order_item
@@ -436,6 +566,7 @@ INSERT INTO `order_item` VALUES (2, 1, 347, '蜀大手打虾滑', 32.00, 1, 32.0
 INSERT INTO `order_item` VALUES (3, 2, 11, '现烤舒芙蕾', 32.00, 2, 64.00, '2026-10-26 11:45:29');
 INSERT INTO `order_item` VALUES (4, 2, 12, '海盐提拉米苏', 28.00, 2, 56.00, '2026-10-26 11:45:29');
 INSERT INTO `order_item` VALUES (5, 2, 13, '莓果千层', 30.00, 2, 60.00, '2026-10-26 11:45:29');
+INSERT INTO `order_item` VALUES (6, 3, 191, '暖糖海盐提拉米苏', 28.00, 2, 56.00, '2026-10-30 16:07:10');
 
 -- ----------------------------
 -- Table structure for orders
@@ -457,13 +588,14 @@ CREATE TABLE `orders`  (
   UNIQUE INDEX `uk_order_no`(`order_no` ASC) USING BTREE,
   INDEX `idx_account`(`account` ASC) USING BTREE,
   INDEX `idx_rest`(`restaurant_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '订单主表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '订单主表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of orders
 -- ----------------------------
 INSERT INTO `orders` VALUES (1, '17929862034082201', 2, 'www', 70, '蜀大火锅', 74.00, 2, 3, '2026-10-26 11:43:23', '2026-10-26 11:43:27');
 INSERT INTO `orders` VALUES (2, '17929863292598620', 2, 'www', 3, '糖潮甜品铺', 180.00, 6, 2, '2026-10-26 11:45:29', '2026-10-26 11:45:34');
+INSERT INTO `orders` VALUES (3, '17933476306833235', 2, 'www', 39, '暖糖甜品', 56.00, 2, 3, '2026-10-30 16:07:10', '2026-10-30 16:07:17');
 
 -- ----------------------------
 -- Table structure for restaurant
@@ -945,7 +1077,7 @@ CREATE TABLE `user`  (
   `updated_at` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `uk_account`(`account` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '用户表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 5 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '用户表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of user

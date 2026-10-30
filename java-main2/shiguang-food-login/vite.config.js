@@ -6,7 +6,8 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
-    open: false,
+    // 启动后自动在默认浏览器弹出登录页（hash 路由下实际地址为 /#/login）
+    open: 'http://localhost:5173/#/login',
     // 开发环境代理：前端 /api/** 请求转发到本地 Spring Boot 后端（端口 8081）
     proxy: {
       '/api': {

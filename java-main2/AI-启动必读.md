@@ -62,6 +62,16 @@ $mvn = (Get-ChildItem "$env:USERPROFILE\.m2\wrapper\dists\apache-maven-*\*\bin\m
 8. **JDK 25 的坑不存在了**：现在是 JDK 17，`-proc:full` 那条历史教训作废。
 9. **后端进程归属**：由某个会话后台任务启动的后端，会话结束可能被回收。重启机器后一律
    `start-all.bat` 重启，别指望旧进程还活着。
+10. **前端默认是 mock 模式（最坑）**：`src/api/auth.js` 里 `USE_MOCK = VITE_USE_MOCK !== 'false'`，
+    没配 `.env` 时默认 **true**，登录/注册全在浏览器内存里空转、**不请求后端也不写库**。
+    已在 `shiguang-food-login/.env` 固定 `VITE_USE_MOCK=false`。改 `.env` 后**必须重启 Vite** 才生效。
+11. **登录态存 localStorage**：`src/store.js` 的登录态默认持久化（不再依赖"记住我"勾选），
+    刷新/重开浏览器不会掉登录。有效期：勾选"记住我"30 天，未勾选 1 天；过期或数据损坏会自动清理。
+    退出登录只清会话、保留记住的用户名用于登录页回填。注册成功会跳到
+    `#/login?account=xxx&registered=1`，登录页自动回填用户名并提示"注册成功"，参数消费后会被清掉。
+    判据：浏览器访问 `/src/api/auth.js`，看内联的 `import.meta.env` 里 `VITE_USE_MOCK` 是否为 `"false"`。
+11. **H2 已废弃**：原 `schema.sql`/`data.sql`/`application-h2.properties` 已并入 MySQL 并删除，
+    `pom.xml` 无 h2 依赖。库 `shiguang_food` 现含 14 张表（8 业务 + 6 admin_*）。勿再启用 H2。
 
 ## 3. 启动后验证（端到端）
 

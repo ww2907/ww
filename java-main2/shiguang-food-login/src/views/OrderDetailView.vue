@@ -122,11 +122,14 @@ onUnmounted(() => clearTimeout(toastTimer))
         </div>
       </section>
 
-      <!-- 店铺 -->
+      <!-- 店铺（尺寸/圆角对齐首页卡片） -->
       <section class="block">
         <div class="store">
-          <span class="store-emoji">🍜</span>
-          <span class="store-name">{{ order.restaurantName }}</span>
+          <div class="store-emoji">🍜</div>
+          <div class="store-info">
+            <div class="store-name">{{ order.restaurantName }}</div>
+            <div class="store-sub">🧾 订单店铺</div>
+          </div>
         </div>
       </section>
 
@@ -243,10 +246,21 @@ onUnmounted(() => clearTimeout(toastTimer))
 .tl-line { flex: 1; height: 3px; background: #d9e6e3; border-radius: 2px; min-width: 24px; }
 .tl-line.on { background: var(--deep); }
 
-/* 店铺 */
-.store { display: flex; align-items: center; gap: 12px; }
-.store-emoji { width: 48px; height: 48px; border-radius: 13px; font-size: 26px; background: linear-gradient(135deg, rgba(0,184,148,0.15), rgba(0,206,201,0.15)); display: grid; place-items: center; }
-.store-name { font-size: 17px; font-weight: 900; color: var(--ink); }
+/* 店铺（与首页卡片尺寸 / 圆角 / 描边对齐） */
+.store {
+  display: flex; align-items: center; gap: 14px;
+  background: #fff; border-radius: 16px; padding: 14px; border: 1px solid var(--line);
+  transition: box-shadow 0.15s;
+}
+.store:hover { box-shadow: 0 12px 26px rgba(0, 150, 136, 0.18); }
+.store-emoji {
+  width: 46px; height: 46px; flex: none; border-radius: 13px; font-size: 26px;
+  background: linear-gradient(135deg, rgba(0, 184, 148, 0.15), rgba(0, 206, 201, 0.15));
+  display: grid; place-items: center;
+}
+.store-info { min-width: 0; }
+.store-name { font-size: 15px; font-weight: 800; color: var(--ink); }
+.store-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
 
 /* 菜品明细 */
 .items { list-style: none; display: flex; flex-direction: column; gap: 10px; }

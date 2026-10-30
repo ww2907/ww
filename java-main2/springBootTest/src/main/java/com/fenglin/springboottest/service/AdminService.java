@@ -11,9 +11,11 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 /**
- * 后台管理系统业务层：对接首页 6 大模块的真实数据（H2 库）。
+ * 后台管理系统业务层：对接首页 6 大模块的真实数据（MySQL 库 shiguang_food）。
  *  - 导航 / 搜索 / 推荐三类配置以 JSON 存于 admin_config 表；
  *  - 分类 / 菜品 / 用户 / 订单为独立关系表；
  *  - 管理员账号存于 admin_account（BCrypt 加密），启动时空表则播种 admin/admin123；
@@ -159,6 +161,51 @@ public class AdminService implements CommandLineRunner {
         dishMapper.deleteById(id);
     }
 
+    // ============ 8. 价格（数字管理）============
+    /** 单条改价：价格四舍五入 2 位、不允许为负 */
+    public void updateDishPrice(Long id, BigDecimal price) {
+        AdminDish d = dishMapper.selectById(id);
+        if (d == null) throw new BusinessException("菜品不存在（id=" + id + "）");
+        if (price == null || price.compareTo(BigDecimal.ZERO) < 0) {
+            throw new BusinessException("价格不能为负数");
+        }
+        d.setPrice(price.setScale(2, RoundingMode.HALF_UP));
+        dishMapper.updateById(d);
+    }
+
+    /**
+     * 批量改价：
+     *  - mode = "rate"：现价 × value（系数须 > 0）
+     *  - mode = "add" ：现价 + value（可负）
+     *  - mode = "set" ：统一设为 value
+     * 返回实际改动的菜品数。
+     */
+    public int batchUpdatePrice(String mode, BigDecimal value, List<Long> ids) {
+        if (ids == null || ids.isEmpty()) throw new BusinessException("请至少选择一个菜品");
+        if (value == null) throw new BusinessException("请输入调整数值");
+        if (!List.of("rate", "add", "set").contains(mode)) {
+            throw new BusinessException("未知的批量调整方式：" + mode);
+        }
+        if ("rate".equals(mode) && value.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessException("百分比系数必须大于 0");
+        }
+        List<AdminDish> dishes = dishMapper.selectBatchIds(ids);
+        int n = 0;
+        for (AdminDish d : dishes) {
+            BigDecimal base = d.getPrice() == null ? BigDecimal.ZERO : d.getPrice();
+            BigDecimal np;
+            if ("rate".equals(mode)) np = base.multiply(value);
+            else if ("add".equals(mode)) np = base.add(value);
+            else np = value;
+            np = np.setScale(2, RoundingMode.HALF_UP);
+            if (np.compareTo(BigDecimal.ZERO) < 0) np = BigDecimal.ZERO;
+            d.setPrice(np);
+            dishMapper.updateById(d);
+            n++;
+        }
+        return n;
+    }
+
     // ============ 6. 用户 ============
     public List<AdminUser> listUsers() {
         return userMapper.selectList(null);
@@ -188,7 +235,7 @@ public class AdminService implements CommandLineRunner {
         orderMapper.deleteById(id);
     }
 
-    // ============ 启动播种（H2 内存库每次启动重置，确保可登录 / 有默认配置）============
+    // ============ 启动播种（MySQL 库，仅在缺失时补齐，确保可登录 / 有默认配置）============
     @Override
     public void run(String... args) {
         if (accountMapper.selectById("admin") == null) {

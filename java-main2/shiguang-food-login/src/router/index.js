@@ -16,6 +16,7 @@ import NavManageView from '../views/admin/NavManageView.vue'
 import SearchManageView from '../views/admin/SearchManageView.vue'
 import RecommendManageView from '../views/admin/RecommendManageView.vue'
 import DishManageView from '../views/admin/DishManageView.vue'
+import PriceManageView from '../views/admin/PriceManageView.vue'
 import UserManageView from '../views/admin/UserManageView.vue'
 import OrderManageView from '../views/admin/OrderManageView.vue'
 import { isLoggedIn } from '../store.js'
@@ -46,6 +47,7 @@ const routes = [
       { path: 'search', name: 'admin-search', component: SearchManageView, meta: { admin: true } },
       { path: 'recommend', name: 'admin-recommend', component: RecommendManageView, meta: { admin: true } },
       { path: 'dish', name: 'admin-dish', component: DishManageView, meta: { admin: true } },
+      { path: 'price', name: 'admin-price', component: PriceManageView, meta: { admin: true } },
       { path: 'user', name: 'admin-user', component: UserManageView, meta: { admin: true } },
       { path: 'order', name: 'admin-order', component: OrderManageView, meta: { admin: true } }
     ]

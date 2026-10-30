@@ -183,6 +183,45 @@ export async function removeDish(id) {
   return httpReq('delete', ADMIN_ENDPOINTS.dish + '/' + id)
 }
 
+// ============ 7. 价格（数字管理）============
+/** 单条改价：PUT /admin/dish/{id}/price  body: { price } */
+export async function updateDishPrice(id, price) {
+  if (ADMIN_USE_MOCK) {
+    await delay(150)
+    const d = adminData.dishes.find((x) => x.id === id)
+    if (d) d.price = round2(price)
+    persistAdminData()
+    return { ok: true }
+  }
+  return httpReq('put', ADMIN_ENDPOINTS.dish + '/' + id + '/price', { price })
+}
+
+/** 批量改价：POST /admin/dish/price/batch  body: { mode, value, ids } */
+export async function batchUpdatePrice({ mode, value, ids }) {
+  if (ADMIN_USE_MOCK) {
+    await delay(250)
+    const set = new Set(ids)
+    adminData.dishes.forEach((d) => {
+      if (!set.has(d.id)) return
+      let p = Number(d.price) || 0
+      if (mode === 'rate') p = p * Number(value)
+      else if (mode === 'add') p = p + Number(value)
+      else p = Number(value)
+      if (p < 0) p = 0
+      d.price = round2(p)
+    })
+    persistAdminData()
+    return { ok: true, count: ids.length }
+  }
+  return httpReq('post', ADMIN_ENDPOINTS.dish + '/price/batch', { mode, value, ids })
+}
+
+function round2(v) {
+  const n = Number(v)
+  if (!isFinite(n)) return 0
+  return Math.round(n * 100) / 100
+}
+
 // ============ 5. 用户 ============
 export async function listUsers() {
   if (ADMIN_USE_MOCK) {

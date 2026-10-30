@@ -7,13 +7,19 @@ import BokehLayer from './components/BokehLayer.vue'
 const route = useRoute()
 const bgRef = ref(null)
 
+// 前台四个主页面共用同一套宽壳（1100px），保证导航栏/搜索框/卡片区尺寸完全一致
+const MAIN_PAGES = ['home', 'food', 'orders', 'profile']
+
 // 后台管理页面：不显示漂浮背景与品牌头，使用全宽 shell
 const isAdmin = computed(() => !!(route.meta && route.meta.admin))
 const shellClass = computed(() => {
   if (isAdmin.value) return 'shell-admin'
-  return route.name === 'home' ? 'shell-home' : 'shell-auth'
+  return MAIN_PAGES.includes(route.name) ? 'shell-home' : 'shell-auth'
 })
-const showBrand = computed(() => !isAdmin.value && route.name !== 'home')
+// 主页面自带顶部导航栏，不再重复渲染品牌头
+const showBrand = computed(
+  () => !isAdmin.value && !MAIN_PAGES.includes(route.name) && route.name !== 'home'
+)
 
 function onMouseMove(e) {
   if (!bgRef.value) return

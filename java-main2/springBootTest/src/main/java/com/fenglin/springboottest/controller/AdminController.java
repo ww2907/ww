@@ -2,6 +2,8 @@ package com.fenglin.springboottest.controller;
 
 import com.fenglin.springboottest.common.Result;
 import com.fenglin.springboottest.controller.dto.AdminLoginRequest;
+import com.fenglin.springboottest.controller.dto.PriceUpdateRequest;
+import com.fenglin.springboottest.controller.dto.PriceBatchRequest;
 import com.fenglin.springboottest.entity.*;
 import com.fenglin.springboottest.service.AdminService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -114,6 +116,21 @@ public class AdminController {
     public Result<?> delDish(@PathVariable Long id) {
         adminService.removeDish(id);
         return Result.success();
+    }
+
+    // ---------- 8. 价格（数字管理）----------
+    /** 单条改价：PUT /api/admin/dish/{id}/price  body: { price: 12.50 } */
+    @PutMapping("/dish/{id}/price")
+    public Result<?> updateDishPrice(@PathVariable Long id, @RequestBody PriceUpdateRequest req) {
+        adminService.updateDishPrice(id, req.getPrice());
+        return Result.success();
+    }
+
+    /** 批量改价：POST /api/admin/dish/price/batch  body: { mode, value, ids } */
+    @PostMapping("/dish/price/batch")
+    public Result<?> batchUpdatePrice(@RequestBody PriceBatchRequest req) {
+        int n = adminService.batchUpdatePrice(req.getMode(), req.getValue(), req.getIds());
+        return Result.success(n);
     }
 
     // ---------- 6. 用户 ----------

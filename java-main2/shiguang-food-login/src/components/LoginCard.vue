@@ -1,10 +1,11 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { setSession } from '../store.js'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { setSession, getRememberedAccount } from '../store.js'
 import { login, getCaptcha, PW_MAX, CAPTCHA_LEN, validAccount } from '../api/auth.js'
 
 const router = useRouter()
+const route = useRoute()
 
 const account = ref('')
 const password = ref('')
@@ -94,7 +95,6 @@ async function onSubmit() {
     })
     setSession(res.account, res.token, remember.value)
     showToast('登录成功，欢迎回到食光！🎉')
-    console.log('登录成功，token：', res.token, '记住我：', remember.value)
     router.push('/home')
   } catch (e) {
     loading.value = false
@@ -108,7 +108,41 @@ function socialLogin(name) {
   showToast('正在跳转 ' + name + ' 授权…')
 }
 
-onMounted(refreshCaptcha)
+const pwInput = ref(null)
+
+// 进入登录页时：
+//  1) 从注册页跳过来 → 自动回填用户名 + 提示"注册成功"
+//  2) 勾选过"记住我" → 自动回填用户名
+//  3) 拉取验证码
+onMounted(async () => {
+  const fromRegister = route.query.registered === '1'
+  const qAccount = typeof route.query.account === 'string' ? route.query.account : ''
+
+  if (qAccount) {
+    account.value = qAccount
+  } else {
+    const remembered = getRememberedAccount()
+    if (remembered) {
+      account.value = remembered
+      remember.value = true
+    }
+  }
+
+  // 参数已消费，清掉查询串，刷新时不会重复弹"注册成功"
+  if (fromRegister || qAccount) router.replace({ name: 'login' })
+
+  await refreshCaptcha()
+  if (fromRegister) {
+    showToast('注册成功，请输入密码登录 🎉')
+  }
+
+  // 用户名已知时，光标直接落在密码框，少点一次
+  if (account.value) {
+    await nextTick()
+    pwInput.value?.focus()
+  }
+})
+
 onUnmounted(() => clearTimeout(toastTimer))
 </script>
 
@@ -141,6 +175,7 @@ onUnmounted(() => clearTimeout(toastTimer))
         <input
           :type="showPw ? 'text' : 'password'"
           id="password"
+          ref="pwInput"
           v-model="password"
           :maxlength="PW_MAX"
           placeholder="6-12 位"

@@ -49,13 +49,6 @@
 			<scope>runtime</scope>
 		</dependency>
 
-		<!-- H2 嵌入式数据库（仅用于演示后台管理接口，无需安装 MySQL） -->
-		<dependency>
-			<groupId>com.h2database</groupId>
-			<artifactId>h2</artifactId>
-			<scope>runtime</scope>
-		</dependency>
-
 		<!-- 密码加密（BCrypt） -->
 		<dependency>
 			<groupId>org.springframework.security</groupId>
