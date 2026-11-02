@@ -10,7 +10,7 @@ const menus = [
   { to: '/admin/search', icon: '🔍', label: '搜索管理', desc: '搜索框与热词' },
   { to: '/admin/recommend', icon: '🔥', label: '推荐管理', desc: '首页推荐美食' },
   { to: '/admin/dish', icon: '🍱', label: '菜品管理', desc: '分类与下单菜品' },
-  { to: '/admin/price', icon: '💰', label: '数字管理', desc: '菜品价格调整' },
+  { to: '/admin/price', icon: '📊', label: '数字管理', desc: '经营数据看板' },
   { to: '/admin/user', icon: '👥', label: '用户管理', desc: '用户信息展示' },
   { to: '/admin/order', icon: '🧾', label: '订单管理', desc: '下单点餐记录' }
 ]

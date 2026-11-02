@@ -20,6 +20,7 @@ export const ADMIN_ENDPOINTS = {
   recommend: '/admin/recommend',
   category: '/admin/category',
   dish: '/admin/dish',
+  stats: '/admin/stats',
   user: '/admin/user',
   order: '/admin/order'
 }
@@ -181,6 +182,54 @@ export async function removeDish(id) {
     return { ok: true }
   }
   return httpReq('delete', ADMIN_ENDPOINTS.dish + '/' + id)
+}
+
+// ============ 8. 数字管理 · 经营数据看板 ============
+// mock 看板数据：结构与后端 GET /api/admin/stats 一致
+const mockDashboard = {
+  overview: {
+    orderTotal: 27, gmv: 1286.5, userTotal: 14, dishTotal: 10,
+    dishOnSale: 10, categoryTotal: 7, todayOrder: 3, todayGmv: 142.0
+  },
+  categoryDist: [
+    { categoryId: 2, categoryName: '面食', dishCount: 2, sumPrice: 50.0 },
+    { categoryId: 3, categoryName: '快餐', dishCount: 2, sumPrice: 64.0 },
+    { categoryId: 4, categoryName: '甜点', dishCount: 1, sumPrice: 32.0 },
+    { categoryId: 5, categoryName: '饮品', dishCount: 2, sumPrice: 50.0 },
+    { categoryId: 6, categoryName: '轻食', dishCount: 2, sumPrice: 56.0 },
+    { categoryId: 7, categoryName: '火锅', dishCount: 1, sumPrice: 58.0 }
+  ],
+  priceDist: [
+    { priceRange: '0-15', dishCount: 0 }, { priceRange: '15-25', dishCount: 4 },
+    { priceRange: '25-35', dishCount: 5 }, { priceRange: '35-50', dishCount: 0 },
+    { priceRange: '50+', dishCount: 1 }
+  ],
+  orderTrend: (() => {
+    const arr = []
+    const base = new Date('2026-11-02')
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(base); d.setDate(base.getDate() - i)
+      const cnt = [1, 0, 2, 3, 1, 2, 4, 2, 1, 3, 2, 1, 2, 3][13 - i] || 0
+      arr.push({ date: d.toISOString().slice(0, 10), count: cnt, gmv: Math.round(cnt * 45 * 100) / 100 })
+    }
+    return arr
+  })(),
+  topDishes: [
+    { dishName: '招牌牛肉面', qty: 12, amount: 336.0 },
+    { dishName: '生椰拿铁', qty: 9, amount: 198.0 },
+    { dishName: '麻辣牛油锅', qty: 7, amount: 406.0 },
+    { dishName: '现烤舒芙蕾', qty: 6, amount: 192.0 },
+    { dishName: '鸡胸蔬菜沙拉', qty: 5, amount: 130.0 }
+  ]
+}
+
+/** 数字管理看板聚合指标：GET /admin/stats */
+export async function getDashboard() {
+  if (ADMIN_USE_MOCK) {
+    await delay(200)
+    return clone(mockDashboard)
+  }
+  return httpReq('get', ADMIN_ENDPOINTS.stats)
 }
 
 // ============ 7. 价格（数字管理）============

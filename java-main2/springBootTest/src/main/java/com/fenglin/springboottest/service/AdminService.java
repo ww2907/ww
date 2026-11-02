@@ -10,9 +10,10 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.util.*;
 
 /**
  * 后台管理系统业务层：对接首页 6 大模块的真实数据（MySQL 库 shiguang_food）。
@@ -33,17 +34,22 @@ public class AdminService implements CommandLineRunner {
     private final AdminUserMapper userMapper;
     private final AdminOrderMapper orderMapper;
     private final AdminAccountMapper accountMapper;
+    private final OrderMapper bizOrderMapper;
+    private final UserMapper regUserMapper;
 
     @Autowired
     public AdminService(AdminConfigMapper configMapper, AdminCategoryMapper categoryMapper,
                         AdminDishMapper dishMapper, AdminUserMapper userMapper,
-                        AdminOrderMapper orderMapper, AdminAccountMapper accountMapper) {
+                        AdminOrderMapper orderMapper, AdminAccountMapper accountMapper,
+                        OrderMapper bizOrderMapper, UserMapper regUserMapper) {
         this.configMapper = configMapper;
         this.categoryMapper = categoryMapper;
         this.dishMapper = dishMapper;
         this.userMapper = userMapper;
         this.orderMapper = orderMapper;
         this.accountMapper = accountMapper;
+        this.bizOrderMapper = bizOrderMapper;
+        this.regUserMapper = regUserMapper;
     }
 
     private static final String DEFAULT_PLACEHOLDER = "搜美食、搜好店，回车进入美食页…";
@@ -204,6 +210,80 @@ public class AdminService implements CommandLineRunner {
             n++;
         }
         return n;
+    }
+
+    // ============ 9. 数字管理 · 经营数据看板 ============
+    /**
+     * 聚合后台「数字管理」所需的全部经营指标，全部来自 MySQL 库 shiguang_food：
+     *  - overview：累计订单、营业额(GMV)、注册用户、菜品总数、在售菜品、分类数、今日订单、今日营业额
+     *  - categoryDist：各分类下的菜品数与价格合计
+     *  - priceDist：价格区间分布（固定 0-15/15-25/25-35/35-50/50+ 五档，缺失补 0）
+     *  - orderTrend：近 14 天（含今日）订单数与营业额，缺数据的日期补 0
+     *  - topDishes：热销菜品 Top5（按累计点购数量）
+     */
+    public Map<String, Object> getDashboardStats() {
+        Map<String, Object> overview = new LinkedHashMap<>();
+        overview.put("orderTotal", bizOrderMapper.countOrders());
+        overview.put("gmv", bizOrderMapper.sumGmv());
+        overview.put("userTotal", regUserMapper.countUsers());
+        overview.put("dishTotal", dishMapper.selectCount(null));
+        overview.put("dishOnSale", dishMapper.countOnSale());
+        overview.put("categoryTotal", categoryMapper.selectCount(null));
+        overview.put("todayOrder", bizOrderMapper.countTodayOrders());
+        overview.put("todayGmv", bizOrderMapper.sumTodayGmv());
+
+        // 分类分布
+        List<Map<String, Object>> categoryDist = dishMapper.dishByCategory();
+
+        // 价格区间分布：固定顺序，DB 缺档补 0
+        List<Map<String, Object>> priceRaw = dishMapper.priceDistribution();
+        Map<String, Integer> prMap = new LinkedHashMap<>();
+        for (Map<String, Object> m : priceRaw) {
+            prMap.put(String.valueOf(m.get("priceRange")), ((Number) m.get("dishCount")).intValue());
+        }
+        String[] ranges = {"0-15", "15-25", "25-35", "35-50", "50+"};
+        List<Map<String, Object>> priceDist = new ArrayList<>();
+        for (String r : ranges) {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("priceRange", r);
+            m.put("dishCount", prMap.getOrDefault(r, 0));
+            priceDist.add(m);
+        }
+
+        // 近 14 天订单趋势：以今日为终点补齐每一天
+        List<Map<String, Object>> trendRaw = bizOrderMapper.orderTrendRaw();
+        Map<LocalDate, Map<String, Object>> trendMap = new LinkedHashMap<>();
+        for (Map<String, Object> m : trendRaw) {
+            Object d = m.get("orderDate");
+            LocalDate ld = (d instanceof java.sql.Date) ? ((java.sql.Date) d).toLocalDate()
+                    : LocalDate.parse(String.valueOf(d));
+            Map<String, Object> e = new LinkedHashMap<>();
+            e.put("count", ((Number) m.get("orderCount")).longValue());
+            e.put("gmv", (BigDecimal) m.get("gmv"));
+            trendMap.put(ld, e);
+        }
+        List<Map<String, Object>> orderTrend = new ArrayList<>();
+        LocalDate today = LocalDate.now();
+        for (int i = 13; i >= 0; i--) {
+            LocalDate d = today.minusDays(i);
+            Map<String, Object> src = trendMap.get(d);
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("date", d.toString());
+            m.put("count", src == null ? 0L : ((Number) src.get("count")).longValue());
+            m.put("gmv", src == null ? BigDecimal.ZERO : (BigDecimal) src.get("gmv"));
+            orderTrend.add(m);
+        }
+
+        // 热销菜品 Top5
+        List<Map<String, Object>> topDishes = bizOrderMapper.topDishesRaw();
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("overview", overview);
+        result.put("categoryDist", categoryDist);
+        result.put("priceDist", priceDist);
+        result.put("orderTrend", orderTrend);
+        result.put("topDishes", topDishes);
+        return result;
     }
 
     // ============ 6. 用户 ============

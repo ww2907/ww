@@ -1,11 +1,63 @@
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
-import { listCategories, listDishes, updateDishPrice, batchUpdatePrice } from '../../api/admin.js'
+import { listCategories, listDishes, updateDishPrice, batchUpdatePrice, getDashboard } from '../../api/admin.js'
 
 const categories = ref([])
 const dishes = ref([])
 const loading = ref(false)
 
+// 数字管理看板数据
+const stats = ref(null)
+const statsLoading = ref(false)
+
+const overview = computed(() => stats.value?.overview || {})
+const categoryDist = computed(() => stats.value?.categoryDist || [])
+const priceDist = computed(() => stats.value?.priceDist || [])
+const orderTrend = computed(() => stats.value?.orderTrend || [])
+const topDishes = computed(() => stats.value?.topDishes || [])
+
+// 图表缩放基准
+const catMax = computed(() => Math.max(1, ...categoryDist.value.map((c) => Number(c.dishCount) || 0)))
+const priceMax = computed(() => Math.max(1, ...priceDist.value.map((p) => Number(p.dishCount) || 0)))
+const topMax = computed(() => Math.max(1, ...topDishes.value.map((d) => Number(d.qty) || 0)))
+
+// 订单趋势 SVG（柱=营业额，折线=订单数）
+const TW = 680, TH = 210, TL = 40, TR = 14, TT = 18, TB = 26
+const plotW = TW - TL - TR
+const plotH = TH - TT - TB
+const trendGmvMax = computed(() => Math.max(1, ...orderTrend.value.map((t) => Number(t.gmv) || 0)))
+const trendCntMax = computed(() => Math.max(1, ...orderTrend.value.map((t) => Number(t.count) || 0)))
+const trendBars = computed(() => {
+  const n = orderTrend.value.length || 1
+  const step = plotW / n
+  return orderTrend.value.map((t, i) => {
+    const h = (Number(t.gmv) || 0) / trendGmvMax.value * plotH
+    return { x: TL + i * step + step * 0.18, w: step * 0.64, h, gmv: t.gmv }
+  })
+})
+const trendLine = computed(() => {
+  const n = orderTrend.value.length || 1
+  const step = plotW / n
+  return orderTrend.value.map((t, i) => {
+    const x = TL + (i + 0.5) * step
+    const y = TT + plotH - (Number(t.count) || 0) / trendCntMax.value * plotH
+    return x.toFixed(1) + ',' + y.toFixed(1)
+  }).join(' ')
+})
+const trendLabels = computed(() => {
+  const n = orderTrend.value.length || 1
+  const step = plotW / n
+  const out = []
+  orderTrend.value.forEach((t, i) => {
+    if (n > 10 && i % 2 !== 0 && i !== n - 1) return
+    out.push({ x: TL + (i + 0.5) * step, label: String(t.date).slice(5) })
+  })
+  return out
+})
+
+function money(v) { return '¥' + (Number(v) || 0).toFixed(2) }
+
+// ---------- 价格调整（原有功能）----------
 // 批量工具条
 const batchMode = ref('rate')      // rate 百分比 | add 加减 | set 统一定价
 const batchValue = ref(1)
@@ -95,6 +147,17 @@ async function applyBatch() {
   }
 }
 
+async function loadStats() {
+  statsLoading.value = true
+  try {
+    stats.value = await getDashboard()
+  } catch (e) {
+    showToast(e.message || '看板数据加载失败')
+  } finally {
+    statsLoading.value = false
+  }
+}
+
 async function load() {
   loading.value = true
   try {
@@ -108,7 +171,7 @@ async function load() {
   }
 }
 
-onMounted(load)
+onMounted(() => { loadStats(); load() })
 onUnmounted(() => clearTimeout(toastTimer))
 </script>
 
@@ -116,81 +179,159 @@ onUnmounted(() => clearTimeout(toastTimer))
   <div class="page">
     <div class="page-head">
       <div>
-        <h1>💰 数字管理 · 菜品价格</h1>
-        <p>快捷、批量调整所有菜品价格。支持逐条 ± 微调或直接输入，也支持按百分比 / 加减金额 / 统一定价批量操作，改动实时写入数据库。</p>
+        <h1>📊 数字管理 · 经营数据看板</h1>
+        <p>实时汇总全平台经营数字：订单、营业额、用户、菜品与近期趋势。下方仍可逐条 / 批量调整菜品价格，改动实时写入数据库。</p>
       </div>
     </div>
 
-    <div v-if="loading" class="state"><span class="spinner"></span> 加载中…</div>
+    <div v-if="statsLoading && !stats" class="state"><span class="spinner"></span> 看板数据加载中…</div>
 
-    <div v-else class="stack">
-      <!-- 概览 -->
-      <section class="stats">
-        <div class="stat"><span class="num">{{ dishes.length }}</span><span class="lab">菜品总数</span></div>
-        <div class="stat"><span class="num">¥{{ avgPrice }}</span><span class="lab">平均价格</span></div>
-        <div class="stat"><span class="num">¥{{ totalPrice }}</span><span class="lab">价格合计</span></div>
+    <div v-else-if="stats" class="stack">
+      <!-- KPI 卡片 -->
+      <section class="kpis">
+        <div class="kpi"><span class="num">{{ overview.orderTotal }}</span><span class="lab">累计订单</span></div>
+        <div class="kpi"><span class="num">{{ money(overview.gmv) }}</span><span class="lab">营业额 (GMV)</span></div>
+        <div class="kpi"><span class="num">{{ overview.userTotal }}</span><span class="lab">注册用户</span></div>
+        <div class="kpi"><span class="num">{{ overview.dishTotal }}</span><span class="lab">菜品总数</span></div>
+        <div class="kpi"><span class="num">{{ overview.dishOnSale }}</span><span class="lab">在售菜品</span></div>
+        <div class="kpi"><span class="num">{{ overview.categoryTotal }}</span><span class="lab">菜品分类</span></div>
+        <div class="kpi accent"><span class="num">{{ overview.todayOrder }}</span><span class="lab">今日订单</span></div>
+        <div class="kpi accent"><span class="num">{{ money(overview.todayGmv) }}</span><span class="lab">今日营业额</span></div>
       </section>
 
-      <!-- 批量工具条 -->
-      <section class="card tool">
-        <label class="chk"><input type="checkbox" v-model="selectAll" /> 全选</label>
-        <div class="field">
-          <label>方式</label>
-          <select v-model="batchMode">
-            <option value="rate">百分比系数（×）</option>
-            <option value="add">加减金额（±）</option>
-            <option value="set">统一定价（=）</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>数值</label>
-          <input class="val" type="number" step="0.1" v-model.number="batchValue" />
-        </div>
-        <button class="apply" :disabled="!selectedIds.length" @click="applyBatch">
-          批量应用（{{ selectedIds.length }}）
-        </button>
-        <span class="hint">{{ batchHint }}</span>
-      </section>
+      <!-- 图表区 -->
+      <div class="charts">
+        <!-- 分类菜品分布 -->
+        <section class="card">
+          <h2>🍱 分类菜品分布</h2>
+          <div class="bars">
+            <div class="barrow" v-for="c in categoryDist" :key="c.categoryId">
+              <span class="bl">{{ c.categoryName }}</span>
+              <div class="btrack"><div class="bfill" :style="{ width: (Number(c.dishCount) / catMax * 100) + '%' }"></div></div>
+              <span class="bv">{{ c.dishCount }} 道 · {{ money(c.sumPrice) }}</span>
+            </div>
+          </div>
+        </section>
 
-      <!-- 明细列表 -->
-      <section class="card">
-        <div class="card-head">
-          <h2>🍜 菜品价格明细（{{ dishes.length }}）</h2>
-          <div class="steps">
-            <span>步进</span>
-            <button v-for="s in steps" :key="s" :class="{ on: step === s }" @click="step = s">{{ s }}</button>
+        <!-- 价格区间分布 -->
+        <section class="card">
+          <h2>💰 价格区间分布</h2>
+          <div class="bars">
+            <div class="barrow" v-for="p in priceDist" :key="p.priceRange">
+              <span class="bl">{{ p.priceRange }} 元</span>
+              <div class="btrack"><div class="bfill alt" :style="{ width: (Number(p.dishCount) / priceMax * 100) + '%' }"></div></div>
+              <span class="bv">{{ p.dishCount }} 道</span>
+            </div>
           </div>
-        </div>
-        <div class="rows">
-          <div class="row head">
-            <span class="c-sel"></span>
-            <span class="c-emoji"></span>
-            <span class="c-name">菜品</span>
-            <span class="c-price">价格调整</span>
-            <span class="c-act"></span>
+        </section>
+
+        <!-- 订单趋势 -->
+        <section class="card wide">
+          <div class="card-head">
+            <h2>📈 近 14 天订单趋势</h2>
+            <div class="legend">
+              <span><i class="lg bar"></i> 营业额</span>
+              <span><i class="lg line"></i> 订单数</span>
+            </div>
           </div>
-          <div class="row" v-for="d in dishes" :key="d.id">
-            <span class="c-sel"><input type="checkbox" v-model="d.selected" /></span>
-            <span class="c-emoji">{{ d.emoji }}</span>
-            <span class="c-name">
-              <strong>{{ d.name }}</strong>
-              <small>{{ catName[d.categoryId] || '未分类' }}</small>
-            </span>
-            <span class="c-price">
-              <div class="editor">
-                <button class="step-btn" @click="bump(d, -step)">−</button>
-                <input type="number" step="0.1" v-model.number="d.editPrice" @keyup.enter="savePrice(d)" />
-                <button class="step-btn" @click="bump(d, step)">+</button>
-                <span class="cur" :class="{ chg: dirty(d) }">¥{{ fmt(d.price) }}</span>
-              </div>
-            </span>
-            <span class="c-act">
-              <button class="save" v-if="dirty(d)" @click="savePrice(d)">保存</button>
-              <span v-else class="saved">已同步</span>
-            </span>
+          <svg class="trend" :viewBox="'0 0 ' + TW + ' ' + TH" preserveAspectRatio="none">
+            <line :x1="TL" :y1="TT + plotH" :x2="TW - TR" :y2="TT + plotH" class="axis" />
+            <rect v-for="(b, i) in trendBars" :key="'b' + i" :x="b.x" :y="TT + plotH - b.h" :width="b.w" :height="b.h" class="bar" rx="2" />
+            <polyline :points="trendLine" class="pline" fill="none" />
+            <template v-for="(b, i) in trendBars" :key="'c' + i">
+              <circle :cx="TL + (i + 0.5) * (plotW / trendBars.length)" :cy="TT + plotH - (Number(orderTrend[i].count) || 0) / trendCntMax * plotH" r="2.6" class="pdot" />
+            </template>
+            <text v-for="(l, i) in trendLabels" :key="'t' + i" :x="l.x" :y="TH - 8" class="tlabel" text-anchor="middle">{{ l.label }}</text>
+          </svg>
+        </section>
+
+        <!-- 热销菜品 -->
+        <section class="card wide">
+          <h2>🔥 热销菜品 Top5</h2>
+          <div class="bars">
+            <div class="barrow" v-for="(d, i) in topDishes" :key="d.dishName">
+              <span class="bl"><b class="rank">{{ i + 1 }}</b> {{ d.dishName }}</span>
+              <div class="btrack"><div class="bfill hot" :style="{ width: (Number(d.qty) / topMax * 100) + '%' }"></div></div>
+              <span class="bv">{{ d.qty }} 份 · {{ money(d.amount) }}</span>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </div>
+
+      <!-- 价格调整（原有功能）-->
+      <div class="divider"><span>价格调整</span></div>
+
+      <div v-if="loading" class="state"><span class="spinner"></span> 加载中…</div>
+
+      <div v-else class="stack">
+        <!-- 概览 -->
+        <section class="stats">
+          <div class="stat"><span class="num">{{ dishes.length }}</span><span class="lab">菜品总数</span></div>
+          <div class="stat"><span class="num">¥{{ avgPrice }}</span><span class="lab">平均价格</span></div>
+          <div class="stat"><span class="num">¥{{ totalPrice }}</span><span class="lab">价格合计</span></div>
+        </section>
+
+        <!-- 批量工具条 -->
+        <section class="card tool">
+          <label class="chk"><input type="checkbox" v-model="selectAll" /> 全选</label>
+          <div class="field">
+            <label>方式</label>
+            <select v-model="batchMode">
+              <option value="rate">百分比系数（×）</option>
+              <option value="add">加减金额（±）</option>
+              <option value="set">统一定价（=）</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>数值</label>
+            <input class="val" type="number" step="0.1" v-model.number="batchValue" />
+          </div>
+          <button class="apply" :disabled="!selectedIds.length" @click="applyBatch">
+            批量应用（{{ selectedIds.length }}）
+          </button>
+          <span class="hint">{{ batchHint }}</span>
+        </section>
+
+        <!-- 明细列表 -->
+        <section class="card">
+          <div class="card-head">
+            <h2>🍜 菜品价格明细（{{ dishes.length }}）</h2>
+            <div class="steps">
+              <span>步进</span>
+              <button v-for="s in steps" :key="s" :class="{ on: step === s }" @click="step = s">{{ s }}</button>
+            </div>
+          </div>
+          <div class="rows">
+            <div class="row head">
+              <span class="c-sel"></span>
+              <span class="c-emoji"></span>
+              <span class="c-name">菜品</span>
+              <span class="c-price">价格调整</span>
+              <span class="c-act"></span>
+            </div>
+            <div class="row" v-for="d in dishes" :key="d.id">
+              <span class="c-sel"><input type="checkbox" v-model="d.selected" /></span>
+              <span class="c-emoji">{{ d.emoji }}</span>
+              <span class="c-name">
+                <strong>{{ d.name }}</strong>
+                <small>{{ catName[d.categoryId] || '未分类' }}</small>
+              </span>
+              <span class="c-price">
+                <div class="editor">
+                  <button class="step-btn" @click="bump(d, -step)">−</button>
+                  <input type="number" step="0.1" v-model.number="d.editPrice" @keyup.enter="savePrice(d)" />
+                  <button class="step-btn" @click="bump(d, step)">+</button>
+                  <span class="cur" :class="{ chg: dirty(d) }">¥{{ fmt(d.price) }}</span>
+                </div>
+              </span>
+              <span class="c-act">
+                <button class="save" v-if="dirty(d)" @click="savePrice(d)">保存</button>
+                <span v-else class="saved">已同步</span>
+              </span>
+            </div>
+          </div>
+        </section>
+      </div>
     </div>
 
     <div class="toast" :class="{ show: toastShow }">{{ toastMsg }}</div>
@@ -205,17 +346,54 @@ onUnmounted(() => clearTimeout(toastTimer))
 .state { text-align: center; padding: 40px; color: #6f8c88; }
 .stack { display: flex; flex-direction: column; gap: 18px; }
 
+/* KPI */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; }
+.kpi { background: linear-gradient(135deg, #0f3d39, #0c2f2c); color: #fff; border-radius: 16px; padding: 16px 18px; display: flex; flex-direction: column; gap: 4px; }
+.kpi .num { font-size: 22px; font-weight: 900; }
+.kpi .lab { font-size: 12px; color: #9fd6cd; }
+.kpi.accent { background: linear-gradient(135deg, #00b894, #00cec9); }
+.kpi.accent .lab { color: rgba(255,255,255,0.9); }
+
+/* 图表区 */
+.charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.card { background: #fff; border-radius: 20px; padding: 18px; box-shadow: 0 10px 30px rgba(15,61,57,0.08); border: 1px solid #e9f0ef; transition: box-shadow 0.2s, transform 0.2s; }
+.card:hover { box-shadow: 0 14px 36px rgba(15,61,57,0.12); transform: translateY(-2px); }
+.card.wide { grid-column: 1 / -1; }
+.card h2 { font-size: 15px; font-weight: 800; color: #0c3d39; margin-bottom: 14px; }
+.card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+.card-head h2 { margin-bottom: 0; }
+
+.bars { display: flex; flex-direction: column; gap: 10px; }
+.barrow { display: grid; grid-template-columns: 92px 1fr auto; align-items: center; gap: 10px; font-size: 13px; }
+.barrow .bl { color: #0c3d39; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.barrow .bl .rank { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 6px; background: linear-gradient(135deg,#00b894,#00cec9); color: #fff; font-size: 11px; margin-right: 4px; }
+.btrack { height: 12px; background: #eef5f3; border-radius: 8px; overflow: hidden; }
+.bfill { height: 100%; border-radius: 8px; background: linear-gradient(90deg, #00b894, #00cec9); transition: width 0.4s; }
+.bfill.alt { background: linear-gradient(90deg, #4a9bd4, #6fc3f0); }
+.bfill.hot { background: linear-gradient(90deg, #ff9a3c, #ff6f61); }
+.bv { color: #6f8c88; font-weight: 700; white-space: nowrap; }
+
+.legend { display: flex; gap: 14px; font-size: 12px; color: #6f8c88; }
+.legend span { display: flex; align-items: center; gap: 5px; }
+.legend .lg { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.legend .lg.bar { background: rgba(0,206,201,0.45); }
+.legend .lg.line { width: 14px; height: 3px; border-radius: 2px; background: #ff6f61; }
+
+.trend { width: 100%; height: auto; }
+.trend .axis { stroke: #e0e8e7; stroke-width: 1; }
+.trend .bar { fill: rgba(0,206,201,0.38); }
+.trend .pline { stroke: #ff6f61; stroke-width: 2; stroke-linejoin: round; }
+.trend .pdot { fill: #ff6f61; }
+.trend .tlabel { fill: #94aaa7; font-size: 9px; }
+
+.divider { display: flex; align-items: center; gap: 12px; color: #0c3d39; font-weight: 800; font-size: 15px; margin-top: 4px; }
+.divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: #e3ebee; }
+
 /* 概览 */
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; }
 .stat { background: linear-gradient(135deg, #0f3d39, #0c2f2c); color: #fff; border-radius: 16px; padding: 16px 18px; display: flex; flex-direction: column; gap: 4px; }
 .stat .num { font-size: 24px; font-weight: 900; }
 .stat .lab { font-size: 12px; color: #9fd6cd; }
-
-/* 卡片 */
-.card { background: #fff; border-radius: 20px; padding: 18px; box-shadow: 0 10px 30px rgba(15,61,57,0.08); border: 1px solid #e9f0ef; transition: box-shadow 0.2s, transform 0.2s; }
-.card:hover { box-shadow: 0 14px 36px rgba(15,61,57,0.12); transform: translateY(-2px); }
-.card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 10px; }
-.card-head h2 { font-size: 16px; font-weight: 800; color: #0c3d39; }
 
 /* 批量工具条 */
 .tool { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; }
@@ -255,12 +433,15 @@ onUnmounted(() => clearTimeout(toastTimer))
 .cur.chg { color: #00b894; }
 .c-act { display: flex; justify-content: center; }
 .save { border: none; background: linear-gradient(135deg, #00b894, #00cec9); color: #fff; border-radius: 8px; padding: 8px 12px; font-size: 12px; font-weight: 800; cursor: pointer; box-shadow: 0 6px 14px rgba(0,150,136,0.3); }
-.saved { font-size: 12px; color: #9fb; color: #7fb8ad; }
+.saved { font-size: 12px; color: #7fb8ad; }
 
 .toast { position: fixed; top: 28px; left: 50%; transform: translateX(-50%) translateY(-20px) scale(0.95); background: linear-gradient(135deg, #00b894, #00cec9); color: #fff; padding: 13px 24px; border-radius: 14px; font-weight: 700; box-shadow: 0 10px 30px rgba(0,150,136,0.45); opacity: 0; pointer-events: none; transition: opacity 0.3s, transform 0.3s; z-index: 999; }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
 .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: -2px; }
 
+@media (max-width: 760px) {
+  .charts { grid-template-columns: 1fr; }
+}
 @media (max-width: 820px) {
   .row { grid-template-columns: 28px 36px 1fr 250px 60px; font-size: 12px; gap: 6px; }
   .editor input { width: 74px; }
@@ -272,5 +453,6 @@ onUnmounted(() => clearTimeout(toastTimer))
   .c-act { grid-column: 1 / -1; justify-content: flex-start; }
   .editor { justify-content: flex-start; }
   .tool .hint { min-width: 100%; }
+  .barrow { grid-template-columns: 78px 1fr auto; }
 }
 </style>

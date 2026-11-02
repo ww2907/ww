@@ -139,6 +139,13 @@ public class AdminController {
         return Result.success(adminService.listUsers());
     }
 
+    // ---------- 9. 数字管理 · 经营数据看板 ----------
+    /** 经营数据看板聚合指标：GET /api/admin/stats */
+    @GetMapping("/stats")
+    public Result<?> dashboardStats() {
+        return Result.success(adminService.getDashboardStats());
+    }
+
     @PutMapping("/user")
     public Result<?> updUser(@RequestBody AdminUser u) {
         adminService.updateUser(u);

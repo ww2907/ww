@@ -8,12 +8,13 @@
 
 | 项 | 值 |
 |---|---|
-| 项目根 | `C:\Users\Administrator\Desktop\Java-main\java-main\`（历史上移动过、用户名变过，先 `ls` 核实） |
+| 项目根 | `D:\workSpace\ww\java-main2\`（历史上移动过、用户名变过，先 `ls` 核实） |
 | 后端 | `springBootTest\`，Spring Boot 3.4.5 + MyBatis-Plus 3.5.9，端口 **8081**，profile dev |
 | 前端 | `shiguang-food-login\`，Vue3 + Vite，端口 **5173**（vite 代理 /api → 8081） |
-| 数据库 | MySQL **8.0**，`127.0.0.1:3306`，root / 123456，库 `shiguang_food`，测试账号 **demo / 123456** |
+| 数据库 | MySQL **8.0**，`127.0.0.1:3306`，root / 123456，库 `shiguang_food`，测试账号 **demo / 123456**（管理员 **admin / admin123**） |
 | 一键脚本 | `start-all.bat`（起） / `stop-all.bat`（停），GBK 编码 + CRLF |
 | 健康检查 | `POST /api/auth/captcha` 空 body → 返回 `code:0` |
+| **登录前提** | 前端 `.env` 必须 `VITE_USE_MOCK=false` 才连真实后端；**缺 `.env` 即退回 MOCK，登录不连库**（见坑 10） |
 
 ## 1. 标准启动流程（首选脚本，其次手动）
 
@@ -35,6 +36,11 @@ $mvn = (Get-ChildItem "$env:USERPROFILE\.m2\wrapper\dists\apache-maven-*\*\bin\m
 & $mvn spring-boot:run "-Dspring-boot.run.profiles=dev" "-Dspring-boot.run.arguments=--server.port=8081"
 
 # 3) 前端（在 shiguang-food-login 目录）
+#    关键：先确保 .env 存在且 VITE_USE_MOCK=false，否则前端退回 MOCK 不连后端
+if (-not (Test-Path "shiguang-food-login\.env")) {
+    Set-Content -Path "shiguang-food-login\.env" -Value "VITE_API_BASE=/api`nVITE_USE_MOCK=false`nVITE_ADMIN_USE_MOCK=false" -Encoding UTF8
+}
+cd shiguang-food-login
 & "C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-2\npm.cmd" install
 & "C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-2\npm.cmd" run dev
 #    注意：本机 PowerShell 执行策略禁止 npm.ps1，直接敲 npm 会报
@@ -62,14 +68,18 @@ $mvn = (Get-ChildItem "$env:USERPROFILE\.m2\wrapper\dists\apache-maven-*\*\bin\m
 8. **JDK 25 的坑不存在了**：现在是 JDK 17，`-proc:full` 那条历史教训作废。
 9. **后端进程归属**：由某个会话后台任务启动的后端，会话结束可能被回收。重启机器后一律
    `start-all.bat` 重启，别指望旧进程还活着。
-10. **前端默认是 mock 模式（最坑）**：`src/api/auth.js` 里 `USE_MOCK = VITE_USE_MOCK !== 'false'`，
-    没配 `.env` 时默认 **true**，登录/注册全在浏览器内存里空转、**不请求后端也不写库**。
-    已在 `shiguang-food-login/.env` 固定 `VITE_USE_MOCK=false`。改 `.env` 后**必须重启 Vite** 才生效。
+10. **前端缺 `.env` 会退回 MOCK（头号坑，本次登录失败的根因）**：`src/api/auth.js`、`admin.js`
+    里 `USE_MOCK = VITE_USE_MOCK !== 'false'`，**没有 `.env` 时默认 true**，登录/注册全在浏览器内存
+    空转、**不请求后端也不写 MySQL**。用户拿数据库里的真实账号（如 `www`/`xiaoming`）去登必"账号或密码错误"。
+    **现状**：历史记录写"已在 `.env` 固定 false"，但本机 `shiguang-food-login/` 下实际**只有 `.env.example`、
+    没有 `.env`**——正是这次"又无法登录"的原因。`start-all.bat` 现已在启动前端前**自动补齐 `.env`**
+    （`VITE_USE_MOCK=false` + `VITE_ADMIN_USE_MOCK=false`），但若你手动启动或重置后没跑 bat，仍需自己建。
+    判据：浏览器访问 `/src/api/auth.js`，看内联 `import.meta.env` 里 `VITE_USE_MOCK` 是否为 `"false"`；
+    改 `.env` 后**必须重启 Vite** 才生效。
 11. **登录态存 localStorage**：`src/store.js` 的登录态默认持久化（不再依赖"记住我"勾选），
     刷新/重开浏览器不会掉登录。有效期：勾选"记住我"30 天，未勾选 1 天；过期或数据损坏会自动清理。
     退出登录只清会话、保留记住的用户名用于登录页回填。注册成功会跳到
     `#/login?account=xxx&registered=1`，登录页自动回填用户名并提示"注册成功"，参数消费后会被清掉。
-    判据：浏览器访问 `/src/api/auth.js`，看内联的 `import.meta.env` 里 `VITE_USE_MOCK` 是否为 `"false"`。
 11. **H2 已废弃**：原 `schema.sql`/`data.sql`/`application-h2.properties` 已并入 MySQL 并删除，
     `pom.xml` 无 h2 依赖。库 `shiguang_food` 现含 14 张表（8 业务 + 6 admin_*）。勿再启用 H2。
 
@@ -83,7 +93,12 @@ $mvn = (Get-ChildItem "$env:USERPROFILE\.m2\wrapper\dists\apache-maven-*\*\bin\m
    {"account":"demo","password":"123456","captchaId":"...","captchaCode":"<图中字符>"}
    → code:0 且返回 token 即全链路通
 3. 前端代理：POST http://localhost:5173/api/auth/captcha 同样应返回 code:0
+4. 管理员登录无需验证码：POST /api/admin/login {"account":"admin","password":"admin123"} → code:0
+   即后台链路通（已用 bcrypt 核验，SQL 中 admin/admin123、demo/123456 哈希均匹配）
 ```
+
+> 注意：前端若仍走 MOCK（`.env` 缺失或 `VITE_USE_MOCK` 非 false），上面的真实登录验证
+> 在第 2 步会"账号或密码错误"——那是因为请求根本没发到后端。先确认 `.env` 再测。
 
 接口契约：`{code, message, data}`，`code===0` 成功；业务失败走 `BusinessException` → 非 0 code。
 校验顺序：账号格式 → 密码格式 → 验证码（一次性消费、忽略大小写、5 分钟）。

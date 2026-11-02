@@ -85,7 +85,7 @@ if !n! gtr 100 (
     echo [警告] 等待超时，请查看标题为 shiguang-backend-8081 的窗口日志
     goto :frontend
 )
-netstat -ano | findstr /R /C:":8081  *.*LISTENING" >nul 2>&1
+netstat -ano | findstr ":8081" | findstr "LISTENING" >nul 2>&1
 if errorlevel 1 (
     timeout /t 3 /nobreak >nul
     goto :wait8081
@@ -93,10 +93,29 @@ if errorlevel 1 (
 echo [后端] 已就绪: http://localhost:8081
 
 :frontend
-rem ---- 6. 前端依赖 + 启动 ----
-if not exist "shiguang-food-login\node_modules" (
+rem ---- 6. 确保前端 .env（关键，决定连真实后端还是 MOCK） ----
+rem 前端 src/api/auth.js、admin.js 中 USE_MOCK 默认 true（无 .env 时），
+rem 不连后端、不写库，登录必“账号或密码错误”。这里在启动前强制补齐 .env，
+rem 锁定真实后端模式；若用户已自建 .env 则不覆盖，保留其配置。
+set "FE_DIR=%~dp0shiguang-food-login"
+if exist "%FE_DIR%\.env" (
+    echo [前端] 已存在 .env，沿用现有配置
+) else (
+    echo [前端] 未发现 .env，自动写入（锁定真实后端 VITE_USE_MOCK=false）...
+    > "%FE_DIR%\.env" (
+        echo # Vite 启动时读取，改完须重启 npm run dev
+        echo VITE_API_BASE=/api
+        echo # false=连真实 Spring Boot 后端（写库/读库）；其他值=浏览器内存假数据
+        echo VITE_USE_MOCK=false
+        echo VITE_ADMIN_USE_MOCK=false
+    )
+    echo [前端] .env 已生成
+)
+
+rem ---- 7. 前端依赖 + 启动 ----
+if not exist "%FE_DIR%\node_modules" (
     echo [前端] 未发现 node_modules，正在安装依赖，约 1-2 分钟...
-    pushd "shiguang-food-login"
+    pushd "%FE_DIR%"
     call npm install --no-audit --no-fund
     if errorlevel 1 (
         echo [错误] npm install 失败，请检查网络后重试
@@ -106,7 +125,25 @@ if not exist "shiguang-food-login\node_modules" (
     popd
 )
 echo [前端] 启动 Vite，端口 5173 ...
-start "shiguang-frontend-5173" /D "%~dp0shiguang-food-login" cmd /k npm run dev
+start "shiguang-frontend-5173" /D "%FE_DIR%" cmd /k npm run dev
+
+rem ---- 8. 等待前端就绪（最长约 1 分钟） ----
+echo [等待] 前端启动中...
+set /a m=0
+:wait5173
+set /a m+=1
+if !m! gtr 20 (
+    echo [警告] 前端等待超时，请查看标题为 shiguang-frontend-5173 的窗口日志
+    goto :done
+)
+netstat -ano | findstr ":5173" | findstr "LISTENING" >nul 2>&1
+if errorlevel 1 (
+    timeout /t 3 /nobreak >nul
+    goto :wait5173
+)
+echo [前端] 已就绪: http://localhost:5173/login
+
+:done
 
 echo.
 echo ============================================================
@@ -114,7 +151,8 @@ echo   启动完成！
 echo     前端页面 : http://localhost:5173/login
 echo     后端接口 : http://localhost:8081
 echo     数据库   : shiguang_food （root / 123456）
-echo     测试账号 : demo / 123456
+echo     测试账号 : demo / 123456（管理员 admin / admin123）
+echo   前端已锁定真实后端（.env: VITE_USE_MOCK=false），无需担心 MOCK 空转
 echo   停止全部服务请运行 stop-all.bat
 echo ============================================================
 pause
