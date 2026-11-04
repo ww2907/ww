@@ -66,9 +66,8 @@ onUnmounted(() => clearTimeout(toastTimer))
         </tbody>
       </table>
     </div>
+    <div class="toast" :class="{ show: toastShow }">{{ toastMsg }}</div>
   </div>
-
-  <div class="toast" :class="{ show: toastShow }">{{ toastMsg }}</div>
 </template>
 
 <style scoped>

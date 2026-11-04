@@ -174,9 +174,8 @@ onUnmounted(() => clearTimeout(toastTimer))
     </template>
 
     <footer class="foot">食光 · 美食 — 发现身边的每一口好味道 🌿</footer>
+    <div class="toast" :class="{ show: toastShow }">{{ toastMsg }}</div>
   </div>
-
-  <div class="toast" :class="{ show: toastShow }">{{ toastMsg }}</div>
 </template>
 
 <style scoped>

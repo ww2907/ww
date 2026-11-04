@@ -11,7 +11,7 @@
  Target Server Version : 80039 (8.0.39)
  File Encoding         : 65001
 
- Date: 30/10/2026 16:51:56
+ Date: 04/11/2026 09:59:03
 */
 
 SET NAMES utf8mb4;
@@ -25,7 +25,7 @@ CREATE TABLE `admin_account`  (
   `account` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
   `password` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
   PRIMARY KEY (`account`) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of admin_account
@@ -42,7 +42,7 @@ CREATE TABLE `admin_category`  (
   `parent_id` bigint NULL DEFAULT NULL,
   `sort_order` int NULL DEFAULT NULL,
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 8 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 8 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of admin_category
@@ -63,7 +63,7 @@ CREATE TABLE `admin_config`  (
   `config_key` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
   `config_value` varchar(4000) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
   PRIMARY KEY (`config_key`) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of admin_config
@@ -86,7 +86,7 @@ CREATE TABLE `admin_dish`  (
   `sort` int NULL DEFAULT NULL,
   `enabled` tinyint(1) NULL DEFAULT NULL,
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 11 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 11 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of admin_dish
@@ -115,7 +115,7 @@ CREATE TABLE `admin_order`  (
   `status` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
   `created_at` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of admin_order
@@ -137,7 +137,7 @@ CREATE TABLE `admin_user`  (
   `status` int NULL DEFAULT NULL,
   `created_at` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 5 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 5 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of admin_user
@@ -556,7 +556,7 @@ CREATE TABLE `order_item`  (
   `created_at` datetime NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_order`(`order_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 7 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '订单明细表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 51 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '订单明细表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of order_item
@@ -567,6 +567,50 @@ INSERT INTO `order_item` VALUES (3, 2, 11, '现烤舒芙蕾', 32.00, 2, 64.00, '
 INSERT INTO `order_item` VALUES (4, 2, 12, '海盐提拉米苏', 28.00, 2, 56.00, '2026-10-26 11:45:29');
 INSERT INTO `order_item` VALUES (5, 2, 13, '莓果千层', 30.00, 2, 60.00, '2026-10-26 11:45:29');
 INSERT INTO `order_item` VALUES (6, 3, 191, '暖糖海盐提拉米苏', 28.00, 2, 56.00, '2026-10-30 16:07:10');
+INSERT INTO `order_item` VALUES (7, 4, 2, '红油抄手', 22.00, 3, 66.00, '2026-10-25 09:40:05');
+INSERT INTO `order_item` VALUES (8, 5, 10, '藜麦时蔬碗', 30.00, 3, 90.00, '2026-10-28 18:34:04');
+INSERT INTO `order_item` VALUES (9, 5, 2, '红油抄手', 22.00, 3, 66.00, '2026-10-28 18:34:04');
+INSERT INTO `order_item` VALUES (10, 6, 5, '现烤舒芙蕾', 32.00, 3, 96.00, '2026-10-24 17:34:27');
+INSERT INTO `order_item` VALUES (11, 7, 3, '韩式雪花炸鸡', 36.00, 2, 72.00, '2026-10-26 20:56:01');
+INSERT INTO `order_item` VALUES (12, 7, 6, '深烘手冲单品', 28.00, 1, 28.00, '2026-10-26 20:56:01');
+INSERT INTO `order_item` VALUES (13, 8, 3, '韩式雪花炸鸡', 36.00, 2, 72.00, '2026-10-29 09:17:19');
+INSERT INTO `order_item` VALUES (14, 9, 2, '红油抄手', 22.00, 3, 66.00, '2026-10-25 16:04:49');
+INSERT INTO `order_item` VALUES (15, 10, 8, '麻辣牛油锅', 58.00, 2, 116.00, '2026-10-21 21:45:11');
+INSERT INTO `order_item` VALUES (16, 11, 8, '麻辣牛油锅', 58.00, 2, 116.00, '2026-10-25 20:26:33');
+INSERT INTO `order_item` VALUES (17, 11, 7, '生椰拿铁', 22.00, 3, 66.00, '2026-10-25 20:26:33');
+INSERT INTO `order_item` VALUES (18, 12, 10, '藜麦时蔬碗', 30.00, 1, 30.00, '2026-10-29 15:56:04');
+INSERT INTO `order_item` VALUES (19, 13, 7, '生椰拿铁', 22.00, 1, 22.00, '2026-10-24 19:24:07');
+INSERT INTO `order_item` VALUES (20, 13, 4, '安格斯牛肉堡', 28.00, 1, 28.00, '2026-10-24 19:24:07');
+INSERT INTO `order_item` VALUES (21, 14, 6, '深烘手冲单品', 28.00, 2, 56.00, '2026-10-28 13:24:32');
+INSERT INTO `order_item` VALUES (22, 15, 5, '现烤舒芙蕾', 32.00, 2, 64.00, '2026-10-30 18:44:25');
+INSERT INTO `order_item` VALUES (23, 15, 6, '深烘手冲单品', 28.00, 2, 56.00, '2026-10-30 18:44:25');
+INSERT INTO `order_item` VALUES (24, 15, 10, '藜麦时蔬碗', 30.00, 3, 90.00, '2026-10-30 18:44:25');
+INSERT INTO `order_item` VALUES (25, 16, 6, '深烘手冲单品', 28.00, 2, 56.00, '2026-11-01 16:11:03');
+INSERT INTO `order_item` VALUES (26, 16, 1, '招牌牛肉面', 28.00, 2, 56.00, '2026-11-01 16:11:03');
+INSERT INTO `order_item` VALUES (27, 17, 5, '现烤舒芙蕾', 32.00, 1, 32.00, '2026-11-02 10:52:00');
+INSERT INTO `order_item` VALUES (28, 17, 3, '韩式雪花炸鸡', 36.00, 2, 72.00, '2026-11-02 10:52:00');
+INSERT INTO `order_item` VALUES (29, 17, 9, '鸡胸蔬菜沙拉', 26.00, 1, 26.00, '2026-11-02 10:52:00');
+INSERT INTO `order_item` VALUES (30, 18, 7, '生椰拿铁', 22.00, 3, 66.00, '2026-10-24 12:25:25');
+INSERT INTO `order_item` VALUES (31, 18, 10, '藜麦时蔬碗', 30.00, 1, 30.00, '2026-10-24 12:25:25');
+INSERT INTO `order_item` VALUES (32, 18, 2, '红油抄手', 22.00, 1, 22.00, '2026-10-24 12:25:25');
+INSERT INTO `order_item` VALUES (33, 19, 6, '深烘手冲单品', 28.00, 3, 84.00, '2026-10-31 11:02:26');
+INSERT INTO `order_item` VALUES (34, 19, 3, '韩式雪花炸鸡', 36.00, 3, 108.00, '2026-10-31 11:02:26');
+INSERT INTO `order_item` VALUES (35, 19, 1, '招牌牛肉面', 28.00, 2, 56.00, '2026-10-31 11:02:26');
+INSERT INTO `order_item` VALUES (36, 20, 4, '安格斯牛肉堡', 28.00, 3, 84.00, '2026-10-28 13:45:59');
+INSERT INTO `order_item` VALUES (37, 20, 10, '藜麦时蔬碗', 30.00, 3, 90.00, '2026-10-28 13:45:59');
+INSERT INTO `order_item` VALUES (38, 20, 6, '深烘手冲单品', 28.00, 1, 28.00, '2026-10-28 13:45:59');
+INSERT INTO `order_item` VALUES (39, 21, 10, '藜麦时蔬碗', 30.00, 3, 90.00, '2026-10-26 19:42:14');
+INSERT INTO `order_item` VALUES (40, 21, 6, '深烘手冲单品', 28.00, 3, 84.00, '2026-10-26 19:42:14');
+INSERT INTO `order_item` VALUES (41, 22, 4, '安格斯牛肉堡', 28.00, 1, 28.00, '2026-10-27 09:09:33');
+INSERT INTO `order_item` VALUES (42, 23, 8, '麻辣牛油锅', 58.00, 1, 58.00, '2026-10-22 20:15:31');
+INSERT INTO `order_item` VALUES (43, 23, 1, '招牌牛肉面', 28.00, 2, 56.00, '2026-10-22 20:15:31');
+INSERT INTO `order_item` VALUES (44, 23, 3, '韩式雪花炸鸡', 36.00, 1, 36.00, '2026-10-22 20:15:31');
+INSERT INTO `order_item` VALUES (45, 24, 8, '麻辣牛油锅', 58.00, 3, 174.00, '2026-10-21 19:02:05');
+INSERT INTO `order_item` VALUES (46, 25, 10, '藜麦时蔬碗', 30.00, 1, 30.00, '2026-11-01 13:50:13');
+INSERT INTO `order_item` VALUES (47, 25, 7, '生椰拿铁', 22.00, 1, 22.00, '2026-11-01 13:50:13');
+INSERT INTO `order_item` VALUES (48, 25, 9, '鸡胸蔬菜沙拉', 26.00, 3, 78.00, '2026-11-01 13:50:13');
+INSERT INTO `order_item` VALUES (49, 26, 1, '招牌牛肉面', 28.00, 2, 56.00, '2026-11-04 09:56:27');
+INSERT INTO `order_item` VALUES (50, 27, 1, '招牌牛肉面', 28.00, 1, 28.00, '2026-11-04 09:57:26');
 
 -- ----------------------------
 -- Table structure for orders
@@ -588,7 +632,7 @@ CREATE TABLE `orders`  (
   UNIQUE INDEX `uk_order_no`(`order_no` ASC) USING BTREE,
   INDEX `idx_account`(`account` ASC) USING BTREE,
   INDEX `idx_rest`(`restaurant_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '订单主表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 28 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '订单主表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of orders
@@ -596,6 +640,30 @@ CREATE TABLE `orders`  (
 INSERT INTO `orders` VALUES (1, '17929862034082201', 2, 'www', 70, '蜀大火锅', 74.00, 2, 3, '2026-10-26 11:43:23', '2026-10-26 11:43:27');
 INSERT INTO `orders` VALUES (2, '17929863292598620', 2, 'www', 3, '糖潮甜品铺', 180.00, 6, 2, '2026-10-26 11:45:29', '2026-10-26 11:45:34');
 INSERT INTO `orders` VALUES (3, '17933476306833235', 2, 'www', 39, '暖糖甜品', 56.00, 2, 3, '2026-10-30 16:07:10', '2026-10-30 16:07:17');
+INSERT INTO `orders` VALUES (4, 'SG20261025001', 5, 'user001', 7, '阿婆云吞面', 66.00, 3, 2, '2026-10-25 09:40:05', '2026-10-25 09:40:05');
+INSERT INTO `orders` VALUES (5, 'SG20261028002', 6, 'user010', 2, '麦奇轻食沙拉', 156.00, 6, 3, '2026-10-28 18:34:04', '2026-10-28 18:34:04');
+INSERT INTO `orders` VALUES (6, 'SG20261024003', 10, 'user005', 3, '糖潮甜品铺', 96.00, 3, 3, '2026-10-24 17:34:27', '2026-10-24 17:34:27');
+INSERT INTO `orders` VALUES (7, 'SG20261026004', 11, 'user008', 6, '脆脆炸鸡铺', 100.00, 3, 1, '2026-10-26 20:56:01', '2026-10-26 20:56:01');
+INSERT INTO `orders` VALUES (8, 'SG20261029005', 12, 'user005', 6, '脆脆炸鸡铺', 72.00, 2, 2, '2026-10-29 09:17:19', '2026-10-29 09:17:19');
+INSERT INTO `orders` VALUES (9, 'SG20261025006', 7, 'user003', 7, '阿婆云吞面', 66.00, 3, 3, '2026-10-25 16:04:49', '2026-10-25 16:04:49');
+INSERT INTO `orders` VALUES (10, 'SG20261021007', 7, 'user011', 5, '老成都火锅', 116.00, 2, 1, '2026-10-21 21:45:11', '2026-10-21 21:45:11');
+INSERT INTO `orders` VALUES (11, 'SG20261025008', 16, 'user001', 5, '老成都火锅', 182.00, 5, 2, '2026-10-25 20:26:33', '2026-10-25 20:26:33');
+INSERT INTO `orders` VALUES (12, 'SG20261029009', 9, 'user004', 2, '麦奇轻食沙拉', 30.00, 1, 2, '2026-10-29 15:56:04', '2026-10-29 15:56:04');
+INSERT INTO `orders` VALUES (13, 'SG20261024010', 10, 'user010', 8, '莓日茶研', 50.00, 2, 2, '2026-10-24 19:24:07', '2026-10-24 19:24:07');
+INSERT INTO `orders` VALUES (14, 'SG20261028011', 9, 'user009', 4, '拾光咖啡', 56.00, 2, 2, '2026-10-28 13:24:32', '2026-10-28 13:24:32');
+INSERT INTO `orders` VALUES (15, 'SG20261030012', 15, 'user012', 3, '糖潮甜品铺', 210.00, 7, 2, '2026-10-30 18:44:25', '2026-10-30 18:44:25');
+INSERT INTO `orders` VALUES (16, 'SG20261101013', 12, 'user006', 8, '莓日茶研', 112.00, 4, 2, '2026-11-01 16:11:03', '2026-11-01 16:11:03');
+INSERT INTO `orders` VALUES (17, 'SG20261102014', 16, 'user008', 3, '糖潮甜品铺', 130.00, 4, 3, '2026-11-02 10:52:00', '2026-11-02 10:52:00');
+INSERT INTO `orders` VALUES (18, 'SG20261024015', 6, 'user012', 8, '莓日茶研', 118.00, 5, 2, '2026-10-24 12:25:25', '2026-10-24 12:25:25');
+INSERT INTO `orders` VALUES (19, 'SG20261031016', 16, 'user012', 4, '拾光咖啡', 248.00, 8, 1, '2026-10-31 11:02:26', '2026-10-31 11:02:26');
+INSERT INTO `orders` VALUES (20, 'SG20261028017', 8, 'user002', 6, '脆脆炸鸡铺', 202.00, 7, 2, '2026-10-28 13:45:59', '2026-10-28 13:45:59');
+INSERT INTO `orders` VALUES (21, 'SG20261026018', 12, 'user001', 2, '麦奇轻食沙拉', 174.00, 6, 3, '2026-10-26 19:42:14', '2026-10-26 19:42:14');
+INSERT INTO `orders` VALUES (22, 'SG20261027019', 11, 'user002', 6, '脆脆炸鸡铺', 28.00, 1, 1, '2026-10-27 09:09:33', '2026-10-27 09:09:33');
+INSERT INTO `orders` VALUES (23, 'SG20261022020', 8, 'user003', 5, '老成都火锅', 150.00, 4, 3, '2026-10-22 20:15:31', '2026-10-22 20:15:31');
+INSERT INTO `orders` VALUES (24, 'SG20261021021', 15, 'user003', 5, '老成都火锅', 174.00, 3, 3, '2026-10-21 19:02:05', '2026-10-21 19:02:05');
+INSERT INTO `orders` VALUES (25, 'SG20261101022', 13, 'user006', 2, '麦奇轻食沙拉', 130.00, 5, 2, '2026-11-01 13:50:13', '2026-11-01 13:50:13');
+INSERT INTO `orders` VALUES (26, '17937573875403050', 1, 'demo', 1, '巷子口牛肉面', 56.00, 2, 1, '2026-11-04 09:56:27', '2026-11-04 09:56:29');
+INSERT INTO `orders` VALUES (27, '17937574461047919', 1, 'demo', 1, '巷子口牛肉面', 28.00, 1, 0, '2026-11-04 09:57:26', '2026-11-04 09:57:26');
 
 -- ----------------------------
 -- Table structure for restaurant
@@ -1071,19 +1139,60 @@ CREATE TABLE `user`  (
   `account` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '登录账号：用户名（3-20 位字母、数字或下划线）',
   `password` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT 'BCrypt 加密后的密码',
   `nickname` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT '美食家' COMMENT '昵称',
+  `avatar` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT '' COMMENT '澶村儚锛坋moji锛涚┖涓?鐢ㄦ樀绉伴?瀛椾綔鏂囧瓧澶村儚锛',
+  `gender` varchar(8) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT '' COMMENT '鎬у埆锛氱敺/濂?绌',
+  `phone` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT '' COMMENT '鎵嬫満鍙',
+  `bio` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT '' COMMENT '涓??绛惧悕',
   `account_type` tinyint NOT NULL DEFAULT 0 COMMENT '账号类型：0=用户名 1=手机 2=邮箱',
   `status` tinyint NOT NULL DEFAULT 1 COMMENT '状态：1=正常 0=禁用',
   `created_at` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_at` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `uk_account`(`account` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 5 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '用户表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 17 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '用户表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of user
 -- ----------------------------
-INSERT INTO `user` VALUES (1, 'demo', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdjwJZgpO60ObfiAvvvbslm9ey', '演示用户', 0, 1, '2026-10-23 16:31:59', '2026-10-23 16:31:59');
-INSERT INTO `user` VALUES (2, 'www', '$2a$10$iaomvtyTAIhWXZA6nSN7FO.vvbfM5uRG.8GOP15SBJ/J6lbJAPfB2', '美食家', 0, 1, '2026-10-26 11:42:42', '2026-10-26 11:42:42');
+INSERT INTO `user` VALUES (1, 'demo', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdjwJZgpO60ObfiAvvvbslm9ey', '演示用户', '🦊', '女', '13800001234', '热爱生活，热爱美食 🍜', 0, 1, '2026-10-23 16:31:59', '2026-11-04 09:54:01');
+INSERT INTO `user` VALUES (2, 'www', '$2a$10$iaomvtyTAIhWXZA6nSN7FO.vvbfM5uRG.8GOP15SBJ/J6lbJAPfB2', '美食家', '', '', '', '', 0, 1, '2026-10-26 11:42:42', '2026-10-26 11:42:42');
+INSERT INTO `user` VALUES (5, 'user001', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdjwJZgpO60ObfiAvvvbslm9ey', '小美', '', '', '', '', 0, 1, '2026-10-23 17:04:24', '2026-10-23 17:04:24');
+INSERT INTO `user` VALUES (6, 'user002', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdjwJZgpO60ObfiAvvvbslm9ey', '阿强', '', '', '', '', 0, 1, '2026-10-24 18:41:10', '2026-10-24 18:41:10');
+INSERT INTO `user` VALUES (7, 'user003', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdjwJZgpO60ObfiAvvvbslm9ey', '食客王', '', '', '', '', 0, 1, '2026-10-25 09:26:02', '2026-10-25 09:26:02');
+INSERT INTO `user` VALUES (8, 'user004', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdjwJZgpO60ObfiAvvvbslm9ey', '馋猫', '', '', '', '', 0, 1, '2026-10-26 20:53:41', '2026-10-26 20:53:41');
+INSERT INTO `user` VALUES (9, 'user005', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdjwJZgpO60ObfiAvvvbslm9ey', '甜甜', '', '', '', '', 0, 1, '2026-10-27 11:49:59', '2026-10-27 11:49:59');
+INSERT INTO `user` VALUES (10, 'user006', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdjwJZgpO60ObfiAvvvbslm9ey', '老饕', '', '', '', '', 0, 1, '2026-10-28 14:33:39', '2026-10-28 14:33:39');
+INSERT INTO `user` VALUES (11, 'user007', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdjwJZgpO60ObfiAvvvbslm9ey', '小鹿', '', '', '', '', 0, 1, '2026-10-29 15:12:50', '2026-10-29 15:12:50');
+INSERT INTO `user` VALUES (12, 'user008', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdjwJZgpO60ObfiAvvvbslm9ey', '大胃王', '', '', '', '', 0, 1, '2026-10-30 22:38:11', '2026-10-30 22:38:11');
+INSERT INTO `user` VALUES (13, 'user009', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdjwJZgpO60ObfiAvvvbslm9ey', '阿杰', '', '', '', '', 0, 1, '2026-10-31 19:35:26', '2026-10-31 19:35:26');
+INSERT INTO `user` VALUES (14, 'user010', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdjwJZgpO60ObfiAvvvbslm9ey', '丸子', '', '', '', '', 0, 1, '2026-10-31 17:51:28', '2026-10-31 17:51:28');
+INSERT INTO `user` VALUES (15, 'user011', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdjwJZgpO60ObfiAvvvbslm9ey', '果果', '', '', '', '', 0, 1, '2026-10-31 17:20:51', '2026-10-31 17:20:51');
+INSERT INTO `user` VALUES (16, 'user012', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdjwJZgpO60ObfiAvvvbslm9ey', '阿橙', '', '', '', '', 0, 1, '2026-10-31 11:34:42', '2026-10-31 11:34:42');
+
+-- ----------------------------
+-- Table structure for user_address
+-- ----------------------------
+DROP TABLE IF EXISTS `user_address`;
+CREATE TABLE `user_address`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `account` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '所属用户账号',
+  `name` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '联系人',
+  `phone` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '联系电话',
+  `tag` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT '家' COMMENT '标签：家/公司/学校/其他',
+  `province` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT '' COMMENT '省',
+  `city` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT '' COMMENT '市',
+  `detail` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '详细地址',
+  `is_default` tinyint NOT NULL DEFAULT 0 COMMENT '是否默认：1=是 0=否',
+  `created_at` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_account`(`account` ASC) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '用户收货地址' ROW_FORMAT = DYNAMIC;
+
+-- ----------------------------
+-- Records of user_address
+-- ----------------------------
+INSERT INTO `user_address` VALUES (1, 'demo', '演示用户', '13800000000', '家', '广东省', '深圳市', '科技园南路 8 号 3 栋 501', 1, '2026-11-04 09:52:48', '2026-11-04 09:54:02');
 
 -- ----------------------------
 -- Table structure for verify_code
@@ -1104,95 +1213,5 @@ CREATE TABLE `verify_code`  (
 -- ----------------------------
 -- Records of verify_code
 -- ----------------------------
-
--- ============================================================
--- 数字管理看板补充种子数据（用户 / 订单 / 订单明细）
--- 说明：仅补充演示数据，使经营数据看板有真实数字。整库重导时一并执行。
--- ============================================================
-
--- 注册用户（密码统一为 bcrypt('123456')，可登录演示）
-INSERT INTO `user` (`id`, `account`, `password`, `nickname`, `account_type`, `status`, `created_at`, `updated_at`) VALUES
-(5, 'user001', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdjwJZgpO60ObfiAvvvbslm9ey', '小美', 0, 1, '2026-10-23 17:04:24', '2026-10-23 17:04:24'),
-(6, 'user002', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdjwJZgpO60ObfiAvvvbslm9ey', '阿强', 0, 1, '2026-10-24 18:41:10', '2026-10-24 18:41:10'),
-(7, 'user003', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdjwJZgpO60ObfiAvvvbslm9ey', '食客王', 0, 1, '2026-10-25 09:26:02', '2026-10-25 09:26:02'),
-(8, 'user004', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdjwJZgpO60ObfiAvvvbslm9ey', '馋猫', 0, 1, '2026-10-26 20:53:41', '2026-10-26 20:53:41'),
-(9, 'user005', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdjwJZgpO60ObfiAvvvbslm9ey', '甜甜', 0, 1, '2026-10-27 11:49:59', '2026-10-27 11:49:59'),
-(10, 'user006', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdjwJZgpO60ObfiAvvvbslm9ey', '老饕', 0, 1, '2026-10-28 14:33:39', '2026-10-28 14:33:39'),
-(11, 'user007', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdjwJZgpO60ObfiAvvvbslm9ey', '小鹿', 0, 1, '2026-10-29 15:12:50', '2026-10-29 15:12:50'),
-(12, 'user008', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdjwJZgpO60ObfiAvvvbslm9ey', '大胃王', 0, 1, '2026-10-30 22:38:11', '2026-10-30 22:38:11'),
-(13, 'user009', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdjwJZgpO60ObfiAvvvbslm9ey', '阿杰', 0, 1, '2026-10-31 19:35:26', '2026-10-31 19:35:26'),
-(14, 'user010', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdjwJZgpO60ObfiAvvvbslm9ey', '丸子', 0, 1, '2026-10-31 17:51:28', '2026-10-31 17:51:28'),
-(15, 'user011', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdjwJZgpO60ObfiAvvvbslm9ey', '果果', 0, 1, '2026-10-31 17:20:51', '2026-10-31 17:20:51'),
-(16, 'user012', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdjwJZgpO60ObfiAvvvbslm9ey', '阿橙', 0, 1, '2026-10-31 11:34:42', '2026-10-31 11:34:42');
-
--- 订单主表（status: 0待支付/1已支付/2已完成/3已取消）
-INSERT INTO `orders` (`id`, `order_no`, `user_id`, `account`, `restaurant_id`, `restaurant_name`, `total_amount`, `item_count`, `status`, `created_at`, `updated_at`) VALUES
-(4, 'SG20261025001', 5, 'user001', 7, '阿婆云吞面', 66.0, 3, 2, '2026-10-25 09:40:05', '2026-10-25 09:40:05'),
-(5, 'SG20261028002', 6, 'user010', 2, '麦奇轻食沙拉', 156.0, 6, 3, '2026-10-28 18:34:04', '2026-10-28 18:34:04'),
-(6, 'SG20261024003', 10, 'user005', 3, '糖潮甜品铺', 96.0, 3, 3, '2026-10-24 17:34:27', '2026-10-24 17:34:27'),
-(7, 'SG20261026004', 11, 'user008', 6, '脆脆炸鸡铺', 100.0, 3, 1, '2026-10-26 20:56:01', '2026-10-26 20:56:01'),
-(8, 'SG20261029005', 12, 'user005', 6, '脆脆炸鸡铺', 72.0, 2, 2, '2026-10-29 09:17:19', '2026-10-29 09:17:19'),
-(9, 'SG20261025006', 7, 'user003', 7, '阿婆云吞面', 66.0, 3, 3, '2026-10-25 16:04:49', '2026-10-25 16:04:49'),
-(10, 'SG20261021007', 7, 'user011', 5, '老成都火锅', 116.0, 2, 1, '2026-10-21 21:45:11', '2026-10-21 21:45:11'),
-(11, 'SG20261025008', 16, 'user001', 5, '老成都火锅', 182.0, 5, 2, '2026-10-25 20:26:33', '2026-10-25 20:26:33'),
-(12, 'SG20261029009', 9, 'user004', 2, '麦奇轻食沙拉', 30.0, 1, 2, '2026-10-29 15:56:04', '2026-10-29 15:56:04'),
-(13, 'SG20261024010', 10, 'user010', 8, '莓日茶研', 50.0, 2, 2, '2026-10-24 19:24:07', '2026-10-24 19:24:07'),
-(14, 'SG20261028011', 9, 'user009', 4, '拾光咖啡', 56.0, 2, 2, '2026-10-28 13:24:32', '2026-10-28 13:24:32'),
-(15, 'SG20261030012', 15, 'user012', 3, '糖潮甜品铺', 210.0, 7, 2, '2026-10-30 18:44:25', '2026-10-30 18:44:25'),
-(16, 'SG20261101013', 12, 'user006', 8, '莓日茶研', 112.0, 4, 2, '2026-11-01 16:11:03', '2026-11-01 16:11:03'),
-(17, 'SG20261102014', 16, 'user008', 3, '糖潮甜品铺', 130.0, 4, 3, '2026-11-02 10:52:00', '2026-11-02 10:52:00'),
-(18, 'SG20261024015', 6, 'user012', 8, '莓日茶研', 118.0, 5, 2, '2026-10-24 12:25:25', '2026-10-24 12:25:25'),
-(19, 'SG20261031016', 16, 'user012', 4, '拾光咖啡', 248.0, 8, 1, '2026-10-31 11:02:26', '2026-10-31 11:02:26'),
-(20, 'SG20261028017', 8, 'user002', 6, '脆脆炸鸡铺', 202.0, 7, 2, '2026-10-28 13:45:59', '2026-10-28 13:45:59'),
-(21, 'SG20261026018', 12, 'user001', 2, '麦奇轻食沙拉', 174.0, 6, 3, '2026-10-26 19:42:14', '2026-10-26 19:42:14'),
-(22, 'SG20261027019', 11, 'user002', 6, '脆脆炸鸡铺', 28.0, 1, 1, '2026-10-27 09:09:33', '2026-10-27 09:09:33'),
-(23, 'SG20261022020', 8, 'user003', 5, '老成都火锅', 150.0, 4, 3, '2026-10-22 20:15:31', '2026-10-22 20:15:31'),
-(24, 'SG20261021021', 15, 'user003', 5, '老成都火锅', 174.0, 3, 3, '2026-10-21 19:02:05', '2026-10-21 19:02:05'),
-(25, 'SG20261101022', 13, 'user006', 2, '麦奇轻食沙拉', 130.0, 5, 2, '2026-11-01 13:50:13', '2026-11-01 13:50:13');
-
--- 订单明细
-INSERT INTO `order_item` (`id`, `order_id`, `dish_id`, `dish_name`, `price`, `qty`, `subtotal`, `created_at`) VALUES
-(7, 4, 2, '红油抄手', 22.0, 3, 66.0, '2026-10-25 09:40:05'),
-(8, 5, 10, '藜麦时蔬碗', 30.0, 3, 90.0, '2026-10-28 18:34:04'),
-(9, 5, 2, '红油抄手', 22.0, 3, 66.0, '2026-10-28 18:34:04'),
-(10, 6, 5, '现烤舒芙蕾', 32.0, 3, 96.0, '2026-10-24 17:34:27'),
-(11, 7, 3, '韩式雪花炸鸡', 36.0, 2, 72.0, '2026-10-26 20:56:01'),
-(12, 7, 6, '深烘手冲单品', 28.0, 1, 28.0, '2026-10-26 20:56:01'),
-(13, 8, 3, '韩式雪花炸鸡', 36.0, 2, 72.0, '2026-10-29 09:17:19'),
-(14, 9, 2, '红油抄手', 22.0, 3, 66.0, '2026-10-25 16:04:49'),
-(15, 10, 8, '麻辣牛油锅', 58.0, 2, 116.0, '2026-10-21 21:45:11'),
-(16, 11, 8, '麻辣牛油锅', 58.0, 2, 116.0, '2026-10-25 20:26:33'),
-(17, 11, 7, '生椰拿铁', 22.0, 3, 66.0, '2026-10-25 20:26:33'),
-(18, 12, 10, '藜麦时蔬碗', 30.0, 1, 30.0, '2026-10-29 15:56:04'),
-(19, 13, 7, '生椰拿铁', 22.0, 1, 22.0, '2026-10-24 19:24:07'),
-(20, 13, 4, '安格斯牛肉堡', 28.0, 1, 28.0, '2026-10-24 19:24:07'),
-(21, 14, 6, '深烘手冲单品', 28.0, 2, 56.0, '2026-10-28 13:24:32'),
-(22, 15, 5, '现烤舒芙蕾', 32.0, 2, 64.0, '2026-10-30 18:44:25'),
-(23, 15, 6, '深烘手冲单品', 28.0, 2, 56.0, '2026-10-30 18:44:25'),
-(24, 15, 10, '藜麦时蔬碗', 30.0, 3, 90.0, '2026-10-30 18:44:25'),
-(25, 16, 6, '深烘手冲单品', 28.0, 2, 56.0, '2026-11-01 16:11:03'),
-(26, 16, 1, '招牌牛肉面', 28.0, 2, 56.0, '2026-11-01 16:11:03'),
-(27, 17, 5, '现烤舒芙蕾', 32.0, 1, 32.0, '2026-11-02 10:52:00'),
-(28, 17, 3, '韩式雪花炸鸡', 36.0, 2, 72.0, '2026-11-02 10:52:00'),
-(29, 17, 9, '鸡胸蔬菜沙拉', 26.0, 1, 26.0, '2026-11-02 10:52:00'),
-(30, 18, 7, '生椰拿铁', 22.0, 3, 66.0, '2026-10-24 12:25:25'),
-(31, 18, 10, '藜麦时蔬碗', 30.0, 1, 30.0, '2026-10-24 12:25:25'),
-(32, 18, 2, '红油抄手', 22.0, 1, 22.0, '2026-10-24 12:25:25'),
-(33, 19, 6, '深烘手冲单品', 28.0, 3, 84.0, '2026-10-31 11:02:26'),
-(34, 19, 3, '韩式雪花炸鸡', 36.0, 3, 108.0, '2026-10-31 11:02:26'),
-(35, 19, 1, '招牌牛肉面', 28.0, 2, 56.0, '2026-10-31 11:02:26'),
-(36, 20, 4, '安格斯牛肉堡', 28.0, 3, 84.0, '2026-10-28 13:45:59'),
-(37, 20, 10, '藜麦时蔬碗', 30.0, 3, 90.0, '2026-10-28 13:45:59'),
-(38, 20, 6, '深烘手冲单品', 28.0, 1, 28.0, '2026-10-28 13:45:59'),
-(39, 21, 10, '藜麦时蔬碗', 30.0, 3, 90.0, '2026-10-26 19:42:14'),
-(40, 21, 6, '深烘手冲单品', 28.0, 3, 84.0, '2026-10-26 19:42:14'),
-(41, 22, 4, '安格斯牛肉堡', 28.0, 1, 28.0, '2026-10-27 09:09:33'),
-(42, 23, 8, '麻辣牛油锅', 58.0, 1, 58.0, '2026-10-22 20:15:31'),
-(43, 23, 1, '招牌牛肉面', 28.0, 2, 56.0, '2026-10-22 20:15:31'),
-(44, 23, 3, '韩式雪花炸鸡', 36.0, 1, 36.0, '2026-10-22 20:15:31'),
-(45, 24, 8, '麻辣牛油锅', 58.0, 3, 174.0, '2026-10-21 19:02:05'),
-(46, 25, 10, '藜麦时蔬碗', 30.0, 1, 30.0, '2026-11-01 13:50:13'),
-(47, 25, 7, '生椰拿铁', 22.0, 1, 22.0, '2026-11-01 13:50:13'),
-(48, 25, 9, '鸡胸蔬菜沙拉', 26.0, 3, 78.0, '2026-11-01 13:50:13');
 
 SET FOREIGN_KEY_CHECKS = 1;

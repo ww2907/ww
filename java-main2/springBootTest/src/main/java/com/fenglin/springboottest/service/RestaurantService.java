@@ -6,6 +6,7 @@ import com.fenglin.springboottest.vo.RestaurantDetailVO;
 import com.fenglin.springboottest.vo.RestaurantVO;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 店铺业务：首页展示、分级分类搜索、店铺详情（含菜单与评论）。
@@ -41,4 +42,12 @@ public interface RestaurantService extends IService<Restaurant> {
 
     /** 店铺详情：含店内菜单、用户评价、平均评分与评价数 */
     RestaurantDetailVO detail(Long id);
+
+    /**
+     * 搜索实时联想：店名 / 分类命中的店铺 + 菜品名命中的菜品。
+     * 返回项：{ kind: 'restaurant'|'dish', id, name, sub, emoji }
+     * @param keyword 关键字（空则返回空列表）
+     * @param limit   最大条数（默认 8）
+     */
+    List<Map<String, Object>> suggest(String keyword, int limit);
 }

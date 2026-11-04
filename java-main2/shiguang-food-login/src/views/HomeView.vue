@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { getSearchConfig, getRecommendedRestaurants, adminData } from '../store/admin.js'
 import { ADMIN_USE_MOCK, getNavConfig, getRecommend, getSearchConfig as fetchSearchConfig } from '../api/admin.js'
+import { getSearchSuggestions } from '../api/restaurant.js'
 import { useShellNav } from '../composables/useShellNav.js'
 import AppHeader from '../components/layout/AppHeader.vue'
 import AppNav from '../components/layout/AppNav.vue'
@@ -66,15 +67,36 @@ function onSearch() {
   router.push({ path: '/food', query: k ? { keyword: k } : {} })
 }
 
-// 输入即搜（防抖 300ms）：预览式跳转到美食页
+// 输入即联想（防抖 220ms）：展示下拉联想，不再自动跳转
+const suggestions = ref([])
+const loadingSuggest = ref(false)
 function onInput() {
   clearTimeout(searchTimer)
-  searchTimer = setTimeout(onSearch, 300)
+  searchTimer = setTimeout(fetchSuggest, 220)
+}
+async function fetchSuggest() {
+  const k = keyword.value.trim()
+  if (!k) {
+    suggestions.value = []
+    return
+  }
+  loadingSuggest.value = true
+  try {
+    suggestions.value = await getSearchSuggestions(k, 8)
+  } catch (e) {
+    suggestions.value = []
+  } finally {
+    loadingSuggest.value = false
+  }
+}
+function onSelectSuggestion(s) {
+  router.push('/restaurant/' + s.id)
 }
 
 function clearSearch() {
   keyword.value = ''
   clearTimeout(searchTimer)
+  suggestions.value = []
 }
 
 // ---------- 进入美食页面（查看其余全部店铺）----------
@@ -136,11 +158,14 @@ onUnmounted(() => {
     <!-- 搜索栏（尺寸四页统一） -->
     <AppSearch
       v-model="keyword"
+      :suggestions="suggestions"
+      :loading-suggest="loadingSuggest"
       :placeholder="searchPlaceholder"
-      hint="🔎 搜索会跳转到「美食页」，可按关键字与分类筛选全部好店。"
+      hint="🔎 输入关键字即时联想店铺 / 菜品，回车进入「美食页」检索。"
       @input="onInput"
       @search="onSearch"
       @clear="clearSearch"
+      @select-suggestion="onSelectSuggestion"
     />
 
     <!-- 欢迎横幅 -->
@@ -202,9 +227,8 @@ onUnmounted(() => {
 
     <!-- 底部导航栏（移动端主导航） -->
     <AppTabbar :items="bottomNav" :active="activeNav" @select="handleNav" />
+    <div class="sh-toast" :class="{ show: toastShow }">{{ toastMsg }}</div>
   </div>
-
-  <div class="sh-toast" :class="{ show: toastShow }">{{ toastMsg }}</div>
 </template>
 
 <style scoped>

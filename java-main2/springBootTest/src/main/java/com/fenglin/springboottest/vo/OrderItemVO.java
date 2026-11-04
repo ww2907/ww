@@ -10,6 +10,9 @@ import java.math.BigDecimal;
 @Data
 public class OrderItemVO {
 
+    /** 菜品 id（快照，可为空；「再来一单」据此复用菜品） */
+    private Long dishId;
+
     private String dishName;
 
     private BigDecimal price;

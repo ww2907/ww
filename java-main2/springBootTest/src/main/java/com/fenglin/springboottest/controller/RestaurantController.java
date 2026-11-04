@@ -35,6 +35,14 @@ public class RestaurantController {
         return Result.success(restaurantService.search(keyword, category));
     }
 
+    /** 搜索实时联想：GET /api/restaurants/search/suggest?keyword=&limit= */
+    @GetMapping("/search/suggest")
+    public Result<List<java.util.Map<String, Object>>> suggest(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false, defaultValue = "8") int limit) {
+        return Result.success(restaurantService.suggest(keyword, limit));
+    }
+
     /** 分类列表：GET /api/restaurants/categories */
     @GetMapping("/categories")
     public Result<List<String>> categories() {

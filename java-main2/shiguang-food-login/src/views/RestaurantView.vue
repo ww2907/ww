@@ -1,7 +1,10 @@
 <script setup>
-import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getRestaurantDetail } from '../api/restaurant.js'
+import { cart } from '../store/cart.js'
+import { toast } from '../composables/useToast.js'
+import DishPopup from '../components/DishPopup.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -10,20 +13,31 @@ const store = ref(null)
 const loading = ref(true)
 const errMsg = ref('')
 
-// 每道菜的选购数量（默认 1），仅用于详情页内展示
-const qty = reactive({})
-const dishQty = (d) => qty[d.id] || 1
-function inc(d) {
-  qty[d.id] = dishQty(d) + 1
+// 购物车（共享 store，按店铺维度）
+const rid = computed(() => route.params.id)
+const { totalCount, totalPrice } = cart.useCartTotals(rid)
+function qtyOfDish(d) {
+  return cart.qtyOf(rid.value, d.id != null ? d.id : d.name)
 }
-function dec(d) {
-  if (dishQty(d) > 1) qty[d.id] = dishQty(d) - 1
+function quickAdd(d) {
+  cart.addItem(rid.value, { ...d, restaurantName: store.value ? store.value.name : '' }, 1)
+  toast(`已加入购物车：${d.name}`, 'success')
 }
 
-// 下单：跳转到该店铺的点餐页（/order/:id）完成选餐与提交
-function onOrderDish() {
-  if (!store.value) return
-  router.push('/order/' + store.value.id)
+// 菜品弹窗
+const popupShow = ref(false)
+const activeDish = ref(null)
+function openDish(d) {
+  activeDish.value = d
+  popupShow.value = true
+}
+function onDishAdded() {
+  toast('已加入购物车 🛒', 'success')
+}
+
+function goOrder() {
+  if (totalCount.value === 0) return
+  router.push('/order/' + rid.value)
 }
 
 function goBack() {
@@ -35,17 +49,6 @@ function starStr(n) {
   return '★'.repeat(n) + '☆'.repeat(5 - n)
 }
 
-// 轻提示
-const toastMsg = ref('')
-const toastShow = ref(false)
-let toastTimer = null
-function showToast(msg) {
-  toastMsg.value = msg
-  toastShow.value = true
-  clearTimeout(toastTimer)
-  toastTimer = setTimeout(() => (toastShow.value = false), 2200)
-}
-
 onMounted(async () => {
   try {
     store.value = await getRestaurantDetail(route.params.id)
@@ -55,7 +58,6 @@ onMounted(async () => {
     loading.value = false
   }
 })
-onUnmounted(() => clearTimeout(toastTimer))
 </script>
 
 <template>
@@ -96,35 +98,27 @@ onUnmounted(() => clearTimeout(toastTimer))
         </div>
       </section>
 
-      <!-- 店内美食（均可下单） -->
+      <!-- 店内美食（点击查看菜品详情 / 加入购物车） -->
       <section class="block">
         <div class="block-head">
           <h2>🍽️ 店内美食</h2>
           <span class="count">{{ store.menu.length }} 道</span>
         </div>
         <ul class="menu">
-          <li class="dish" v-for="d in store.menu" :key="d.id">
+          <li class="dish" v-for="d in store.menu" :key="d.id" @click="openDish(d)">
             <div class="dish-emoji">{{ d.emoji }}</div>
             <div class="dish-main">
               <div class="dish-name">{{ d.name }}</div>
               <div class="dish-desc">{{ d.desc }}</div>
               <div class="dish-price">¥{{ d.price }}</div>
             </div>
-            <div class="dish-action">
-              <div class="stepper" v-if="dishQty(d) > 1">
-                <button class="step" @click="dec(d)">−</button>
-                <span class="qnum">{{ dishQty(d) }}</span>
-                <button class="step" @click="inc(d)">+</button>
+            <div class="dish-action" @click.stop>
+              <div class="stepper" v-if="qtyOfDish(d) > 0">
+                <button class="step" @click="cart.dec(rid, d.id != null ? d.id : d.name)">−</button>
+                <span class="qnum">{{ qtyOfDish(d) }}</span>
+                <button class="step" @click="cart.inc(rid, { ...d, id: d.id != null ? d.id : d.name })">+</button>
               </div>
-              <div class="dish-btns">
-                <button
-                  v-if="dishQty(d) === 1"
-                  class="step solo"
-                  @click="inc(d)"
-                  title="增加数量"
-                >+</button>
-                <button class="order-btn" @click="onOrderDish()">点餐</button>
-              </div>
+              <button v-else class="add-btn" @click="quickAdd(d)">＋ 加入</button>
             </div>
           </li>
         </ul>
@@ -158,9 +152,25 @@ onUnmounted(() => clearTimeout(toastTimer))
 
       <footer class="foot">食光 · 美食 — 发现身边的每一口好味道 🌿</footer>
     </template>
-  </div>
 
-  <div class="toast" :class="{ show: toastShow }">{{ toastMsg }}</div>
+    <!-- 底部购物车栏 -->
+    <div class="cartbar" v-if="store && !loading && !errMsg && totalCount > 0">
+      <div class="cart-info">
+        <div class="cart-count">🛒 {{ totalCount }} 件</div>
+        <div class="cart-total">合计 <span class="amount">¥{{ totalPrice.toFixed(2) }}</span></div>
+      </div>
+      <button class="submit" @click="goOrder">去结算</button>
+    </div>
+
+    <DishPopup
+      :show="popupShow"
+      :dish="activeDish"
+      :restaurant-id="rid"
+      :restaurant-name="store ? store.name : ''"
+      @close="popupShow = false"
+      @added="onDishAdded"
+    />
+  </div>
 </template>
 
 <style scoped>
@@ -169,6 +179,7 @@ onUnmounted(() => clearTimeout(toastTimer))
   display: flex;
   flex-direction: column;
   gap: 16px;
+  padding-bottom: 120px;
 }
 
 /* 顶部返回 */
@@ -232,7 +243,9 @@ onUnmounted(() => clearTimeout(toastTimer))
 .dish {
   display: flex; gap: 12px; align-items: center;
   background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 12px;
+  cursor: pointer; transition: box-shadow 0.15s, transform 0.15s;
 }
+.dish:hover { box-shadow: 0 10px 22px rgba(0, 150, 136, 0.16); transform: translateY(-1px); }
 .dish-emoji {
   width: 48px; height: 48px; flex: none; border-radius: 13px; font-size: 26px;
   background: linear-gradient(135deg, rgba(0,184,148,0.15), rgba(0,206,201,0.15));
@@ -240,7 +253,8 @@ onUnmounted(() => clearTimeout(toastTimer))
 }
 .dish-main { flex: 1; min-width: 0; }
 .dish-name { font-size: 15px; font-weight: 800; color: var(--ink); }
-.dish-desc { font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.5; }
+.dish-desc { font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.5;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dish-price { font-size: 14px; font-weight: 800; color: #e8730c; margin-top: 6px; }
 .dish-action { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
 .stepper { display: flex; align-items: center; gap: 8px; }
@@ -249,17 +263,14 @@ onUnmounted(() => clearTimeout(toastTimer))
   background: #fff; color: var(--deep); font-size: 18px; font-weight: 800; cursor: pointer; line-height: 1;
 }
 .step:hover { background: rgba(0,184,148,0.12); }
-.step.solo { width: 30px; height: 30px; }
 .qnum { font-size: 14px; font-weight: 800; color: var(--deep); min-width: 16px; text-align: center; }
-.dish-btns { display: flex; align-items: center; gap: 8px; }
-.order-btn {
-  border: none; cursor: pointer; padding: 8px 18px; border-radius: 11px;
+.add-btn {
+  border: none; cursor: pointer; padding: 8px 14px; border-radius: 11px;
   background: linear-gradient(135deg, var(--teal), var(--cyan));
   color: #fff; font-weight: 800; font-size: 13px;
-  box-shadow: 0 6px 14px rgba(0,150,136,0.35); transition: transform 0.15s;
+  box-shadow: 0 6px 14px rgba(0, 150, 136, 0.35); transition: transform 0.15s;
 }
-.order-btn:hover:not(:disabled) { transform: translateY(-1px); }
-.order-btn:disabled { opacity: 0.65; cursor: default; }
+.add-btn:hover { transform: translateY(-1px); }
 
 /* 评价 */
 .rate-summary { display: flex; align-items: center; gap: 10px; padding: 10px 0 14px; border-bottom: 1px dashed var(--line); margin-bottom: 12px; }
@@ -282,17 +293,42 @@ onUnmounted(() => clearTimeout(toastTimer))
 
 .foot { text-align: center; font-size: 12px; color: rgba(255,255,255,0.9); text-shadow: 0 2px 8px rgba(0,80,70,0.3); margin-top: 6px; }
 
-/* 轻提示 */
-.toast {
-  position: fixed; top: 28px; left: 50%; transform: translateX(-50%) translateY(-20px) scale(0.95);
-  background: linear-gradient(135deg, var(--teal), var(--cyan)); color: #fff;
-  padding: 14px 26px; border-radius: 14px; font-weight: 700;
-  box-shadow: 0 10px 30px rgba(0,150,136,0.45);
-  opacity: 0; pointer-events: none; transition: opacity 0.3s, transform 0.3s; z-index: 999;
+/* 底部购物车栏 */
+.cartbar {
+  position: fixed;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 36px);
+  max-width: 1064px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 20px;
+  padding: 12px 16px;
+  box-shadow: 0 12px 30px rgba(0, 150, 136, 0.3);
+  z-index: 30;
 }
-.toast.show { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+.cart-info { display: flex; flex-direction: column; gap: 2px; }
+.cart-count { font-size: 13px; font-weight: 800; color: var(--deep); }
+.cart-total { font-size: 12px; color: var(--muted); }
+.cart-total .amount { font-size: 18px; font-weight: 900; color: #e8730c; }
+.submit {
+  border: none; cursor: pointer; padding: 12px 26px; border-radius: 14px;
+  background: linear-gradient(135deg, var(--teal), var(--cyan));
+  color: #fff; font-weight: 800; font-size: 15px;
+  box-shadow: 0 8px 18px rgba(0, 150, 136, 0.45); transition: transform 0.15s, box-shadow 0.15s;
+}
+.submit:hover { transform: translateY(-1px); box-shadow: 0 11px 22px rgba(0, 150, 136, 0.6); }
 
 @media (max-width: 600px) {
+  .store { padding: 16px; gap: 12px; }
+  .store-emoji { width: 54px; height: 54px; font-size: 30px; border-radius: 15px; }
+  .store-name { font-size: 19px; }
   .dish { flex-wrap: wrap; }
   .dish-action { flex-direction: row; width: 100%; justify-content: flex-end; align-items: center; }
 }

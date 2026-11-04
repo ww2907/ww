@@ -92,9 +92,8 @@ onUnmounted(() => clearTimeout(toastTimer))
       </div>
       <div v-if="filtered.length === 0" class="empty">没有匹配的店铺</div>
     </div>
+    <div class="toast" :class="{ show: toastShow }">{{ toastMsg }}</div>
   </div>
-
-  <div class="toast" :class="{ show: toastShow }">{{ toastMsg }}</div>
 </template>
 
 <style scoped>

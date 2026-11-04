@@ -91,9 +91,8 @@ onUnmounted(() => clearTimeout(toastTimer))
     <div class="tip">演示账号：<b>admin</b> / 密码：<b>admin123</b></div>
 
     <button type="button" class="back" @click="backHome">← 返回用户首页</button>
+    <div class="toast" :class="{ show: toastShow }">{{ toastMsg }}</div>
   </form>
-
-  <div class="toast" :class="{ show: toastShow }">{{ toastMsg }}</div>
 </template>
 
 <style scoped>

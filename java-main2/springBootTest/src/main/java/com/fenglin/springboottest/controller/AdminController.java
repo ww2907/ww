@@ -158,6 +158,19 @@ public class AdminController {
         return Result.success();
     }
 
+    /** 查看某位用户的收货地址（对应前台「我的 → 收货地址管理」）：GET /api/admin/user/{id}/address */
+    @GetMapping("/user/{id}/address")
+    public Result<?> listUserAddress(@PathVariable Long id) {
+        return Result.success(adminService.listUserAddresses(id));
+    }
+
+    /** 删除某位用户的收货地址：DELETE /api/admin/user/{id}/address/{addressId} */
+    @DeleteMapping("/user/{id}/address/{addressId}")
+    public Result<?> delUserAddress(@PathVariable Long id, @PathVariable Long addressId) {
+        adminService.removeUserAddress(id, addressId);
+        return Result.success();
+    }
+
     // ---------- 7. 订单 ----------
     @GetMapping("/order")
     public Result<?> listOrder() {

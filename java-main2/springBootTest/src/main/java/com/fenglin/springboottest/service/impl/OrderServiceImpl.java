@@ -106,6 +106,9 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         order.setTotalAmount(total);
         order.setItemCount(itemCount);
         order.setStatus(0); // 待支付
+        // 显式写入下单时间：MySQL 的 DEFAULT CURRENT_TIMESTAMP 不会回填到实体，
+        // 不设置会导致「下单成功」返回的 createdAt 为空串
+        order.setCreatedAt(LocalDateTime.now());
         baseMapper.insert(order);
 
         // 落库明细
@@ -126,6 +129,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
             orderItemMapper.insert(oi);
 
             OrderItemVO vo = new OrderItemVO();
+            vo.setDishId(oi.getDishId());
             vo.setDishName(oi.getDishName());
             vo.setPrice(oi.getPrice());
             vo.setQty(oi.getQty());
@@ -156,6 +160,8 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
             List<OrderItemVO> itemVos = new ArrayList<>();
             for (OrderItem oi : its) {
                 OrderItemVO vo = new OrderItemVO();
+                // dishId 必须回传：前端「再来一单」按 dishId 还原购物车，缺失会导致加购失败
+                vo.setDishId(oi.getDishId());
                 vo.setDishName(oi.getDishName());
                 vo.setPrice(oi.getPrice());
                 vo.setQty(oi.getQty());
@@ -219,6 +225,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         List<OrderItemVO> itemVos = new ArrayList<>();
         for (OrderItem oi : its) {
             OrderItemVO vo = new OrderItemVO();
+            vo.setDishId(oi.getDishId());
             vo.setDishName(oi.getDishName());
             vo.setPrice(oi.getPrice());
             vo.setQty(oi.getQty());
@@ -258,6 +265,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         List<OrderItemVO> itemVos = new ArrayList<>();
         for (OrderItem oi : its) {
             OrderItemVO vo = new OrderItemVO();
+            vo.setDishId(oi.getDishId());
             vo.setDishName(oi.getDishName());
             vo.setPrice(oi.getPrice());
             vo.setQty(oi.getQty());
@@ -271,6 +279,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         OrderVO vo = new OrderVO();
         vo.setId(o.getId());
         vo.setOrderNo(o.getOrderNo());
+        vo.setRestaurantId(o.getRestaurantId());
         vo.setRestaurantName(o.getRestaurantName());
         vo.setTotalAmount(o.getTotalAmount());
         vo.setItemCount(o.getItemCount());

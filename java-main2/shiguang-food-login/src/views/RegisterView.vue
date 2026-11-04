@@ -215,9 +215,8 @@ onUnmounted(() => clearTimeout(toastTimer))
     </button>
 
     <div class="signup">已有账号？ <router-link to="/login">返回登录</router-link></div>
+    <div class="toast" :class="{ show: toastShow }">{{ toastMsg }}</div>
   </form>
-
-  <div class="toast" :class="{ show: toastShow }">{{ toastMsg }}</div>
 </template>
 
 <style scoped>

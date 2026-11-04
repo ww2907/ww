@@ -99,9 +99,8 @@ onUnmounted(() => clearTimeout(toastTimer))
         </div>
       </section>
     </div>
+    <div class="toast" :class="{ show: toastShow }">{{ toastMsg }}</div>
   </div>
-
-  <div class="toast" :class="{ show: toastShow }">{{ toastMsg }}</div>
 </template>
 
 <style scoped>

@@ -26,6 +26,18 @@ public class User {
     /** 昵称 */
     private String nickname;
 
+    /** 头像（emoji；空串=用昵称首字作文字头像） */
+    private String avatar;
+
+    /** 性别：男/女/空 */
+    private String gender;
+
+    /** 手机号 */
+    private String phone;
+
+    /** 个性签名 */
+    private String bio;
+
     /** 账号类型：0=用户名 1=手机 2=邮箱 */
     private Integer accountType;
 

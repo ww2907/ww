@@ -1,8 +1,13 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getOrderStats } from '../api/order.js'
 import { session } from '../store.js'
+import { getProfile, getAddresses, initProfileForAccount, AVATAR_OPTIONS } from '../store/profile.js'
+import { toast } from '../composables/useToast.js'
+import ProfileEditModal from '../components/ProfileEditModal.vue'
+import AddressManageModal from '../components/AddressManageModal.vue'
+import EmptyState from '../components/EmptyState.vue'
 import { useShellNav } from '../composables/useShellNav.js'
 import AppHeader from '../components/layout/AppHeader.vue'
 import AppNav from '../components/layout/AppNav.vue'
@@ -15,7 +20,11 @@ const router = useRouter()
 const { topNav, bottomNav, activeNav, account, setActive, onNav, goAdmin, logout } = useShellNav('mine')
 setActive('mine')
 
-const avatarText = computed(() => (account.value || '美').charAt(0).toUpperCase())
+const profile = getProfile()
+const avatarText = computed(() => (profile.nickname || account.value || '美').charAt(0).toUpperCase())
+const avatarEmoji = computed(() => profile.avatar || '')
+const addressCount = computed(() => getAddresses().length)
+
 const keyword = ref('')
 
 const stats = ref({
@@ -71,22 +80,25 @@ function clearSearch() {
   keyword.value = ''
 }
 
-// 导航点击：未开发入口给出提示
-const toastMsg = ref('')
-const toastShow = ref(false)
-let toastTimer = null
-function showToast(msg) {
-  toastMsg.value = msg
-  toastShow.value = true
-  clearTimeout(toastTimer)
-  toastTimer = setTimeout(() => (toastShow.value = false), 2200)
+// ---------- 资料 / 地址管理弹窗 ----------
+const editShow = ref(false)
+const addrShow = ref(false)
+function openEdit() {
+  editShow.value = true
 }
-function handleNav(item) {
-  if (!onNav(item)) showToast(`「${item.label}」页面开发中，敬请期待 🚧`)
+function onProfileSaved() {
+  toast('资料已更新 ✨', 'success')
 }
 
-onMounted(loadStats)
-onUnmounted(() => clearTimeout(toastTimer))
+// 导航点击：未开发入口给出提示
+function handleNav(item) {
+  if (!onNav(item)) toast(`「${item.label}」页面开发中，敬请期待 🚧`)
+}
+
+onMounted(() => {
+  initProfileForAccount(session.account)
+  loadStats()
+})
 </script>
 
 <template>
@@ -109,11 +121,12 @@ onUnmounted(() => clearTimeout(toastTimer))
     <!-- 用户横幅（与首页欢迎横幅同一尺寸） -->
     <section class="sh-banner usercard">
       <div class="sh-banner-text uinfo">
-        <div class="avatar">{{ avatarText }}</div>
+        <div class="avatar" @click="openEdit" title="点击修改头像 / 资料">{{ avatarEmoji || avatarText }}</div>
         <div class="utext">
-          <div class="uname">{{ account }}</div>
+          <div class="uname">{{ profile.nickname || account }}</div>
           <div class="usub">食光 · 美食 会员</div>
         </div>
+        <button class="edit-pill" @click="openEdit">编辑</button>
       </div>
       <div class="sh-banner-emoji">👤</div>
     </section>
@@ -153,8 +166,8 @@ onUnmounted(() => clearTimeout(toastTimer))
           <span class="sh-count">{{ stats.frequentFoods.length }} 种</span>
         </div>
 
-        <div v-if="stats.frequentFoods.length === 0" class="sh-state is-empty">
-          🍜 还没有点过餐，去首页挑一家好店吧～
+        <div v-if="stats.frequentFoods.length === 0">
+          <EmptyState type="food" title="还没有点过餐" desc="去首页挑一家好店，尝尝看吧～" compact />
         </div>
 
         <div v-else class="sh-grid">
@@ -167,6 +180,21 @@ onUnmounted(() => clearTimeout(toastTimer))
             <div class="f-price">¥{{ Number(f.price || 0).toFixed(2) }}</div>
           </div>
         </div>
+      </section>
+
+      <!-- 管理入口：资料 / 地址 -->
+      <section class="sh-block manage">
+        <button class="manage-row" @click="openEdit">
+          <span class="mr-ico">🙂</span>
+          <span class="mr-label">个人信息</span>
+          <span class="mr-arrow">›</span>
+        </button>
+        <button class="manage-row" @click="addrShow = true">
+          <span class="mr-ico">📍</span>
+          <span class="mr-label">收货地址</span>
+          <span class="mr-value">{{ addressCount }} 个</span>
+          <span class="mr-arrow">›</span>
+        </button>
       </section>
 
       <!-- 我的订单入口 -->
@@ -183,9 +211,11 @@ onUnmounted(() => clearTimeout(toastTimer))
 
     <!-- 底部导航栏（移动端主导航） -->
     <AppTabbar :items="bottomNav" :active="activeNav" @select="handleNav" />
-  </div>
 
-  <div class="sh-toast" :class="{ show: toastShow }">{{ toastMsg }}</div>
+    <!-- 弹窗 -->
+    <ProfileEditModal :show="editShow" @close="editShow = false" @saved="onProfileSaved" />
+    <AddressManageModal :show="addrShow" @close="addrShow = false" />
+  </div>
 </template>
 
 <style scoped>
@@ -194,9 +224,11 @@ onUnmounted(() => clearTimeout(toastTimer))
 .usercard .avatar {
   width: 56px; height: 56px; border-radius: 50%; flex: none;
   background: rgba(255,255,255,0.28); color: #fff;
-  font-weight: 900; font-size: 26px; display: grid; place-items: center;
+  font-weight: 900; font-size: 26px; display: grid; place-items: center; cursor: pointer;
+  transition: transform 0.15s;
 }
-.usercard .utext { min-width: 0; }
+.usercard .avatar:hover { transform: scale(1.05); }
+.usercard .utext { min-width: 0; flex: 1; }
 /* 文字块与首页横幅同结构（24px 标题 + 8px 间距 + 13px 副文案），保证横幅高度一致 */
 .usercard .uname {
   font-size: 24px; font-weight: 900; line-height: 1.25;
@@ -204,6 +236,13 @@ onUnmounted(() => clearTimeout(toastTimer))
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .usercard .usub { font-size: 13px; line-height: 1.6; opacity: 0.95; margin-top: 8px; }
+.edit-pill {
+  flex: none; border: none; cursor: pointer;
+  background: rgba(255,255,255,0.28); color: #fff;
+  font-weight: 800; font-size: 12px; padding: 6px 14px; border-radius: 999px; font-family: inherit;
+  transition: background 0.15s;
+}
+.edit-pill:hover { background: rgba(255,255,255,0.4); }
 
 /* 订单次数网格（列数自适应，卡片尺寸与首页店铺卡同源） */
 .count-grid {
@@ -214,7 +253,9 @@ onUnmounted(() => clearTimeout(toastTimer))
 .count-card {
   background: #fff; border: 1px solid var(--line); border-radius: 16px;
   padding: 14px 10px; text-align: center;
+  transition: transform 0.15s, box-shadow 0.15s;
 }
+.count-card:hover { transform: translateY(-2px); box-shadow: 0 8px 18px rgba(0, 150, 136, 0.16); }
 .count-card .cv { font-size: 24px; font-weight: 900; color: var(--deep); }
 .count-card .cl { font-size: 12px; color: var(--muted); margin-top: 4px; }
 .count-card.total { background: linear-gradient(135deg, rgba(0,184,148,0.12), rgba(0,206,201,0.12)); }
@@ -225,7 +266,8 @@ onUnmounted(() => clearTimeout(toastTimer))
 .count-card.cancel .cv { color: #777; }
 
 /* 常点食物卡片内部排版（外框尺寸由全局 .sh-tile 统一提供） */
-.freq-item { display: flex; align-items: center; gap: 12px; }
+.freq-item { display: flex; align-items: center; gap: 12px; transition: transform 0.15s, box-shadow 0.15s; }
+.freq-item:hover { transform: translateY(-2px); box-shadow: 0 10px 22px rgba(0, 150, 136, 0.18); }
 .rank {
   width: 30px; height: 30px; flex: none; border-radius: 9px;
   background: linear-gradient(135deg, var(--teal), var(--cyan)); color: #fff;
@@ -238,6 +280,21 @@ onUnmounted(() => clearTimeout(toastTimer))
 }
 .f-sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
 .f-price { flex: none; font-size: 14px; font-weight: 800; color: #e8730c; }
+
+/* 管理入口 */
+.manage { padding: 8px; }
+.manage-row {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  border: none; background: transparent; cursor: pointer;
+  padding: 14px 12px; border-radius: 14px; font-family: inherit;
+  transition: background 0.15s;
+}
+.manage-row:hover { background: rgba(0,184,148,0.08); }
+.manage-row + .manage-row { border-top: 1px solid var(--line); }
+.mr-ico { font-size: 18px; flex: none; }
+.mr-label { flex: 1; text-align: left; font-size: 15px; font-weight: 800; color: var(--ink); }
+.mr-value { font-size: 13px; color: var(--muted); }
+.mr-arrow { font-size: 20px; color: var(--muted); }
 
 /* 我的订单 CTA */
 .order-cta {

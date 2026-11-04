@@ -15,6 +15,9 @@ public class OrderVO {
 
     private String orderNo;
 
+    /** 店铺 id（「再来一单」需要据此重建订单） */
+    private Long restaurantId;
+
     private String restaurantName;
 
     private BigDecimal totalAmount;

@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import EmojiLayer from './components/EmojiLayer.vue'
 import BokehLayer from './components/BokehLayer.vue'
+import ToastHost from './components/ToastHost.vue'
 
 const route = useRoute()
 const bgRef = ref(null)
@@ -48,5 +49,8 @@ function onMouseMove(e) {
         </transition>
       </router-view>
     </div>
+
+    <!-- 全局轻提示宿主 -->
+    <ToastHost />
   </div>
 </template>

@@ -108,9 +108,8 @@ onUnmounted(() => clearTimeout(toastTimer))
         <button class="add" @click="addRow(bottom)">+ 新增底部导航项</button>
       </section>
     </div>
+    <div class="toast" :class="{ show: toastShow }">{{ toastMsg }}</div>
   </div>
-
-  <div class="toast" :class="{ show: toastShow }">{{ toastMsg }}</div>
 </template>
 
 <style scoped>

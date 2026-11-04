@@ -1054,6 +1054,64 @@ function buildDetail(id) {
   }
 }
 
+// ============================================================
+// 搜索实时联想：同时匹配「店铺名」与「菜品名」
+// ------------------------------------------------------------
+// 返回形如：
+//   { kind: 'restaurant', id, name, sub, emoji }
+//   { kind: 'dish', id(=所属店铺id), name, sub(=店铺名), emoji }
+// 真实模式请求 GET /api/restaurants/search/suggest?keyword=，缺失则回退本地。
+// ============================================================
+export const RESTAURANT_ENDPOINTS_SUGGEST = {
+  suggest: '/restaurants/search/suggest'
+}
+
+function buildSuggestions(keyword, limit = 8) {
+  const k = (keyword || '').trim().toLowerCase()
+  if (!k) return []
+  const out = []
+  const seen = new Set()
+
+  // 1) 店铺名匹配（优先）
+  for (const r of MOCK_RESTAURANTS) {
+    if (r.name.toLowerCase().includes(k) || r.cat.toLowerCase().includes(k)) {
+      out.push({ kind: 'restaurant', id: r.id, name: r.name, sub: r.cat, emoji: r.emoji })
+      seen.add('r-' + r.id)
+      if (out.length >= limit) return out
+    }
+  }
+
+  // 2) 菜品名匹配（去重，点选后跳转到所属店铺）
+  for (const r of MOCK_RESTAURANTS) {
+    const menu = STORE_MENUS[r.id] || STORE_MENUS[1]
+    for (const m of menu) {
+      if (m.name.toLowerCase().includes(k) && !seen.has('d-' + m.name)) {
+        out.push({ kind: 'dish', id: r.id, name: m.name, sub: r.name, emoji: m.emoji })
+        seen.add('d-' + m.name)
+        if (out.length >= limit) return out
+      }
+    }
+  }
+  return out
+}
+
+export async function getSearchSuggestions(keyword, limit = 8) {
+  if (RESTAURANT_USE_MOCK) {
+    await delay(120)
+    return buildSuggestions(keyword, limit)
+  }
+  try {
+    const res = await httpGet(`${RESTAURANT_ENDPOINTS_SUGGEST.suggest}?keyword=${encodeURIComponent(keyword || '')}`)
+    return Array.isArray(res) ? res : []
+  } catch (e) {
+    if (RESTAURANT_FALLBACK_MOCK) {
+      console.warn('[restaurant] 后端联想接口暂不可用，已回退到本地模拟：', e.message)
+      return buildSuggestions(keyword, limit)
+    }
+    throw e
+  }
+}
+
 // ---------- 真实后端（GET /api/restaurants/:id）----------
 async function httpGet(path) {
   const { default: axios } = await import('axios')

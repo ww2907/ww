@@ -31,6 +31,50 @@ export const FOOD_ENDPOINTS = {
 // 预留分类列表（真实接口返回时会被覆盖）
 export const MOCK_CATEGORIES = ['全部', '面食', '快餐', '甜点', '饮品', '轻食', '火锅']
 
+// ---------- 人均价格（演示用确定性取值，避免改动 70 条原始数据）----------
+// 不同品类给出价格区间，再按 id 做稳定偏移，使「按人均排序」真实可演示。
+const PRICE_BASE = {
+  面食: 22, 快餐: 26, 甜点: 24, 饮品: 20, 轻食: 26, 火锅: 58
+}
+export function priceFor(r) {
+  const base = PRICE_BASE[r.cat] != null ? PRICE_BASE[r.cat] : 25
+  const id = Number(r.id) || 0
+  const offset = (id * 7) % 7 // 0..6 稳定偏移
+  return base + offset
+}
+
+// ---------- 距离解析：'320m' -> 320；'1.1km' -> 1100 ----------
+export function parseDistance(str) {
+  if (str == null) return 999999
+  const s = String(str).trim().toLowerCase()
+  const m = s.match(/([\d.]+)\s*(km|公里|m|米)?/)
+  if (!m) return 999999
+  const num = parseFloat(m[1])
+  if (isNaN(num)) return 999999
+  const unit = m[2] || 'm'
+  return unit === 'km' || unit === '公里' ? Math.round(num * 1000) : Math.round(num)
+}
+
+// 给餐厅对象附加「人均价格」与「距离(米)」两个可排序字段。
+// 非破坏性：真实后端已返回 price / distanceM 时优先使用后端值，
+// 只有缺失时才用分类基准价与距离文案兜底，避免覆盖后端真实数据。
+function withSortFields(r) {
+  if (!r || typeof r !== 'object') return r
+  const price = r.price != null && r.price !== '' ? Number(r.price) : priceFor(r)
+  const distanceM =
+    r.distanceM != null && r.distanceM !== '' ? Number(r.distanceM) : parseDistance(r.distance)
+  return {
+    ...r,
+    price: Number.isFinite(price) ? price : priceFor(r),
+    distanceM: Number.isFinite(distanceM) ? distanceM : 999999
+  }
+}
+
+// 后端返回的列表同样补齐排序字段，保证「人均最低 / 距离最近」两种排序在真实模式下也生效
+function normalizeList(list) {
+  return Array.isArray(list) ? list.map(withSortFields) : list
+}
+
 // ---------- 本地模拟数据（仅供演示，真实数据来自后端）----------
 export const MOCK_RESTAURANTS = [
   { id: 1, name: '巷子口牛肉面', emoji: '🍜', cat: '面食', rating: 4.8, distance: '320m', tags: ['汤头浓郁', '现拉面'], desc: '老字号手作牛肉面，一勺辣油封神。' },
@@ -141,7 +185,7 @@ function filterMock({ keyword = '', category = '全部' }) {
         r.tags.some((t) => t.toLowerCase().includes(k))
     )
   }
-  return list
+  return list.map(withSortFields)
 }
 
 // 本地模拟：计算「推荐集」id（与后端口径一致：评分最高的 12 家，评分相同按 id 升序）
@@ -170,7 +214,7 @@ function filterFoodMock({ keyword = '', category = '全部' } = {}) {
         r.tags.some((t) => t.toLowerCase().includes(k))
     )
   }
-  return list
+  return list.map(withSortFields)
 }
 
 // ============================================================
@@ -188,7 +232,7 @@ export async function getRestaurants({ keyword = '', category = '全部' } = {})
     return filterMock({ keyword, category })
   }
   try {
-    return await httpGet(FOOD_ENDPOINTS.search, { keyword, category })
+    return normalizeList(await httpGet(FOOD_ENDPOINTS.search, { keyword, category }))
   } catch (e) {
     if (FOOD_FALLBACK_MOCK) {
       console.warn('[food] 后端餐厅接口暂不可用，已回退到本地模拟数据：', e.message)
@@ -209,9 +253,10 @@ export async function getRecommended(limit = 12) {
       .slice()
       .sort((a, b) => b.rating - a.rating || a.id - b.id)
       .slice(0, limit)
+      .map(withSortFields)
   }
   try {
-    return await httpGet(FOOD_ENDPOINTS.recommended, { limit })
+    return normalizeList(await httpGet(FOOD_ENDPOINTS.recommended, { limit }))
   } catch (e) {
     if (FOOD_FALLBACK_MOCK) {
       console.warn('[food] 后端推荐接口暂不可用，已回退到本地模拟数据：', e.message)
@@ -234,7 +279,7 @@ export async function getFoodList({ keyword = '', category = '全部' } = {}) {
     return filterFoodMock({ keyword, category })
   }
   try {
-    return await httpGet(FOOD_ENDPOINTS.food, { keyword, category })
+    return normalizeList(await httpGet(FOOD_ENDPOINTS.food, { keyword, category }))
   } catch (e) {
     if (FOOD_FALLBACK_MOCK) {
       console.warn('[food] 后端美食页接口暂不可用，已回退到本地模拟数据：', e.message)
@@ -251,7 +296,8 @@ export async function getCategories() {
     return MOCK_CATEGORIES.slice()
   }
   try {
-    return httpGet(FOOD_ENDPOINTS.categories, {})
+    // 注意此处必须 await：否则请求异常不会被 catch 捕获，回退逻辑失效
+    return await httpGet(FOOD_ENDPOINTS.categories, {})
   } catch (e) {
     if (FOOD_FALLBACK_MOCK) {
       console.warn('[food] 后端分类接口暂不可用，已回退到本地模拟数据：', e.message)

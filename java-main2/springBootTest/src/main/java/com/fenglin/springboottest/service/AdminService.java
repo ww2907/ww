@@ -1,18 +1,23 @@
 package com.fenglin.springboottest.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.fenglin.springboottest.common.BusinessException;
 import com.fenglin.springboottest.entity.*;
 import com.fenglin.springboottest.mapper.*;
+import com.fenglin.springboottest.vo.UserAddressVO;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 /**
@@ -31,29 +36,34 @@ public class AdminService implements CommandLineRunner {
     private final AdminConfigMapper configMapper;
     private final AdminCategoryMapper categoryMapper;
     private final AdminDishMapper dishMapper;
-    private final AdminUserMapper userMapper;
     private final AdminOrderMapper orderMapper;
     private final AdminAccountMapper accountMapper;
     private final OrderMapper bizOrderMapper;
     private final UserMapper regUserMapper;
+    private final UserAddressMapper addressMapper;
+    private final UserProfileService profileService;
 
     @Autowired
     public AdminService(AdminConfigMapper configMapper, AdminCategoryMapper categoryMapper,
-                        AdminDishMapper dishMapper, AdminUserMapper userMapper,
+                        AdminDishMapper dishMapper,
                         AdminOrderMapper orderMapper, AdminAccountMapper accountMapper,
-                        OrderMapper bizOrderMapper, UserMapper regUserMapper) {
+                        OrderMapper bizOrderMapper, UserMapper regUserMapper,
+                        UserAddressMapper addressMapper, UserProfileService profileService) {
         this.configMapper = configMapper;
         this.categoryMapper = categoryMapper;
         this.dishMapper = dishMapper;
-        this.userMapper = userMapper;
         this.orderMapper = orderMapper;
         this.accountMapper = accountMapper;
         this.bizOrderMapper = bizOrderMapper;
         this.regUserMapper = regUserMapper;
+        this.addressMapper = addressMapper;
+        this.profileService = profileService;
     }
 
     private static final String DEFAULT_PLACEHOLDER = "搜美食、搜好店，回车进入美食页…";
     private static final List<String> DEFAULT_HOTWORDS = Arrays.asList("牛肉面", "火锅", "轻食", "奶茶", "沙拉", "炸鸡");
+    /** 后台表格统一使用的注册时间格式 */
+    private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     // ============ 登录（仅登录，无注册）============
     public Map<String, Object> adminLogin(String account, String password) {
@@ -286,17 +296,151 @@ public class AdminService implements CommandLineRunner {
         return result;
     }
 
-    // ============ 6. 用户 ============
+    // ============ 6. 用户（真实注册用户表 user）============
+    /**
+     * 用户列表：读真实 user 表（不再读 admin_user 种子表），并附带每位用户的收货地址数量，
+     * 让后台「用户管理」与前台「我的」页面（头像 / 昵称 / 性别 / 手机 / 签名 / 地址）保持一致。
+     */
     public List<AdminUser> listUsers() {
-        return userMapper.selectList(null);
+        List<User> users = regUserMapper.selectList(new QueryWrapper<User>().orderByAsc("id"));
+        Map<String, Integer> addrCountMap = countAddressByAccount();
+        List<AdminUser> result = new ArrayList<>();
+        for (User u : users) {
+            AdminUser vo = toAdminUser(u);
+            vo.setAddressCount(addrCountMap.getOrDefault(u.getAccount(), 0));
+            result.add(vo);
+        }
+        return result;
     }
 
+    /**
+     * 后台编辑用户资料：只接收前台「我的」页面可编辑的字段（昵称 / 头像 / 性别 / 手机 / 签名）
+     * 以及账号状态；账号、密码、注册时间不可经由该接口修改。
+     */
     public void updateUser(AdminUser u) {
-        userMapper.updateById(u);
+        if (u == null || u.getId() == null) {
+            throw new BusinessException("缺少用户信息");
+        }
+        User target = regUserMapper.selectById(u.getId());
+        if (target == null) {
+            throw new BusinessException(404, "用户不存在");
+        }
+
+        if (u.getNickname() != null) {
+            String nickname = u.getNickname().trim();
+            if (nickname.isEmpty()) nickname = target.getAccount();
+            if (nickname.length() > 20) {
+                throw new BusinessException("昵称不能超过 20 个字符");
+            }
+            target.setNickname(nickname);
+        }
+        if (u.getAvatar() != null) {
+            String avatar = u.getAvatar().trim();
+            if (avatar.length() > 16) {
+                throw new BusinessException("头像不能超过 16 个字符");
+            }
+            target.setAvatar(avatar);
+        }
+        if (u.getGender() != null) {
+            String gender = u.getGender().trim();
+            if (!gender.isEmpty() && !"男".equals(gender) && !"女".equals(gender)) {
+                throw new BusinessException("性别只能为 男 / 女 / 空");
+            }
+            target.setGender(gender);
+        }
+        if (u.getPhone() != null) {
+            String phone = u.getPhone().trim();
+            if (phone.length() > 20) {
+                throw new BusinessException("手机号过长");
+            }
+            target.setPhone(phone);
+        }
+        if (u.getBio() != null) {
+            String bio = u.getBio().trim();
+            if (bio.length() > 128) {
+                throw new BusinessException("个性签名不能超过 128 个字符");
+            }
+            target.setBio(bio);
+        }
+        if (u.getStatus() != null) {
+            if (u.getStatus() != 0 && u.getStatus() != 1) {
+                throw new BusinessException("状态只能为 1（正常）或 0（禁用）");
+            }
+            target.setStatus(u.getStatus());
+        }
+
+        target.setUpdatedAt(LocalDateTime.now());
+        regUserMapper.updateById(target);
     }
 
+    /** 删除用户：连带清理其收货地址，避免 user_address 留下孤儿数据 */
+    @Transactional(rollbackFor = Exception.class)
     public void removeUser(Long id) {
-        userMapper.deleteById(id);
+        if (id == null) {
+            throw new BusinessException("缺少用户信息");
+        }
+        User target = regUserMapper.selectById(id);
+        if (target == null) {
+            return;
+        }
+        regUserMapper.deleteById(id);
+        addressMapper.delete(new QueryWrapper<UserAddress>().eq("account", target.getAccount()));
+    }
+
+    /** 后台查看某位用户的收货地址（复用前台「收货地址管理」的服务） */
+    public List<UserAddressVO> listUserAddresses(Long id) {
+        User target = regUserMapper.selectById(id);
+        if (target == null) {
+            throw new BusinessException(404, "用户不存在");
+        }
+        return profileService.listAddresses(target.getAccount());
+    }
+
+    /** 后台删除某位用户的收货地址（脏数据清理） */
+    public void removeUserAddress(Long id, Long addressId) {
+        User target = regUserMapper.selectById(id);
+        if (target == null) {
+            throw new BusinessException(404, "用户不存在");
+        }
+        UserAddress a = addressMapper.selectById(addressId);
+        if (a == null) {
+            return;
+        }
+        if (!target.getAccount().equals(a.getAccount())) {
+            throw new BusinessException("该地址不属于此用户");
+        }
+        addressMapper.deleteById(addressId);
+    }
+
+    /** 按账号统计收货地址数量，一次 group by 取回，避免 N+1 查询 */
+    private Map<String, Integer> countAddressByAccount() {
+        Map<String, Integer> map = new HashMap<>();
+        List<Map<String, Object>> rows = addressMapper.selectMaps(new QueryWrapper<UserAddress>()
+                .select("account", "COUNT(*) AS cnt")
+                .groupBy("account"));
+        for (Map<String, Object> row : rows) {
+            Object acc = row.get("account");
+            Object cnt = row.get("cnt");
+            if (acc == null || cnt == null) continue;
+            map.put(String.valueOf(acc), ((Number) cnt).intValue());
+        }
+        return map;
+    }
+
+    private AdminUser toAdminUser(User u) {
+        AdminUser vo = new AdminUser();
+        vo.setId(u.getId());
+        vo.setAccount(u.getAccount());
+        vo.setNickname(u.getNickname());
+        vo.setAvatar(u.getAvatar() == null ? "" : u.getAvatar());
+        vo.setGender(u.getGender() == null ? "" : u.getGender());
+        vo.setPhone(u.getPhone() == null ? "" : u.getPhone());
+        vo.setBio(u.getBio() == null ? "" : u.getBio());
+        vo.setAccountType(u.getAccountType());
+        vo.setStatus(u.getStatus());
+        vo.setCreatedAt(u.getCreatedAt() == null ? "" : u.getCreatedAt().format(TIME_FMT));
+        vo.setAddressCount(0);
+        return vo;
     }
 
     // ============ 7. 订单 ============

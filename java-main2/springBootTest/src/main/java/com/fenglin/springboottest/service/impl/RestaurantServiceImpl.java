@@ -19,11 +19,29 @@ import com.fenglin.springboottest.vo.ReviewVO;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
 public class RestaurantServiceImpl extends ServiceImpl<RestaurantMapper, Restaurant> implements RestaurantService {
+
+    /** 无菜品时的「人均」分类基准价（与前端 src/api/food.js 的 PRICE_BASE 保持一致） */
+    private static final Map<String, Integer> PRICE_BASE = new HashMap<>();
+
+    static {
+        PRICE_BASE.put("面食", 22);
+        PRICE_BASE.put("快餐", 26);
+        PRICE_BASE.put("甜点", 24);
+        PRICE_BASE.put("饮品", 20);
+        PRICE_BASE.put("轻食", 26);
+        PRICE_BASE.put("火锅", 58);
+    }
+
+    /** 距离文案解析："320m" -> 320；"1.1km" -> 1100 */
+    private static final Pattern DISTANCE_PATTERN = Pattern.compile("([\\d.]+)\\s*(km|公里|m|米)?");
 
     private final DishMapper dishMapper;
     private final ReviewMapper reviewMapper;
@@ -56,7 +74,8 @@ public class RestaurantServiceImpl extends ServiceImpl<RestaurantMapper, Restaur
         }
 
         qw.orderByDesc("sort");
-        return baseMapper.selectList(qw).stream().map(this::toVO).collect(Collectors.toList());
+        Map<Long, Integer> priceMap = avgPriceByRestaurant();
+        return baseMapper.selectList(qw).stream().map(r -> toVO(r, priceMap)).collect(Collectors.toList());
     }
 
     @Override
@@ -64,7 +83,8 @@ public class RestaurantServiceImpl extends ServiceImpl<RestaurantMapper, Restaur
         if (limit <= 0) {
             limit = 12;
         }
-        return topRated(limit).stream().map(this::toVO).collect(Collectors.toList());
+        Map<Long, Integer> priceMap = avgPriceByRestaurant();
+        return topRated(limit).stream().map(r -> toVO(r, priceMap)).collect(Collectors.toList());
     }
 
     @Override
@@ -82,12 +102,13 @@ public class RestaurantServiceImpl extends ServiceImpl<RestaurantMapper, Restaur
         List<String> names = (category != null && !category.trim().isEmpty() && !"全部".equals(category.trim()))
                 ? resolveCategoryNames(category.trim()) : null;
 
+        Map<Long, Integer> priceMap = avgPriceByRestaurant();
         return all.stream()
                 .filter(r -> !recommendedIds.contains(r.getId()))
                 .filter(r -> matchKeyword(r, k))
                 .filter(r -> matchCategory(r, category, names))
                 .sorted((a, b) -> compareSortDesc(a, b))
-                .map(this::toVO)
+                .map(r -> toVO(r, priceMap))
                 .collect(Collectors.toList());
     }
 
@@ -228,10 +249,123 @@ public class RestaurantServiceImpl extends ServiceImpl<RestaurantMapper, Restaur
         }
     }
 
-    private RestaurantVO toVO(Restaurant r) {
+    private RestaurantVO toVO(Restaurant r, Map<Long, Integer> priceMap) {
         RestaurantVO vo = new RestaurantVO();
         copyBase(r, vo);
+        vo.setPrice(resolvePrice(r, priceMap));
+        vo.setDistanceM(parseDistance(r.getDistance()));
         return vo;
+    }
+
+    /** 每家店人均价：优先取店内菜品均价，无菜品时回退分类基准价 */
+    private Map<Long, Integer> avgPriceByRestaurant() {
+        List<Dish> dishes = dishMapper.selectList(null);
+        Map<Long, BigDecimal> sum = new HashMap<>();
+        Map<Long, Integer> count = new HashMap<>();
+        for (Dish d : dishes) {
+            if (d.getRestaurantId() == null || d.getPrice() == null) {
+                continue;
+            }
+            sum.merge(d.getRestaurantId(), d.getPrice(), BigDecimal::add);
+            count.merge(d.getRestaurantId(), 1, Integer::sum);
+        }
+        Map<Long, Integer> avg = new HashMap<>();
+        for (Map.Entry<Long, BigDecimal> e : sum.entrySet()) {
+            int c = count.getOrDefault(e.getKey(), 0);
+            if (c > 0) {
+                avg.put(e.getKey(),
+                        e.getValue().divide(BigDecimal.valueOf(c), 0, RoundingMode.HALF_UP).intValue());
+            }
+        }
+        return avg;
+    }
+
+    private int resolvePrice(Restaurant r, Map<Long, Integer> priceMap) {
+        Integer p = priceMap.get(r.getId());
+        if (p != null && p > 0) {
+            return p;
+        }
+        String cat = r.getCat() == null ? "" : r.getCat();
+        return PRICE_BASE.getOrDefault(cat, 25);
+    }
+
+    private int parseDistance(String str) {
+        if (str == null) {
+            return 999999;
+        }
+        Matcher m = DISTANCE_PATTERN.matcher(str.trim().toLowerCase());
+        if (!m.find()) {
+            return 999999;
+        }
+        double num;
+        try {
+            num = Double.parseDouble(m.group(1));
+        } catch (Exception e) {
+            return 999999;
+        }
+        String unit = m.group(2) == null ? "m" : m.group(2);
+        boolean km = "km".equals(unit) || "公里".equals(unit);
+        return (int) Math.round(km ? num * 1000 : num);
+    }
+
+    @Override
+    public List<Map<String, Object>> suggest(String keyword, int limit) {
+        List<Map<String, Object>> out = new ArrayList<>();
+        String k = keyword == null ? "" : keyword.trim();
+        if (k.isEmpty()) {
+            return out;
+        }
+        if (limit <= 0) {
+            limit = 8;
+        }
+
+        List<Restaurant> restaurants = baseMapper.selectList(null);
+        Map<Long, Restaurant> byId = new HashMap<>();
+        for (Restaurant r : restaurants) {
+            byId.put(r.getId(), r);
+        }
+
+        Set<String> seen = new HashSet<>();
+
+        // 1) 店铺名 / 分类命中（优先）
+        for (Restaurant r : restaurants) {
+            if (out.size() >= limit) {
+                return out;
+            }
+            String name = r.getName() == null ? "" : r.getName();
+            String cat = r.getCat() == null ? "" : r.getCat();
+            if (name.contains(k) || cat.contains(k)) {
+                out.add(suggestionItem("restaurant", r.getId(), name, cat, r.getEmoji()));
+                seen.add("r-" + r.getId());
+            }
+        }
+
+        // 2) 菜品名命中（点选后跳转到所属店铺）
+        List<Dish> dishes = dishMapper.selectList(null);
+        for (Dish d : dishes) {
+            if (out.size() >= limit) {
+                break;
+            }
+            String dn = d.getName() == null ? "" : d.getName();
+            if (!dn.contains(k) || seen.contains("d-" + dn)) {
+                continue;
+            }
+            Restaurant r = byId.get(d.getRestaurantId());
+            String sub = r == null || r.getName() == null ? "" : r.getName();
+            out.add(suggestionItem("dish", d.getRestaurantId(), dn, sub, d.getEmoji()));
+            seen.add("d-" + dn);
+        }
+        return out;
+    }
+
+    private Map<String, Object> suggestionItem(String kind, Long id, String name, String sub, String emoji) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("kind", kind);
+        m.put("id", id);
+        m.put("name", name);
+        m.put("sub", sub);
+        m.put("emoji", emoji);
+        return m;
     }
 
     private void copyBase(Restaurant r, RestaurantVO vo) {

@@ -299,6 +299,39 @@ export async function removeUser(id) {
   return httpReq('delete', ADMIN_ENDPOINTS.user + '/' + id)
 }
 
+// 用户收货地址（后台只读查看 + 删除脏数据），对应前台「我的 → 收货地址管理」
+// mock 数据仅用于演示，按 userId 分组
+const mockUserAddresses = {
+  1: [
+    { id: 11, account: 'demo', name: '林小满', phone: '13800001234', tag: '家', province: '广东省', city: '深圳市', detail: '南山区科技园南路 8 号 1203', isDefault: true },
+    { id: 12, account: 'demo', name: '林小满', phone: '13800001234', tag: '公司', province: '广东省', city: '深圳市', detail: '福田区深南大道 1000 号 A 座 22F', isDefault: false }
+  ],
+  2: [
+    { id: 21, account: 'xiaoming', name: '王小明', phone: '13900002345', tag: '学校', province: '浙江省', city: '杭州市', detail: '西湖区余杭塘路 866 号 5 号楼', isDefault: true }
+  ],
+  3: [],
+  4: []
+}
+
+/** 查看某位用户的收货地址：GET /admin/user/{id}/address */
+export async function listUserAddresses(userId) {
+  if (ADMIN_USE_MOCK) {
+    await delay(150)
+    return clone(mockUserAddresses[userId] || [])
+  }
+  return httpReq('get', ADMIN_ENDPOINTS.user + '/' + userId + '/address')
+}
+
+/** 删除某位用户的收货地址：DELETE /admin/user/{id}/address/{addressId} */
+export async function removeUserAddress(userId, addressId) {
+  if (ADMIN_USE_MOCK) {
+    await delay(150)
+    mockUserAddresses[userId] = (mockUserAddresses[userId] || []).filter((a) => a.id !== addressId)
+    return { ok: true }
+  }
+  return httpReq('delete', ADMIN_ENDPOINTS.user + '/' + userId + '/address/' + addressId)
+}
+
 // ============ 6. 订单 ============
 export async function listOrders() {
   if (ADMIN_USE_MOCK) {

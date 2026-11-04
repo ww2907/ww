@@ -1,85 +1,63 @@
 <script setup>
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getRestaurantDetail } from '../api/restaurant.js'
 import { createOrder } from '../api/order.js'
+import { cart } from '../store/cart.js'
 import { session } from '../store.js'
+import { toast } from '../composables/useToast.js'
+import EmptyState from '../components/EmptyState.vue'
 
 const route = useRoute()
 const router = useRouter()
 
+const rid = computed(() => route.params.id)
 const store = ref(null)
 const loading = ref(true)
 const errMsg = ref('')
 
-// 购物车：dishKey -> 数量（key 统一转为字符串，兼容 mock 的 '1-m1' 与真实数字 id）
-const cart = reactive({})
+const { items, totalCount, totalPrice } = cart.useCartTotals(rid)
 
-const dishKey = (d) => String(d.id)
-const qtyOf = (d) => cart[dishKey(d)] || 0
+const submitting = ref(false)
 
 function inc(d) {
-  const k = dishKey(d)
-  cart[k] = qtyOf(d) + 1
+  cart.inc(rid.value, { ...d, id: d.id != null ? d.id : d.dishKey })
 }
 function dec(d) {
-  const k = dishKey(d)
-  if (qtyOf(d) > 0) cart[k] = qtyOf(d) - 1
+  cart.dec(rid.value, d.dishKey)
+}
+function remove(d) {
+  cart.removeItem(rid.value, d.dishKey)
 }
 
-const totalCount = computed(() => {
-  if (!store.value) return 0
-  return store.value.menu.reduce((s, d) => s + qtyOf(d), 0)
-})
-const totalPrice = computed(() => {
-  if (!store.value) return 0
-  return store.value.menu.reduce((s, d) => s + Number(d.price || 0) * qtyOf(d), 0)
-})
-
-// 提交订单
-const submitting = ref(false)
 async function submitOrder() {
-  if (!store.value || totalCount.value === 0 || submitting.value) return
+  if (totalCount.value === 0 || submitting.value) return
   submitting.value = true
-  const items = store.value.menu
-    .filter((d) => qtyOf(d) > 0)
-    .map((d) => ({
-      dishId: typeof d.id === 'number' ? d.id : null,
-      name: d.name,
-      price: Number(d.price || 0),
-      qty: qtyOf(d)
-    }))
+  const orderItems = items.value.map((it) => ({
+    dishId: it.id != null ? it.id : null,
+    name: it.name,
+    price: it.price,
+    qty: it.qty
+  }))
   try {
     const order = await createOrder({
-      restaurantId: store.value.id,
-      restaurantName: store.value.name,
+      restaurantId: rid.value,
+      restaurantName: store.value ? store.value.name : cart.getRestaurantCart(rid.value).restaurantName,
       account: session.account,
-      items
+      items: orderItems
     })
-    showToast(`下单成功 🎉 订单号 ${order.orderNo}`)
-    // 清空购物车并跳转到「我的订单」
-    for (const k in cart) delete cart[k]
+    toast(`下单成功 🎉 订单号 ${order.orderNo}`, 'success')
+    cart.clearRestaurant(rid.value)
     setTimeout(() => router.replace('/orders'), 900)
   } catch (e) {
-    showToast(e.message || '下单失败，请稍后重试')
+    toast(e.message || '下单失败，请稍后重试', 'error')
   } finally {
     submitting.value = false
   }
 }
 
 function goBack() {
-  router.push('/home')
-}
-
-// 轻提示
-const toastMsg = ref('')
-const toastShow = ref(false)
-let toastTimer = null
-function showToast(msg) {
-  toastMsg.value = msg
-  toastShow.value = true
-  clearTimeout(toastTimer)
-  toastTimer = setTimeout(() => (toastShow.value = false), 2200)
+  router.push('/restaurant/' + rid.value)
 }
 
 onMounted(async () => {
@@ -91,7 +69,6 @@ onMounted(async () => {
     loading.value = false
   }
 })
-onUnmounted(() => clearTimeout(toastTimer))
 </script>
 
 <template>
@@ -99,59 +76,58 @@ onUnmounted(() => clearTimeout(toastTimer))
     <!-- 顶部：返回 -->
     <header class="topbar">
       <button class="back" @click="goBack">‹ 返回</button>
-      <span class="top-title">点餐</span>
+      <span class="top-title">购物车 · 结算</span>
       <span class="top-spacer"></span>
     </header>
 
     <!-- 加载态 -->
     <div v-if="loading" class="state">
-      <span class="spinner"></span> 正在加载店铺与菜单…
+      <span class="spinner"></span> 正在加载…
     </div>
 
     <!-- 错误态 -->
     <div v-else-if="errMsg" class="state empty">😶 {{ errMsg }}</div>
 
-    <!-- 店铺内容 -->
-    <template v-else-if="store">
+    <!-- 空购物车 -->
+    <div v-else-if="totalCount === 0">
+      <EmptyState type="cart" title="购物车还是空的" desc="去店铺里挑几道好吃的吧～">
+        <template #action>
+          <button class="empty-btn" @click="goBack">去点餐</button>
+        </template>
+      </EmptyState>
+    </div>
+
+    <!-- 购物车内容 -->
+    <template v-else>
       <!-- 店铺信息 -->
-      <section class="store">
-        <div class="store-emoji">{{ store.emoji }}</div>
+      <section class="block store">
+        <div class="store-emoji">{{ store ? store.emoji : '🍜' }}</div>
         <div class="store-info">
-          <h1 class="store-name">{{ store.name }}</h1>
-          <div class="store-meta">
-            <span>⭐ {{ store.rating }}</span>
-            <span class="dot">·</span>
-            <span>📍 {{ store.distance }}</span>
-            <span class="dot">·</span>
-            <span>{{ store.cat }}</span>
-          </div>
-          <div class="store-tags">
-            <span class="tag" v-for="t in store.tags" :key="t">{{ t }}</span>
-          </div>
+          <div class="store-name">{{ store ? store.name : (cart.getRestaurantCart(rid).restaurantName || '店铺') }}</div>
+          <div class="store-sub">🧾 共 {{ totalCount }} 件 · 合计 ¥{{ totalPrice.toFixed(2) }}</div>
         </div>
       </section>
 
-      <!-- 店内美食（可加入购物车） -->
+      <!-- 已选菜品 -->
       <section class="block">
         <div class="block-head">
-          <h2>🍽️ 店内美食</h2>
-          <span class="count">{{ store.menu.length }} 道</span>
+          <h2>🍽️ 已选美食</h2>
+          <span class="count">{{ items.length }} 种</span>
         </div>
         <ul class="menu">
-          <li class="dish" v-for="d in store.menu" :key="d.id">
+          <li class="dish" v-for="d in items" :key="d.dishKey">
             <div class="dish-emoji">{{ d.emoji }}</div>
             <div class="dish-main">
               <div class="dish-name">{{ d.name }}</div>
-              <div class="dish-desc">{{ d.desc }}</div>
-              <div class="dish-price">¥{{ d.price }}</div>
+              <div class="dish-price">¥{{ Number(d.price || 0).toFixed(2) }} <span class="dish-sub">×{{ d.qty }}</span></div>
             </div>
             <div class="dish-action">
-              <div class="stepper" v-if="qtyOf(d) > 0">
+              <div class="stepper">
                 <button class="step" @click="dec(d)">−</button>
-                <span class="qnum">{{ qtyOf(d) }}</span>
+                <span class="qnum">{{ d.qty }}</span>
                 <button class="step" @click="inc(d)">+</button>
               </div>
-              <button v-else class="add-btn" @click="inc(d)">＋ 加入</button>
+              <button class="del" @click="remove(d)" title="移除">🗑</button>
             </div>
           </li>
         </ul>
@@ -160,27 +136,18 @@ onUnmounted(() => clearTimeout(toastTimer))
       <footer class="foot">食光 · 美食 — 发现身边的每一口好味道 🌿</footer>
     </template>
 
-    <!-- 底部购物车栏 -->
-    <div class="cartbar" v-if="store && !loading && !errMsg">
+    <!-- 底部结算栏 -->
+    <div class="cartbar" v-if="totalCount > 0">
       <div class="cart-info">
-        <div class="cart-count">
-          🛒 {{ totalCount }} 件
-        </div>
-        <div class="cart-total">
-          合计 <span class="amount">¥{{ totalPrice.toFixed(2) }}</span>
-        </div>
+        <div class="cart-count">🛒 {{ totalCount }} 件</div>
+        <div class="cart-total">合计 <span class="amount">¥{{ totalPrice.toFixed(2) }}</span></div>
       </div>
-      <button
-        class="submit"
-        :disabled="totalCount === 0 || submitting"
-        @click="submitOrder"
-      >
-        {{ submitting ? '提交中…' : (totalCount === 0 ? '请先选餐' : '提交订单') }}
+      <button class="submit" :disabled="submitting" @click="submitOrder">
+        <span v-if="submitting" class="btn-spin"></span>
+        {{ submitting ? '提交中…' : '提交订单' }}
       </button>
     </div>
   </div>
-
-  <div class="toast" :class="{ show: toastShow }">{{ toastMsg }}</div>
 </template>
 
 <style scoped>
@@ -189,7 +156,7 @@ onUnmounted(() => clearTimeout(toastTimer))
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding-bottom: 96px;
+  padding-bottom: 120px;
 }
 
 /* 顶部返回 */
@@ -224,28 +191,31 @@ onUnmounted(() => clearTimeout(toastTimer))
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* 店铺信息 */
-.store {
-  display: flex; gap: 16px; padding: 20px;
-  border-radius: 22px; background: linear-gradient(135deg, rgba(0,184,148,0.92), rgba(0,206,201,0.92));
-  color: #fff; box-shadow: var(--shadow);
+/* 空购物车 */
+.empty-btn {
+  margin-top: 4px; border: none; cursor: pointer; padding: 11px 24px; border-radius: 12px;
+  background: linear-gradient(135deg, var(--teal), var(--cyan)); color: #fff;
+  font-weight: 800; font-size: 14px; font-family: inherit;
+  box-shadow: 0 6px 14px rgba(0, 150, 136, 0.35); transition: transform 0.15s, box-shadow 0.15s;
 }
-.store-emoji {
-  width: 64px; height: 64px; flex: none; border-radius: 18px;
-  background: rgba(255,255,255,0.25); display: grid; place-items: center; font-size: 34px;
-}
-.store-info { min-width: 0; }
-.store-name { font-size: 22px; font-weight: 900; text-shadow: 0 3px 14px rgba(0,80,70,0.3); }
-.store-meta { margin-top: 8px; font-size: 13px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; opacity: 0.97; }
-.store-meta .dot { opacity: 0.6; }
-.store-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-.store-tags .tag { font-size: 11px; background: rgba(255,255,255,0.22); color: #fff; padding: 3px 9px; border-radius: 8px; }
+.empty-btn:hover { transform: translateY(-1px); box-shadow: 0 9px 18px rgba(0, 150, 136, 0.5); }
 
 /* 区块 */
 .block { background: rgba(255,255,255,0.86); backdrop-filter: blur(8px); border-radius: 22px; padding: 18px; box-shadow: 0 10px 26px rgba(0,150,136,0.16); border: 1px solid rgba(255,255,255,0.6); }
 .block-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; }
 .block-head h2 { font-size: 17px; font-weight: 900; color: var(--deep); }
 .count { font-size: 12px; color: var(--muted); }
+
+/* 店铺信息 */
+.store { display: flex; align-items: center; gap: 14px; }
+.store-emoji {
+  width: 46px; height: 46px; flex: none; border-radius: 13px; font-size: 26px;
+  background: linear-gradient(135deg, rgba(0, 184, 148, 0.15), rgba(0, 206, 201, 0.15));
+  display: grid; place-items: center;
+}
+.store-info { min-width: 0; }
+.store-name { font-size: 15px; font-weight: 800; color: var(--ink); }
+.store-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
 
 /* 菜单 */
 .menu { list-style: none; display: flex; flex-direction: column; gap: 12px; }
@@ -260,9 +230,9 @@ onUnmounted(() => clearTimeout(toastTimer))
 }
 .dish-main { flex: 1; min-width: 0; }
 .dish-name { font-size: 15px; font-weight: 800; color: var(--ink); }
-.dish-desc { font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.5; }
 .dish-price { font-size: 14px; font-weight: 800; color: #e8730c; margin-top: 6px; }
-.dish-action { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.dish-sub { font-size: 12px; color: var(--muted); font-weight: 700; }
+.dish-action { flex: none; display: flex; align-items: center; gap: 10px; }
 .stepper { display: flex; align-items: center; gap: 8px; }
 .step {
   width: 30px; height: 30px; border-radius: 10px; border: 1px solid var(--line);
@@ -270,17 +240,15 @@ onUnmounted(() => clearTimeout(toastTimer))
 }
 .step:hover { background: rgba(0,184,148,0.12); }
 .qnum { font-size: 14px; font-weight: 800; color: var(--deep); min-width: 18px; text-align: center; }
-.add-btn {
-  border: none; cursor: pointer; padding: 8px 14px; border-radius: 11px;
-  background: linear-gradient(135deg, var(--teal), var(--cyan));
-  color: #fff; font-weight: 800; font-size: 13px;
-  box-shadow: 0 6px 14px rgba(0,150,136,0.35); transition: transform 0.15s;
+.del {
+  border: none; background: rgba(120,120,120,0.1); color: #888; cursor: pointer;
+  width: 30px; height: 30px; border-radius: 10px; font-size: 14px;
 }
-.add-btn:hover { transform: translateY(-1px); }
+.del:hover { background: rgba(120,120,120,0.2); }
 
 .foot { text-align: center; font-size: 12px; color: rgba(255,255,255,0.9); text-shadow: 0 2px 8px rgba(0,80,70,0.3); margin-top: 6px; }
 
-/* 底部购物车栏 */
+/* 底部结算栏 */
 .cartbar {
   position: fixed;
   bottom: 14px;
@@ -308,22 +276,15 @@ onUnmounted(() => clearTimeout(toastTimer))
   border: none; cursor: pointer; padding: 12px 26px; border-radius: 14px;
   background: linear-gradient(135deg, var(--teal), var(--cyan));
   color: #fff; font-weight: 800; font-size: 15px;
-  box-shadow: 0 8px 18px rgba(0,150,136,0.45); transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 8px 18px rgba(0, 150, 136, 0.45); transition: transform 0.15s, box-shadow 0.15s;
 }
-.submit:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 11px 22px rgba(0,150,136,0.6); }
+.submit:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 11px 22px rgba(0, 150, 136, 0.6); }
 .submit:disabled { opacity: 0.55; cursor: default; background: #b8e6da; box-shadow: none; }
-
-/* 轻提示 */
-.toast {
-  position: fixed; top: 28px; left: 50%; transform: translateX(-50%) translateY(-20px) scale(0.95);
-  background: linear-gradient(135deg, var(--teal), var(--cyan)); color: #fff;
-  padding: 14px 26px; border-radius: 14px; font-weight: 700;
-  box-shadow: 0 10px 30px rgba(0,150,136,0.45);
-  opacity: 0; pointer-events: none; transition: opacity 0.3s, transform 0.3s; z-index: 999;
-}
-.toast.show { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+.submit .btn-spin { margin-right: 8px; }
 
 @media (max-width: 600px) {
+  .store { padding: 14px; gap: 12px; }
+  .store-emoji { width: 40px; height: 40px; font-size: 22px; border-radius: 12px; }
   .dish { flex-wrap: wrap; }
   .dish-action { flex-direction: row; width: 100%; justify-content: flex-end; align-items: center; }
 }

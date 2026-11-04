@@ -49,11 +49,12 @@ const DEFAULT_DISHES = [
   { id: 9, name: '鸡胸蔬菜沙拉', price: 26, emoji: '🥗', categoryId: 6, description: '高蛋白低脂。', sort: 1, enabled: true },
   { id: 10, name: '藜麦时蔬碗', price: 30, emoji: '🍚', categoryId: 6, description: '饱腹无负担。', sort: 2, enabled: true }
 ]
+// 用户字段与后端 /api/admin/user 返回保持一致（含「我的」页面可编辑的资料项）
 const DEFAULT_USERS = [
-  { id: 1, account: 'demo', nickname: '演示用户', accountType: 0, status: 1, createdAt: '2026-10-23 16:31:59' },
-  { id: 2, account: 'xiaoming', nickname: '小明', accountType: 0, status: 1, createdAt: '2026-10-24 09:12:00' },
-  { id: 3, account: 'lili', nickname: '丽丽', accountType: 0, status: 1, createdAt: '2026-10-24 10:30:00' },
-  { id: 4, account: 'blocked_user', nickname: '已封禁用户', accountType: 0, status: 0, createdAt: '2026-10-25 08:05:00' }
+  { id: 1, account: 'demo', nickname: '演示用户', avatar: '🦊', gender: '女', phone: '13800001234', bio: '热爱生活，热爱美食 🍜', accountType: 0, status: 1, createdAt: '2026-10-23 16:31:59', addressCount: 2 },
+  { id: 2, account: 'xiaoming', nickname: '小明', avatar: '🐼', gender: '男', phone: '13900002345', bio: '一顿不吃饿得慌', accountType: 0, status: 1, createdAt: '2026-10-24 09:12:00', addressCount: 1 },
+  { id: 3, account: 'lili', nickname: '丽丽', avatar: '🐱', gender: '女', phone: '13700003456', bio: '甜品收集者 🍰', accountType: 0, status: 1, createdAt: '2026-10-24 10:30:00', addressCount: 0 },
+  { id: 4, account: 'blocked_user', nickname: '已封禁用户', avatar: '', gender: '', phone: '', bio: '', accountType: 0, status: 0, createdAt: '2026-10-25 08:05:00', addressCount: 0 }
 ]
 const DEFAULT_ORDERS = [
   { id: 'OD20261026001', account: 'demo', restaurant: '巷子口牛肉面', items: '招牌牛肉面 x1, 冰镇酸梅汤 x1', amount: 36, status: '已支付', createdAt: '2026-10-26 11:02:11' },

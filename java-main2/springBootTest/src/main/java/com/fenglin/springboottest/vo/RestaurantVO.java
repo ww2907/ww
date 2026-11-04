@@ -20,4 +20,10 @@ public class RestaurantVO {
     private String cat;
     private String distance;
     private List<String> tags;
+
+    /** 人均价格（元，取店内菜品均价；无菜品时按分类基准价）——供前端「人均最低」排序 */
+    private Integer price;
+
+    /** 距离（米，由 distance 文案解析）——供前端「距离最近」排序 */
+    private Integer distanceM;
 }
