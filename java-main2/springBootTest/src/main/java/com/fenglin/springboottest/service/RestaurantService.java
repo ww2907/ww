@@ -13,6 +13,13 @@ import java.util.Map;
  */
 public interface RestaurantService extends IService<Restaurant> {
 
+    /** 排序字段：综合推荐（评分优先，其次距离） */
+    String SORT_DEFAULT = "default";
+    /** 排序字段：人均价格 */
+    String SORT_PRICE = "price";
+    /** 排序字段：距离 */
+    String SORT_DISTANCE = "distance";
+
     /**
      * 首页店铺列表 / 搜索。
      * @param keyword  关键字（匹配店名、简介、标签），可空
@@ -20,6 +27,15 @@ public interface RestaurantService extends IService<Restaurant> {
      * @return 店铺展示列表
      */
     List<RestaurantVO> search(String keyword, String category);
+
+    /**
+     * 搜索 + 排序（美食页 / 首页共用）。
+     * @param keyword  关键字，可空
+     * @param category 分类名称（支持分级），可空或 "全部"
+     * @param sort     排序字段：default / price / distance，非法值按 default 处理
+     * @param order    排序方向：asc / desc，非法值按 asc 处理
+     */
+    List<RestaurantVO> search(String keyword, String category, String sort, String order);
 
     /** 分类列表（第一个元素固定为 "全部"，之后为数据库中的分类，含分级父分类） */
     List<String> categories();
@@ -39,6 +55,15 @@ public interface RestaurantService extends IService<Restaurant> {
      * @return 美食页面店铺列表
      */
     List<RestaurantVO> foodList(String keyword, String category);
+
+    /**
+     * 美食页面列表 + 排序。
+     * @param keyword  关键字，可空
+     * @param category 分类名称（支持分级），可空或 "全部"
+     * @param sort     排序字段：default / price / distance
+     * @param order    排序方向：asc / desc
+     */
+    List<RestaurantVO> foodList(String keyword, String category, String sort, String order);
 
     /** 店铺详情：含店内菜单、用户评价、平均评分与评价数 */
     RestaurantDetailVO detail(Long id);

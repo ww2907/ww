@@ -9,6 +9,7 @@ import AppHeader from '../components/layout/AppHeader.vue'
 import AppNav from '../components/layout/AppNav.vue'
 import AppSearch from '../components/layout/AppSearch.vue'
 import AppTabbar from '../components/layout/AppTabbar.vue'
+import LocationBar from '../components/LocationBar.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -168,6 +169,9 @@ onUnmounted(() => {
       @select-suggestion="onSelectSuggestion"
     />
 
+    <!-- 定位 / 收货地址（首页顶部） -->
+    <LocationBar />
+
     <!-- 欢迎横幅 -->
     <section class="sh-banner">
       <div class="sh-banner-text">
@@ -196,19 +200,29 @@ onUnmounted(() => {
 
       <!-- 列表 -->
       <div v-else class="sh-grid">
-        <article class="sh-tile is-click card" v-for="r in list" :key="r.id || r.name" @click="openDetail(r)">
+        <article class="sh-tile is-click card" v-for="r in list" :key="r.id || r.name" :class="{ closed: r.openStatus === 0 }" @click="openDetail(r)">
           <div class="card-top">
             <span class="card-emoji">{{ r.emoji }}</span>
-            <span class="card-rating">⭐ {{ r.rating }}</span>
+            <div class="card-top-right">
+              <span class="open-badge" :class="r.openStatus === 0 ? 'closed' : 'open'">{{ r.openStatus === 0 ? '已打烊' : '营业中' }}</span>
+              <span class="card-rating">⭐ {{ r.rating }}</span>
+            </div>
           </div>
           <h3 class="card-name">{{ r.name }}</h3>
           <p class="card-desc">{{ r.desc }}</p>
           <div class="card-tags">
             <span class="tag" v-for="t in r.tags" :key="t">{{ t }}</span>
           </div>
+          <div class="card-meta">
+            <span class="meta-item">起送 ¥{{ r.minOrder }}</span>
+            <span class="meta-dot">·</span>
+            <span class="meta-item">配送 ¥{{ r.deliveryFee }}</span>
+            <span class="meta-dot">·</span>
+            <span class="meta-item">🕒 {{ r.eta }}</span>
+          </div>
           <div class="card-foot">
             <span class="dist">📍 {{ r.distance }}</span>
-            <button class="order-btn" @click.stop="onOrder(r)">下单</button>
+            <button class="order-btn" :disabled="r.openStatus === 0" @click.stop="onOrder(r)">{{ r.openStatus === 0 ? '已打烊' : '下单' }}</button>
           </div>
         </article>
       </div>
@@ -239,13 +253,22 @@ onUnmounted(() => {
   background: linear-gradient(135deg, rgba(0,184,148,0.15), rgba(0,206,201,0.15));
   display: grid; place-items: center; font-size: 26px;
 }
+.card-top-right { display: flex; align-items: center; gap: 8px; }
+.open-badge { font-size: 11px; font-weight: 800; padding: 3px 9px; border-radius: 999px; }
+.open-badge.open { background: rgba(0, 184, 148, 0.14); color: var(--deep); }
+.open-badge.closed { background: rgba(120, 120, 120, 0.16); color: #888; }
 .card-rating { font-size: 13px; font-weight: 800; color: #f39c12; }
 .card-name { font-size: 15px; font-weight: 800; margin-top: 10px; color: var(--ink); }
 .card-desc { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.6; }
 .card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .tag { font-size: 11px; color: var(--deep); background: rgba(0,184,148,0.1); padding: 3px 9px; border-radius: 8px; }
+.card-meta { display: flex; align-items: center; gap: 6px; margin-top: 10px; font-size: 11px; color: var(--muted); flex-wrap: wrap; }
+.meta-item { font-weight: 700; }
+.meta-dot { opacity: 0.5; }
 .card-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
 .dist { font-size: 12px; color: var(--muted); }
+.card.closed .card-emoji { filter: grayscale(0.8); opacity: 0.6; }
+.card.closed .card-name, .card.closed .card-desc { opacity: 0.55; }
 .order-btn {
   border: none; cursor: pointer; padding: 7px 16px; border-radius: 10px;
   background: linear-gradient(135deg, var(--teal), var(--cyan));

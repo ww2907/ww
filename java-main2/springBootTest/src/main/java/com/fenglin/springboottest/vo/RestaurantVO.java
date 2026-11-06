@@ -26,4 +26,16 @@ public class RestaurantVO {
 
     /** 距离（米，由 distance 文案解析）——供前端「距离最近」排序 */
     private Integer distanceM;
+
+    /** 起送价（元） */
+    private Double minOrder;
+
+    /** 配送费（元） */
+    private Double deliveryFee;
+
+    /** 预估送达时间文案（如 30分钟） */
+    private String eta;
+
+    /** 营业状态：1=营业中 0=已打烊 */
+    private Integer openStatus;
 }

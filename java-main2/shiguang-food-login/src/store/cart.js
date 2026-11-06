@@ -53,11 +53,13 @@ function getRestaurantCart(restaurantId) {
   return state.data[key]
 }
 
-// 加入购物车（同一菜品累加数量）
+// 加入购物车（同一菜品+同一规格累加数量；不同规格视为独立条目）
 function addItem(restaurantId, dish, qty = 1) {
   const cart = getRestaurantCart(restaurantId)
   if (dish && dish.name) cart.restaurantName = cart.restaurantName || dish.restaurantName || ''
-  const k = String(dish.id != null ? dish.id : dish.name)
+  const baseKey = String(dish.id != null ? dish.id : dish.name)
+  const specText = dish.specText ? String(dish.specText) : ''
+  const k = specText ? baseKey + '#' + specText : baseKey
   const cur = cart.items[k]
   if (cur) {
     cur.qty += qty
@@ -69,6 +71,7 @@ function addItem(restaurantId, dish, qty = 1) {
       price: Number(dish.price || 0),
       emoji: dish.emoji || '🍽️',
       desc: dish.desc || '',
+      specText: specText || '',
       qty
     }
   }

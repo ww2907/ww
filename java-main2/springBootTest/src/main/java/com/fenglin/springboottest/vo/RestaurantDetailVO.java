@@ -21,6 +21,18 @@ public class RestaurantDetailVO {
     private String distance;
     private List<String> tags;
 
+    /** 起送价（元） */
+    private Double minOrder;
+
+    /** 配送费（元） */
+    private Double deliveryFee;
+
+    /** 预估送达时间文案（如 30分钟） */
+    private String eta;
+
+    /** 营业状态：1=营业中 0=已打烊 */
+    private Integer openStatus;
+
     /** 店内美食 */
     private List<DishVO> menu;
 

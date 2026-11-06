@@ -6,7 +6,7 @@
 // 默认 USE_MOCK=true，所有数据保存在 localStorage，无需后端即可演示。
 // ============================================================
 import { reactive } from 'vue'
-import { MOCK_RESTAURANTS } from '../api/food.js'
+import { MOCK_RESTAURANTS, enrichRestaurant } from '../api/food.js'
 
 const ADMIN_SESSION_KEY = 'shiguang_admin_session'
 const ADMIN_DATA_KEY = 'shiguang_admin_data'
@@ -140,14 +140,18 @@ export function getSearchConfig() {
 // 推荐美食：后台勾选了哪些店铺就展示哪些；未勾选则回退到评分最高的 12 家
 export function getRecommendedRestaurants(limit = 12) {
   const ids = adminData.recommendedIds || []
+  let list
   if (ids.length) {
     const set = new Set(ids)
-    return MOCK_RESTAURANTS.filter((r) => set.has(r.id))
+    list = MOCK_RESTAURANTS.filter((r) => set.has(r.id))
+  } else {
+    list = MOCK_RESTAURANTS
+      .slice()
+      .sort((a, b) => b.rating - a.rating || a.id - b.id)
+      .slice(0, limit)
   }
-  return MOCK_RESTAURANTS
-    .slice()
-    .sort((a, b) => b.rating - a.rating || a.id - b.id)
-    .slice(0, limit)
+  // 补齐排序 + 经营字段（起送价/配送费/送达时间/营业状态）
+  return list.map(enrichRestaurant)
 }
 
 // 统一的后台登录态 key（与首页 session 区分）

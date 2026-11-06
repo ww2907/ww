@@ -11,31 +11,90 @@ const props = defineProps({
 const emit = defineEmits(['close', 'added'])
 
 const qty = ref(1)
+// 规格选择状态：{ 规格名: 选中label（single）/ labels数组（multi） }
+const selection = ref({})
 
-// 每次打开新菜品时把数量重置为 1，并显示已加入购物车的数量
+// 每次打开新菜品：数量重置为 1，规格默认选中「single 第一个」「multi 空」
 watch(
   () => props.dish,
   (d) => {
     qty.value = 1
+    const sel = {}
+    if (d && Array.isArray(d.specs)) {
+      for (const s of d.specs) {
+        if (s.type === 'multi') sel[s.name] = []
+        else sel[s.name] = (s.options && s.options[0]) ? s.options[0].label : ''
+      }
+    }
+    selection.value = sel
   }
 )
 
-const inCart = computed(() => {
-  if (!props.dish) return 0
-  return cart.qtyOf(props.restaurantId, props.dish.id != null ? props.dish.id : props.dish.name)
+const specs = computed(() => (props.dish && Array.isArray(props.dish.specs)) ? props.dish.specs : [])
+
+// 规格加价合计
+const extraPrice = computed(() => {
+  let total = 0
+  for (const s of specs.value) {
+    const sel = selection.value[s.name]
+    if (!s.options) continue
+    if (s.type === 'multi') {
+      for (const label of (sel || [])) {
+        const opt = s.options.find((o) => o.label === label)
+        if (opt) total += Number(opt.price || 0)
+      }
+    } else {
+      const opt = s.options.find((o) => o.label === sel)
+      if (opt) total += Number(opt.price || 0)
+    }
+  }
+  return total
 })
 
-function plus() {
-  qty.value += 1
+// 单价 = 基础价 + 规格加价
+const unitPrice = computed(() => Number(props.dish && props.dish.price ? props.dish.price : 0) + extraPrice.value)
+
+// 规格描述文本（用于购物车展示与条目区分）
+const specText = computed(() => {
+  const parts = specs.value.map((s) => {
+    const sel = selection.value[s.name]
+    if (s.type === 'multi') return (sel && sel.length) ? sel.join('、') : ''
+    return sel ? sel : ''
+  }).filter(Boolean)
+  return parts.length ? parts.join(' / ') : ''
+})
+
+const inCart = computed(() => {
+  if (!props.dish) return 0
+  const baseKey = String(props.dish.id != null ? props.dish.id : props.dish.name)
+  const fullKey = specText.value ? baseKey + '#' + specText.value : baseKey
+  return cart.qtyOf(props.restaurantId, fullKey)
+})
+
+function plus() { qty.value += 1 }
+function minus() { if (qty.value > 1) qty.value -= 1 }
+
+function toggleSingle(specName, label) {
+  selection.value[specName] = label
 }
-function minus() {
-  if (qty.value > 1) qty.value -= 1
+function toggleMulti(specName, label) {
+  const arr = selection.value[specName] || []
+  const i = arr.indexOf(label)
+  const next = arr.slice()
+  if (i >= 0) next.splice(i, 1)
+  else next.push(label)
+  selection.value[specName] = next
 }
 
 function addToCart() {
   if (!props.dish) return
-  cart.addItem(props.restaurantId, { ...props.dish, restaurantName: props.restaurantName }, qty.value)
-  emit('added', { dish: props.dish, qty: qty.value })
+  cart.addItem(props.restaurantId, {
+    ...props.dish,
+    restaurantName: props.restaurantName,
+    price: unitPrice.value,
+    specText: specText.value
+  }, qty.value)
+  emit('added', { dish: props.dish, qty: qty.value, specText: specText.value, price: unitPrice.value })
   emit('close')
 }
 
@@ -55,11 +114,29 @@ function close() {
             <div class="dp-emoji">{{ dish.emoji || '🍽️' }}</div>
             <div class="dp-hero-text">
               <h3 class="dp-name">{{ dish.name }}</h3>
-              <div class="dp-price">¥{{ Number(dish.price || 0).toFixed(2) }}</div>
+              <div class="dp-price">¥{{ unitPrice.toFixed(2) }}</div>
             </div>
           </div>
 
           <p class="dp-desc">{{ dish.desc || '暂无描述' }}</p>
+
+          <!-- 规格选择 -->
+          <div class="dp-specs" v-if="specs.length">
+            <div class="dp-spec" v-for="s in specs" :key="s.name">
+              <div class="dp-spec-name">{{ s.name }}<span v-if="s.type === 'multi'" class="dp-multi-hint">可多选</span></div>
+              <div class="dp-spec-opts">
+                <button
+                  v-for="o in s.options"
+                  :key="o.label"
+                  class="dp-opt"
+                  :class="{ active: s.type === 'multi' ? (selection[s.name] || []).includes(o.label) : selection[s.name] === o.label }"
+                  @click="s.type === 'multi' ? toggleMulti(s.name, o.label) : toggleSingle(s.name, o.label)"
+                >
+                  {{ o.label }}<span v-if="Number(o.price) > 0" class="dp-opt-price">+¥{{ Number(o.price).toFixed(0) }}</span>
+                </button>
+              </div>
+            </div>
+          </div>
 
           <div class="dp-meta">
             <span>已加入购物车：<b>{{ inCart }}</b> 份</span>
@@ -71,7 +148,7 @@ function close() {
               <span class="dp-qnum">{{ qty }}</span>
               <button class="dp-step" @click="plus">+</button>
             </div>
-            <button class="dp-add" @click="addToCart">加入购物车</button>
+            <button class="dp-add" @click="addToCart">加入购物车 · ¥{{ (unitPrice * qty).toFixed(2) }}</button>
           </div>
         </div>
       </transition>
@@ -93,7 +170,9 @@ function close() {
 .dp-sheet {
   position: relative;
   width: 100%;
-  max-width: 520px;
+  max-width: 560px;
+  max-height: 86vh;
+  overflow-y: auto;
   background: #fff;
   border-radius: 22px 22px 0 0;
   padding: 22px 20px calc(20px + env(safe-area-inset-bottom));
@@ -126,6 +205,28 @@ function close() {
 .dp-desc {
   margin-top: 14px; font-size: 13px; line-height: 1.7; color: var(--muted);
 }
+
+/* 规格区 */
+.dp-specs { margin-top: 16px; display: flex; flex-direction: column; gap: 14px; }
+.dp-spec-name {
+  font-size: 13px; font-weight: 800; color: var(--ink); margin-bottom: 8px;
+  display: flex; align-items: center; gap: 6px;
+}
+.dp-multi-hint { font-size: 11px; font-weight: 700; color: var(--muted); }
+.dp-spec-opts { display: flex; flex-wrap: wrap; gap: 8px; }
+.dp-opt {
+  border: 1px solid var(--line); background: #fff; color: var(--ink);
+  padding: 7px 14px; border-radius: 999px; font-size: 13px; font-weight: 700;
+  cursor: pointer; font-family: inherit; transition: all 0.13s;
+}
+.dp-opt:hover { background: rgba(0, 184, 148, 0.08); }
+.dp-opt.active {
+  background: linear-gradient(135deg, var(--teal), var(--cyan));
+  color: #fff; border-color: transparent;
+  box-shadow: 0 6px 14px rgba(0, 150, 136, 0.35);
+}
+.dp-opt-price { font-size: 11px; opacity: 0.85; margin-left: 3px; }
+
 .dp-meta { margin-top: 14px; font-size: 12px; color: var(--muted); }
 .dp-meta b { color: var(--deep); }
 
@@ -133,7 +234,7 @@ function close() {
   display: flex; align-items: center; justify-content: space-between; gap: 14px;
   margin-top: 18px;
 }
-.dp-stepper { display: flex; align-items: center; gap: 12px; }
+.dp-stepper { display: flex; align-items: center; gap: 12px; flex: none; }
 .dp-step {
   width: 34px; height: 34px; border-radius: 11px; border: 1px solid var(--line);
   background: #fff; color: var(--deep); font-size: 20px; font-weight: 800;

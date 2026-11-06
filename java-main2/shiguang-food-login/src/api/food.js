@@ -55,24 +55,61 @@ export function parseDistance(str) {
   return unit === 'km' || unit === '公里' ? Math.round(num * 1000) : Math.round(num)
 }
 
-// 给餐厅对象附加「人均价格」与「距离(米)」两个可排序字段。
-// 非破坏性：真实后端已返回 price / distanceM 时优先使用后端值，
-// 只有缺失时才用分类基准价与距离文案兜底，避免覆盖后端真实数据。
+// ---------- 经营字段派生（与后端 SQL 种子口径一致，mock 兜底用）----------
+const MIN_ORDER_BASE = { 面食: 20, 快餐: 20, 甜点: 25, 饮品: 15, 轻食: 30, 火锅: 50 }
+function minOrderFor(r) {
+  const base = MIN_ORDER_BASE[r.cat] != null ? MIN_ORDER_BASE[r.cat] : 25
+  return base + (Number(r.id) % 2) * 5
+}
+function deliveryFeeFor(dm) {
+  if (dm <= 400) return 0
+  if (dm <= 1000) return 1
+  if (dm <= 1500) return 2
+  if (dm <= 2000) return 3
+  return 5
+}
+function etaFor(dm) {
+  if (dm <= 400) return '25分钟'
+  if (dm <= 800) return '30分钟'
+  if (dm <= 1500) return '35分钟'
+  if (dm <= 2000) return '40分钟'
+  return '50分钟'
+}
+function openStatusFor(r) {
+  return Number(r.id) % 7 === 0 ? 0 : 1
+}
+
+// 给餐厅对象附加「人均价格」「距离(米)」「经营字段」。
+// 非破坏性：真实后端已返回时优先用后端值，缺失才用派生值兜底。
 function withSortFields(r) {
   if (!r || typeof r !== 'object') return r
   const price = r.price != null && r.price !== '' ? Number(r.price) : priceFor(r)
   const distanceM =
     r.distanceM != null && r.distanceM !== '' ? Number(r.distanceM) : parseDistance(r.distance)
+  const dm = Number.isFinite(distanceM) ? distanceM : 999999
+  const minOrder = r.minOrder != null ? Number(r.minOrder) : minOrderFor(r)
+  const deliveryFee = r.deliveryFee != null ? Number(r.deliveryFee) : deliveryFeeFor(dm)
+  const eta = r.eta != null && r.eta !== '' ? r.eta : etaFor(dm)
+  const openStatus = r.openStatus != null ? Number(r.openStatus) : openStatusFor(r)
   return {
     ...r,
     price: Number.isFinite(price) ? price : priceFor(r),
-    distanceM: Number.isFinite(distanceM) ? distanceM : 999999
+    distanceM: dm,
+    minOrder: Number.isFinite(minOrder) ? minOrder : minOrderFor(r),
+    deliveryFee: Number.isFinite(deliveryFee) ? deliveryFee : deliveryFeeFor(dm),
+    eta,
+    openStatus: Number.isFinite(openStatus) ? openStatus : openStatusFor(r)
   }
 }
 
 // 后端返回的列表同样补齐排序字段，保证「人均最低 / 距离最近」两种排序在真实模式下也生效
 function normalizeList(list) {
   return Array.isArray(list) ? list.map(withSortFields) : list
+}
+
+// 供外部（如首页推荐列表）复用：给单条餐厅补齐排序 + 经营字段
+export function enrichRestaurant(r) {
+  return withSortFields(r)
 }
 
 // ---------- 本地模拟数据（仅供演示，真实数据来自后端）----------
@@ -153,6 +190,30 @@ function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+// ---------- 通用排序（与后端 applySort 口径完全一致）----------
+// sort: 'default' 综合推荐（评分降序→距离升序） / 'price' 人均最低 / 'distance' 距离最近
+// order: 'asc'（默认） / 'desc'
+export function sortRestaurants(list, sort = 'default', order = 'asc') {
+  const arr = Array.isArray(list) ? list.slice() : []
+  const byRatingDesc = (a, b) => (b.rating || 0) - (a.rating || 0)
+  const byId = (a, b) => (Number(a.id) || 0) - (Number(b.id) || 0)
+  const cmp = {
+    price: (a, b) =>
+      (a.price != null ? a.price : 1e9) - (b.price != null ? b.price : 1e9) ||
+      byRatingDesc(a, b) || byId(a, b),
+    distance: (a, b) =>
+      (a.distanceM != null ? a.distanceM : 1e9) - (b.distanceM != null ? b.distanceM : 1e9) ||
+      byRatingDesc(a, b) || byId(a, b),
+    default: (a, b) =>
+      byRatingDesc(a, b) ||
+      (a.distanceM != null ? a.distanceM : 1e9) - (b.distanceM != null ? b.distanceM : 1e9) ||
+      byId(a, b)
+  }[sort] || null
+  if (!cmp) return arr.sort((a, b) => byRatingDesc(a, b) || byId(a, b))
+  arr.sort(cmp)
+  return String(order).toLowerCase() === 'desc' ? arr.reverse() : arr
+}
+
 // ---------- 真实后端 ----------
 async function httpGet(path, params) {
   const { default: axios } = await import('axios')
@@ -222,21 +283,21 @@ function filterFoodMock({ keyword = '', category = '全部' } = {}) {
 // ============================================================
 
 /**
- * 获取餐厅列表 / 搜索。参数：{ keyword, category }
+ * 获取餐厅列表 / 搜索。参数：{ keyword, category, sort, order }
  * 策略：mock 模式直接返回本地数据；真实模式下优先请求后端，
  *       若后端尚未实现该接口（报错 / 404），则回退到本地模拟，保证页面可用。
  */
-export async function getRestaurants({ keyword = '', category = '全部' } = {}) {
+export async function getRestaurants({ keyword = '', category = '全部', sort = 'default', order = 'asc' } = {}) {
   if (FOOD_USE_MOCK) {
     await delay(400)
-    return filterMock({ keyword, category })
+    return sortRestaurants(filterMock({ keyword, category }), sort, order)
   }
   try {
-    return normalizeList(await httpGet(FOOD_ENDPOINTS.search, { keyword, category }))
+    return normalizeList(await httpGet(FOOD_ENDPOINTS.search, { keyword, category, sort, order }))
   } catch (e) {
     if (FOOD_FALLBACK_MOCK) {
       console.warn('[food] 后端餐厅接口暂不可用，已回退到本地模拟数据：', e.message)
-      return filterMock({ keyword, category })
+      return sortRestaurants(filterMock({ keyword, category }), sort, order)
     }
     throw e
   }
@@ -273,17 +334,17 @@ export async function getRecommended(limit = 12) {
  * 美食页面列表：返回「全部店铺剔除推荐集」后的其余店铺，支持分类 / 关键字筛选。
  * 策略：mock 模式直接返回本地数据；真实模式请求 /food，缺失则回退本地。
  */
-export async function getFoodList({ keyword = '', category = '全部' } = {}) {
+export async function getFoodList({ keyword = '', category = '全部', sort = 'default', order = 'asc' } = {}) {
   if (FOOD_USE_MOCK) {
     await delay(350)
-    return filterFoodMock({ keyword, category })
+    return sortRestaurants(filterFoodMock({ keyword, category }), sort, order)
   }
   try {
-    return normalizeList(await httpGet(FOOD_ENDPOINTS.food, { keyword, category }))
+    return normalizeList(await httpGet(FOOD_ENDPOINTS.food, { keyword, category, sort, order }))
   } catch (e) {
     if (FOOD_FALLBACK_MOCK) {
       console.warn('[food] 后端美食页接口暂不可用，已回退到本地模拟数据：', e.message)
-      return filterFoodMock({ keyword, category })
+      return sortRestaurants(filterFoodMock({ keyword, category }), sort, order)
     }
     throw e
   }

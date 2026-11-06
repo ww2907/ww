@@ -48,4 +48,16 @@ public class Restaurant {
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;
+
+    /** 起送价（元） */
+    private BigDecimal minOrder;
+
+    /** 配送费（元） */
+    private BigDecimal deliveryFee;
+
+    /** 预估送达时间文案（如 30分钟） */
+    private String eta;
+
+    /** 营业状态：1=营业中 0=已打烊 */
+    private Integer openStatus;
 }

@@ -34,4 +34,7 @@ public class Dish {
 
     /** 排序权重 */
     private Integer sort;
+
+    /** 规格 JSON 字符串：[{name,type,options:[{label,price}]}]，可为空 */
+    private String specs;
 }

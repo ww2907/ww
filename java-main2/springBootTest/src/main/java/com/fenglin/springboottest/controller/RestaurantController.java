@@ -27,12 +27,14 @@ public class RestaurantController {
         this.restaurantService = restaurantService;
     }
 
-    /** 首页店铺列表 / 搜索：GET /api/restaurants/search?keyword=&category= */
+    /** 首页店铺列表 / 搜索：GET /api/restaurants/search?keyword=&category=&sort=&order= */
     @GetMapping("/search")
     public Result<List<RestaurantVO>> search(
             @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) String category) {
-        return Result.success(restaurantService.search(keyword, category));
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String sort,
+            @RequestParam(required = false) String order) {
+        return Result.success(restaurantService.search(keyword, category, sort, order));
     }
 
     /** 搜索实时联想：GET /api/restaurants/search/suggest?keyword=&limit= */
@@ -56,12 +58,14 @@ public class RestaurantController {
         return Result.success(restaurantService.recommended(limit));
     }
 
-    /** 美食页面列表：GET /api/restaurants/food?keyword=&category=（剔除推荐集，支持分类/搜索） */
+    /** 美食页面列表：GET /api/restaurants/food?keyword=&category=&sort=&order= */
     @GetMapping("/food")
     public Result<List<RestaurantVO>> food(
             @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) String category) {
-        return Result.success(restaurantService.foodList(keyword, category));
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String sort,
+            @RequestParam(required = false) String order) {
+        return Result.success(restaurantService.foodList(keyword, category, sort, order));
     }
 
     /** 店铺详情：GET /api/restaurants/{id} */

@@ -35,7 +35,7 @@ async function submitOrder() {
   submitting.value = true
   const orderItems = items.value.map((it) => ({
     dishId: it.id != null ? it.id : null,
-    name: it.name,
+    name: it.specText ? `${it.name}（${it.specText}）` : it.name,
     price: it.price,
     qty: it.qty
   }))
@@ -119,6 +119,7 @@ onMounted(async () => {
             <div class="dish-emoji">{{ d.emoji }}</div>
             <div class="dish-main">
               <div class="dish-name">{{ d.name }}</div>
+              <div class="dish-spec" v-if="d.specText">{{ d.specText }}</div>
               <div class="dish-price">¥{{ Number(d.price || 0).toFixed(2) }} <span class="dish-sub">×{{ d.qty }}</span></div>
             </div>
             <div class="dish-action">
@@ -230,6 +231,7 @@ onMounted(async () => {
 }
 .dish-main { flex: 1; min-width: 0; }
 .dish-name { font-size: 15px; font-weight: 800; color: var(--ink); }
+.dish-spec { font-size: 12px; color: var(--muted); margin-top: 3px; }
 .dish-price { font-size: 14px; font-weight: 800; color: #e8730c; margin-top: 6px; }
 .dish-sub { font-size: 12px; color: var(--muted); font-weight: 700; }
 .dish-action { flex: none; display: flex; align-items: center; gap: 10px; }

@@ -15,13 +15,31 @@ const errMsg = ref('')
 
 // 购物车（共享 store，按店铺维度）
 const rid = computed(() => route.params.id)
-const { totalCount, totalPrice } = cart.useCartTotals(rid)
+const { items, totalCount, totalPrice } = cart.useCartTotals(rid)
+// 某菜品的总数量（含所有规格条目）
 function qtyOfDish(d) {
-  return cart.qtyOf(rid.value, d.id != null ? d.id : d.name)
+  const id = d.id != null ? String(d.id) : String(d.name)
+  return items.value.filter((it) => String(it.id) === id).reduce((s, it) => s + it.qty, 0)
 }
-function quickAdd(d) {
-  cart.addItem(rid.value, { ...d, restaurantName: store.value ? store.value.name : '' }, 1)
-  toast(`已加入购物车：${d.name}`, 'success')
+// 减掉该菜品「最后加入的规格条目」一份
+function decDish(d) {
+  const id = d.id != null ? String(d.id) : String(d.name)
+  const it = items.value.filter((x) => String(x.id) === id).pop()
+  if (it) cart.dec(rid.value, it.dishKey)
+}
+
+// ---------- 起送价 / 差额 / 结算可用性 ----------
+const minOrder = computed(() => (store.value && store.value.minOrder != null ? Number(store.value.minOrder) : 0))
+const isClosed = computed(() => store.value != null && store.value.openStatus === 0)
+const reachable = computed(() => totalPrice.value >= minOrder.value)
+const diff = computed(() => Math.max(0, minOrder.value - totalPrice.value))
+const canCheckout = computed(() => totalCount.value > 0 && reachable.value && !isClosed.value)
+
+// 底部购物车栏：点击展开「已选商品」浮层
+const cartPanelOpen = ref(false)
+function toggleCartPanel() {
+  if (items.value.length === 0) return
+  cartPanelOpen.value = !cartPanelOpen.value
 }
 
 // 菜品弹窗
@@ -36,7 +54,8 @@ function onDishAdded() {
 }
 
 function goOrder() {
-  if (totalCount.value === 0) return
+  if (!canCheckout.value) return
+  cartPanelOpen.value = false
   router.push('/order/' + rid.value)
 }
 
@@ -80,16 +99,26 @@ onMounted(async () => {
     <!-- 店铺内容 -->
     <template v-else-if="store">
       <!-- 店铺信息 -->
-      <section class="store">
+      <section class="store" :class="{ closed: store.openStatus === 0 }">
         <div class="store-emoji">{{ store.emoji }}</div>
         <div class="store-info">
-          <h1 class="store-name">{{ store.name }}</h1>
+          <div class="store-name-row">
+            <h1 class="store-name">{{ store.name }}</h1>
+            <span class="open-badge" :class="store.openStatus === 0 ? 'closed' : 'open'">{{ store.openStatus === 0 ? '已打烊' : '营业中' }}</span>
+          </div>
           <div class="store-meta">
             <span class="stars">⭐ {{ store.avgRating }}</span>
             <span class="dot">·</span>
             <span>📍 {{ store.distance }}</span>
             <span class="dot">·</span>
             <span>{{ store.cat }}</span>
+          </div>
+          <div class="store-biz">
+            <span class="biz-item">起送 ¥{{ store.minOrder }}</span>
+            <span class="biz-dot">·</span>
+            <span class="biz-item">配送 ¥{{ store.deliveryFee }}</span>
+            <span class="biz-dot">·</span>
+            <span class="biz-item">🕒 约 {{ store.eta }} 送达</span>
           </div>
           <div class="store-tags">
             <span class="tag" v-for="t in store.tags" :key="t">{{ t }}</span>
@@ -114,11 +143,11 @@ onMounted(async () => {
             </div>
             <div class="dish-action" @click.stop>
               <div class="stepper" v-if="qtyOfDish(d) > 0">
-                <button class="step" @click="cart.dec(rid, d.id != null ? d.id : d.name)">−</button>
+                <button class="step" @click="decDish(d)">−</button>
                 <span class="qnum">{{ qtyOfDish(d) }}</span>
-                <button class="step" @click="cart.inc(rid, { ...d, id: d.id != null ? d.id : d.name })">+</button>
+                <button class="step" @click="openDish(d)">+</button>
               </div>
-              <button v-else class="add-btn" @click="quickAdd(d)">＋ 加入</button>
+              <button v-else class="add-btn" @click="openDish(d)">＋ 选规格</button>
             </div>
           </li>
         </ul>
@@ -155,11 +184,49 @@ onMounted(async () => {
 
     <!-- 底部购物车栏 -->
     <div class="cartbar" v-if="store && !loading && !errMsg && totalCount > 0">
-      <div class="cart-info">
+      <!-- 已选商品浮层 -->
+      <transition name="cp-fade">
+        <div v-if="cartPanelOpen" class="cart-panel">
+          <div class="cp-head">
+            <span>已选商品</span>
+            <button class="cp-clear" @click="cart.clearRestaurant(rid); cartPanelOpen = false">清空</button>
+          </div>
+          <ul class="cp-list">
+            <li class="cp-item" v-for="it in items" :key="it.dishKey">
+              <span class="cp-emoji">{{ it.emoji }}</span>
+              <div class="cp-main">
+                <div class="cp-name">{{ it.name }}</div>
+                <div class="cp-spec" v-if="it.specText">{{ it.specText }}</div>
+                <div class="cp-price">¥{{ Number(it.price || 0).toFixed(2) }}</div>
+              </div>
+              <div class="cp-stepper">
+                <button class="cp-step" @click="cart.dec(rid, it.dishKey)">−</button>
+                <span class="cp-qnum">{{ it.qty }}</span>
+                <button class="cp-step" @click="cart.inc(rid, { ...it, id: it.id != null ? it.id : it.dishKey })">+</button>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </transition>
+
+      <div class="cart-info" @click="toggleCartPanel">
         <div class="cart-count">🛒 {{ totalCount }} 件</div>
         <div class="cart-total">合计 <span class="amount">¥{{ totalPrice.toFixed(2) }}</span></div>
+        <div class="cart-diff" v-if="!reachable">还差 <b>¥{{ diff.toFixed(2) }}</b> 起送</div>
+        <div class="cart-diff ok" v-else>已满足起送 ¥{{ minOrder }}</div>
       </div>
-      <button class="submit" @click="goOrder">去结算</button>
+      <button class="submit" :disabled="!canCheckout" @click="goOrder">
+        {{ isClosed ? '已打烊' : !reachable ? '还差起送' : '去结算' }}
+      </button>
+    </div>
+
+    <!-- 无购物车时也显示起送价提示（未选餐） -->
+    <div class="cartbar cartbar-empty" v-else-if="store && !loading && !errMsg">
+      <div class="cart-info">
+        <div class="cart-count">🛒 购物车</div>
+        <div class="cart-diff">起送 ¥{{ minOrder }}</div>
+      </div>
+      <button class="submit" disabled>{{ isClosed ? '已打烊' : '去结算' }}</button>
     </div>
 
     <DishPopup
@@ -224,13 +291,24 @@ onMounted(async () => {
   width: 64px; height: 64px; flex: none; border-radius: 18px;
   background: rgba(255,255,255,0.25); display: grid; place-items: center; font-size: 34px;
 }
-.store-info { min-width: 0; }
+.store-info { min-width: 0; flex: 1; }
+.store-name-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .store-name { font-size: 22px; font-weight: 900; text-shadow: 0 3px 14px rgba(0,80,70,0.3); }
+.store .open-badge { font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 999px; flex: none; }
+.store .open-badge.open { background: rgba(255,255,255,0.25); color: #fff; }
+.store .open-badge.closed { background: rgba(0,0,0,0.2); color: rgba(255,255,255,0.9); }
 .store-meta { margin-top: 8px; font-size: 13px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; opacity: 0.97; }
 .store-meta .dot { opacity: 0.6; }
+.store-biz { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.store-biz .biz-item {
+  font-size: 12px; font-weight: 800; background: rgba(255,255,255,0.2); color: #fff;
+  padding: 4px 10px; border-radius: 999px;
+}
+.store-biz .biz-dot { opacity: 0.6; }
 .store-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .store-tags .tag { font-size: 11px; background: rgba(255,255,255,0.22); color: #fff; padding: 3px 9px; border-radius: 8px; }
 .store-desc { margin-top: 10px; font-size: 13px; line-height: 1.6; opacity: 0.95; }
+.store.closed .store-emoji { filter: grayscale(0.6); opacity: 0.7; }
 
 /* 区块 */
 .block { background: rgba(255,255,255,0.86); backdrop-filter: blur(8px); border-radius: 22px; padding: 18px; box-shadow: 0 10px 26px rgba(0,150,136,0.16); border: 1px solid rgba(255,255,255,0.6); }
@@ -313,17 +391,51 @@ onMounted(async () => {
   box-shadow: 0 12px 30px rgba(0, 150, 136, 0.3);
   z-index: 30;
 }
-.cart-info { display: flex; flex-direction: column; gap: 2px; }
+.cartbar-empty { z-index: 20; opacity: 0.95; }
+.cart-info { display: flex; flex-direction: column; gap: 2px; cursor: pointer; min-width: 0; }
 .cart-count { font-size: 13px; font-weight: 800; color: var(--deep); }
 .cart-total { font-size: 12px; color: var(--muted); }
 .cart-total .amount { font-size: 18px; font-weight: 900; color: #e8730c; }
+.cart-diff { font-size: 12px; color: #e08e0b; font-weight: 800; margin-top: 1px; }
+.cart-diff.ok { color: var(--deep); }
+.cart-diff b { color: #e8730c; }
 .submit {
   border: none; cursor: pointer; padding: 12px 26px; border-radius: 14px;
   background: linear-gradient(135deg, var(--teal), var(--cyan));
   color: #fff; font-weight: 800; font-size: 15px;
   box-shadow: 0 8px 18px rgba(0, 150, 136, 0.45); transition: transform 0.15s, box-shadow 0.15s;
+  flex: none;
 }
-.submit:hover { transform: translateY(-1px); box-shadow: 0 11px 22px rgba(0, 150, 136, 0.6); }
+.submit:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 11px 22px rgba(0, 150, 136, 0.6); }
+.submit:disabled { background: #b8e6da; box-shadow: none; cursor: default; }
+
+/* 已选商品浮层 */
+.cart-panel {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 0; right: 0;
+  background: #fff; border-radius: 18px;
+  box-shadow: 0 16px 40px rgba(0, 80, 70, 0.28);
+  border: 1px solid rgba(0, 184, 148, 0.18);
+  padding: 12px 14px; z-index: 31;
+}
+.cp-head { display: flex; align-items: center; justify-content: space-between; padding: 2px 2px 10px; border-bottom: 1px solid var(--line); font-size: 13px; font-weight: 900; color: var(--deep); }
+.cp-clear { border: none; background: none; color: var(--muted); font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; }
+.cp-clear:hover { color: #e8730c; }
+.cp-list { list-style: none; max-height: 240px; overflow-y: auto; }
+.cp-item { display: flex; align-items: center; gap: 10px; padding: 10px 2px; }
+.cp-item + .cp-item { border-top: 1px dashed var(--line); }
+.cp-emoji { width: 38px; height: 38px; flex: none; border-radius: 11px; font-size: 20px; background: linear-gradient(135deg, rgba(0,184,148,0.15), rgba(0,206,201,0.15)); display: grid; place-items: center; }
+.cp-main { flex: 1; min-width: 0; }
+.cp-name { font-size: 13px; font-weight: 800; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cp-spec { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.cp-price { font-size: 12px; font-weight: 800; color: #e8730c; margin-top: 2px; }
+.cp-stepper { display: flex; align-items: center; gap: 8px; flex: none; }
+.cp-step { width: 26px; height: 26px; border-radius: 8px; border: 1px solid var(--line); background: #fff; color: var(--deep); font-size: 16px; font-weight: 800; cursor: pointer; line-height: 1; }
+.cp-step:hover { background: rgba(0,184,148,0.12); }
+.cp-qnum { font-size: 13px; font-weight: 800; color: var(--deep); min-width: 14px; text-align: center; }
+.cp-fade-enter-active, .cp-fade-leave-active { transition: opacity 0.2s ease, transform 0.2s ease; }
+.cp-fade-enter-from, .cp-fade-leave-to { opacity: 0; transform: translateY(8px); }
 
 @media (max-width: 600px) {
   .store { padding: 16px; gap: 12px; }

@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { getFoodList, getCategories, MOCK_CATEGORIES } from '../api/food.js'
+import { getFoodList, getCategories, sortRestaurants, MOCK_CATEGORIES } from '../api/food.js'
 import { getSearchSuggestions } from '../api/restaurant.js'
 import { useShellNav } from '../composables/useShellNav.js'
 import { toast } from '../composables/useToast.js'
@@ -35,25 +35,18 @@ const sortOptions = [
 
 const restaurants = ref([])
 
-const sorted = computed(() => {
-  const list = restaurants.value.slice()
-  if (sortBy.value === 'distance') {
-    list.sort((a, b) => (a.distanceM || 999999) - (b.distanceM || 999999))
-  } else if (sortBy.value === 'price') {
-    list.sort((a, b) => (a.price || 9999) - (b.price || 9999) || b.rating - a.rating)
-  } else {
-    // 综合：评分优先，其次距离
-    list.sort((a, b) => b.rating - a.rating || (a.distanceM || 999999) - (b.distanceM || 999999))
-  }
-  return list
-})
+// 排序统一交给 api/food.js 的 sortRestaurants（与后端 applySort 同口径）：
+// 真实模式下后端已排好序，这里再算一遍结果不变，保证 mock/真实两种模式表现一致。
+const sorted = computed(() => sortRestaurants(restaurants.value, sortBy.value, 'asc'))
 
 async function loadList() {
   loading.value = true
   try {
     const data = await getFoodList({
       keyword: keyword.value,
-      category: activeCat.value
+      category: activeCat.value,
+      sort: sortBy.value,
+      order: 'asc'
     })
     restaurants.value = Array.isArray(data) ? data : []
   } catch (e) {
@@ -87,6 +80,9 @@ function pickCat(c) {
 function changeSort(key) {
   if (sortBy.value === key) return
   sortBy.value = key
+  // 排序下推到后端（sort/order 参数），前端 sorted 再做同口径兜底，
+  // 这样真实模式下排序由数据库侧完成，数据量大时也不会只排当前页。
+  loadList()
 }
 
 // ---------- 实时联想 ----------
@@ -218,7 +214,7 @@ onUnmounted(() => {
 
       <!-- 列表 -->
       <div v-else class="sh-grid">
-        <article class="sh-tile is-click card" v-for="r in sorted" :key="r.id || r.name" @click="openDetail(r)">
+        <article class="sh-tile is-click card" v-for="r in sorted" :key="r.id || r.name" :class="{ closed: r.openStatus === 0 }" @click="openDetail(r)">
           <div class="card-top">
             <span class="card-emoji">{{ r.emoji }}</span>
             <span class="card-rating">⭐ {{ r.rating }}</span>
@@ -226,6 +222,7 @@ onUnmounted(() => {
           <div class="card-title-row">
             <h3 class="card-name">{{ r.name }}</h3>
             <span class="cat-badge">{{ r.cat }}</span>
+            <span class="open-badge" :class="r.openStatus === 0 ? 'closed' : 'open'">{{ r.openStatus === 0 ? '已打烊' : '营业中' }}</span>
           </div>
           <p class="card-desc">{{ r.desc }}</p>
           <div class="card-tags">
@@ -235,9 +232,16 @@ onUnmounted(() => {
             <span class="dist">📍 {{ r.distance }}</span>
             <span class="price">💰 人均 ¥{{ r.price }}</span>
           </div>
+          <div class="card-meta">
+            <span class="meta-item">起送 ¥{{ r.minOrder }}</span>
+            <span class="meta-dot">·</span>
+            <span class="meta-item">配送 ¥{{ r.deliveryFee }}</span>
+            <span class="meta-dot">·</span>
+            <span class="meta-item">🕒 {{ r.eta }}</span>
+          </div>
           <div class="card-foot card-foot-2">
             <span class="dist dim">👥 进店点餐</span>
-            <button class="order-btn" @click.stop="onOrder(r)">去点餐</button>
+            <button class="order-btn" :disabled="r.openStatus === 0" @click.stop="onOrder(r)">{{ r.openStatus === 0 ? '已打烊' : '去点餐' }}</button>
           </div>
         </article>
       </div>
@@ -282,13 +286,21 @@ onUnmounted(() => {
   flex: none; display: inline-block; font-size: 11px; font-weight: 800;
   color: var(--deep); background: rgba(0,184,148,0.12); padding: 3px 10px; border-radius: 999px;
 }
+.open-badge { flex: none; font-size: 11px; font-weight: 800; padding: 3px 9px; border-radius: 999px; }
+.open-badge.open { background: rgba(0, 184, 148, 0.14); color: var(--deep); }
+.open-badge.closed { background: rgba(120, 120, 120, 0.16); color: #888; }
 .card-desc { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.6; }
 .card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .tag { font-size: 11px; color: var(--deep); background: rgba(0,184,148,0.1); padding: 3px 9px; border-radius: 8px; }
+.card-meta { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 11px; color: var(--muted); flex-wrap: wrap; }
+.meta-item { font-weight: 700; }
+.meta-dot { opacity: 0.5; }
 .card-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
 .card-foot-2 { margin-top: 8px; }
 .dist { font-size: 12px; color: var(--muted); }
 .dist.dim { opacity: 0.75; }
+.card.closed .card-emoji { filter: grayscale(0.8); opacity: 0.6; }
+.card.closed .card-name, .card.closed .card-desc { opacity: 0.55; }
 .price { font-size: 12px; font-weight: 800; color: #e8730c; }
 .order-btn {
   border: none; cursor: pointer; padding: 7px 16px; border-radius: 10px;

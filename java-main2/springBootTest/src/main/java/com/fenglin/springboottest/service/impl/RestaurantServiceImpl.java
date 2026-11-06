@@ -2,6 +2,8 @@ package com.fenglin.springboottest.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fenglin.springboottest.common.BusinessException;
 import com.fenglin.springboottest.entity.Category;
 import com.fenglin.springboottest.entity.Dish;
@@ -12,6 +14,8 @@ import com.fenglin.springboottest.mapper.DishMapper;
 import com.fenglin.springboottest.mapper.RestaurantMapper;
 import com.fenglin.springboottest.mapper.ReviewMapper;
 import com.fenglin.springboottest.service.RestaurantService;
+import com.fenglin.springboottest.vo.DishSpecOptionVO;
+import com.fenglin.springboottest.vo.DishSpecVO;
 import com.fenglin.springboottest.vo.DishVO;
 import com.fenglin.springboottest.vo.RestaurantDetailVO;
 import com.fenglin.springboottest.vo.RestaurantVO;
@@ -43,6 +47,9 @@ public class RestaurantServiceImpl extends ServiceImpl<RestaurantMapper, Restaur
     /** 距离文案解析："320m" -> 320；"1.1km" -> 1100 */
     private static final Pattern DISTANCE_PATTERN = Pattern.compile("([\\d.]+)\\s*(km|公里|m|米)?");
 
+    /** 规格 JSON 解析器（dish.specs -> List<DishSpecVO>） */
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
     private final DishMapper dishMapper;
     private final ReviewMapper reviewMapper;
     private final CategoryMapper categoryMapper;
@@ -55,6 +62,11 @@ public class RestaurantServiceImpl extends ServiceImpl<RestaurantMapper, Restaur
 
     @Override
     public List<RestaurantVO> search(String keyword, String category) {
+        return search(keyword, category, null, null);
+    }
+
+    @Override
+    public List<RestaurantVO> search(String keyword, String category, String sort, String order) {
         QueryWrapper<Restaurant> qw = new QueryWrapper<>();
 
         // 关键字：匹配店名 / 简介 / 标签
@@ -75,7 +87,10 @@ public class RestaurantServiceImpl extends ServiceImpl<RestaurantMapper, Restaur
 
         qw.orderByDesc("sort");
         Map<Long, Integer> priceMap = avgPriceByRestaurant();
-        return baseMapper.selectList(qw).stream().map(r -> toVO(r, priceMap)).collect(Collectors.toList());
+        List<RestaurantVO> list = baseMapper.selectList(qw).stream()
+                .map(r -> toVO(r, priceMap))
+                .collect(Collectors.toList());
+        return applySort(list, sort, order);
     }
 
     @Override
@@ -89,6 +104,11 @@ public class RestaurantServiceImpl extends ServiceImpl<RestaurantMapper, Restaur
 
     @Override
     public List<RestaurantVO> foodList(String keyword, String category) {
+        return foodList(keyword, category, null, null);
+    }
+
+    @Override
+    public List<RestaurantVO> foodList(String keyword, String category, String sort, String order) {
         List<Restaurant> all = baseMapper.selectList(null);
 
         // 与 recommended 共用口径：评分最高的 12 家作为「推荐集」，从美食页中剔除
@@ -103,13 +123,54 @@ public class RestaurantServiceImpl extends ServiceImpl<RestaurantMapper, Restaur
                 ? resolveCategoryNames(category.trim()) : null;
 
         Map<Long, Integer> priceMap = avgPriceByRestaurant();
-        return all.stream()
+        List<RestaurantVO> list = all.stream()
                 .filter(r -> !recommendedIds.contains(r.getId()))
                 .filter(r -> matchKeyword(r, k))
                 .filter(r -> matchCategory(r, category, names))
                 .sorted((a, b) -> compareSortDesc(a, b))
                 .map(r -> toVO(r, priceMap))
                 .collect(Collectors.toList());
+        return applySort(list, sort, order);
+    }
+
+    /**
+     * 统一排序：comprehensive / price / distance。
+     * 与前端 FoodView 的 sorted computed 口径保持一致，
+     * 保证「后端已排序」与「前端兜底重排」结果完全相同。
+     */
+    private List<RestaurantVO> applySort(List<RestaurantVO> list, String sort, String order) {
+        String field = (sort == null || sort.trim().isEmpty()) ? SORT_DEFAULT : sort.trim().toLowerCase();
+        boolean desc = order != null && "desc".equalsIgnoreCase(order.trim());
+        Comparator<RestaurantVO> cmp;
+        switch (field) {
+            case SORT_PRICE:
+                // 价格优先，价格相同按评分降序，再按 id 保证稳定
+                cmp = Comparator
+                        .comparingInt((RestaurantVO v) -> v.getPrice() == null ? Integer.MAX_VALUE : v.getPrice())
+                        .thenComparing(Comparator.comparingDouble(
+                                (RestaurantVO v) -> v.getRating() == null ? 0.0 : v.getRating()).reversed())
+                        .thenComparing(v -> v.getId() == null ? 0L : v.getId());
+                break;
+            case SORT_DISTANCE:
+                cmp = Comparator
+                        .comparingInt((RestaurantVO v) -> v.getDistanceM() == null ? Integer.MAX_VALUE : v.getDistanceM())
+                        .thenComparing(Comparator.comparingDouble(
+                                (RestaurantVO v) -> v.getRating() == null ? 0.0 : v.getRating()).reversed())
+                        .thenComparing(v -> v.getId() == null ? 0L : v.getId());
+                break;
+            case SORT_DEFAULT:
+            default:
+                // 综合：评分降序 → 距离升序 → id
+                cmp = Comparator
+                        .comparingDouble((RestaurantVO v) -> v.getRating() == null ? 0.0 : v.getRating())
+                        .reversed()
+                        .thenComparingInt(v -> v.getDistanceM() == null ? Integer.MAX_VALUE : v.getDistanceM())
+                        .thenComparing(v -> v.getId() == null ? 0L : v.getId());
+                break;
+        }
+        List<RestaurantVO> sorted = new ArrayList<>(list);
+        sorted.sort(desc ? cmp.reversed() : cmp);
+        return sorted;
     }
 
     /** 取评分最高的 n 家（评分相同按 id 升序，评分缺失的排到最后） */
@@ -202,6 +263,7 @@ public class RestaurantServiceImpl extends ServiceImpl<RestaurantMapper, Restaur
             dv.setPrice(d.getPrice() == null ? null : d.getPrice().doubleValue());
             dv.setEmoji(d.getEmoji());
             dv.setDesc(d.getDescription());
+            dv.setSpecs(parseSpecs(d.getSpecs()));
             return dv;
         }).collect(Collectors.toList()));
 
@@ -327,10 +389,14 @@ public class RestaurantServiceImpl extends ServiceImpl<RestaurantMapper, Restaur
 
         Set<String> seen = new HashSet<>();
 
-        // 1) 店铺名 / 分类命中（优先）
+        // 店铺占位上限：保证「菜品」永远有机会出现，否则用户搜「面」
+        // 只会看到一堆面馆，看不到「招牌牛肉面」这类菜品。
+        int restaurantQuota = Math.max(1, (int) Math.ceil(limit * 0.6));
+
+        // 1) 店铺名 / 分类命中（优先，但不超过配额）
         for (Restaurant r : restaurants) {
-            if (out.size() >= limit) {
-                return out;
+            if (out.size() >= limit || out.size() >= restaurantQuota) {
+                break;
             }
             String name = r.getName() == null ? "" : r.getName();
             String cat = r.getCat() == null ? "" : r.getCat();
@@ -340,7 +406,7 @@ public class RestaurantServiceImpl extends ServiceImpl<RestaurantMapper, Restaur
             }
         }
 
-        // 2) 菜品名命中（点选后跳转到所属店铺）
+        // 2) 菜品名命中（点选后跳转到所属店铺），占满剩余名额
         List<Dish> dishes = dishMapper.selectList(null);
         for (Dish d : dishes) {
             if (out.size() >= limit) {
@@ -354,6 +420,22 @@ public class RestaurantServiceImpl extends ServiceImpl<RestaurantMapper, Restaur
             String sub = r == null || r.getName() == null ? "" : r.getName();
             out.add(suggestionItem("dish", d.getRestaurantId(), dn, sub, d.getEmoji()));
             seen.add("d-" + dn);
+        }
+
+        // 3) 菜品仍然没占到名额（比如关键字只命中极少数菜品）时，
+        //    用剩余店铺补齐，避免因为配额导致结果比 limit 少。
+        if (out.size() < limit) {
+            for (Restaurant r : restaurants) {
+                if (out.size() >= limit) {
+                    break;
+                }
+                String name = r.getName() == null ? "" : r.getName();
+                String cat = r.getCat() == null ? "" : r.getCat();
+                if ((name.contains(k) || cat.contains(k)) && !seen.contains("r-" + r.getId())) {
+                    out.add(suggestionItem("restaurant", r.getId(), name, cat, r.getEmoji()));
+                    seen.add("r-" + r.getId());
+                }
+            }
         }
         return out;
     }
@@ -377,6 +459,10 @@ public class RestaurantServiceImpl extends ServiceImpl<RestaurantMapper, Restaur
         vo.setCat(r.getCat());
         vo.setDistance(r.getDistance());
         vo.setTags(splitTags(r.getTags()));
+        vo.setMinOrder(r.getMinOrder() == null ? null : r.getMinOrder().doubleValue());
+        vo.setDeliveryFee(r.getDeliveryFee() == null ? null : r.getDeliveryFee().doubleValue());
+        vo.setEta(r.getEta());
+        vo.setOpenStatus(r.getOpenStatus());
     }
 
     private void copyBase(Restaurant r, RestaurantDetailVO vo) {
@@ -388,6 +474,10 @@ public class RestaurantServiceImpl extends ServiceImpl<RestaurantMapper, Restaur
         vo.setCat(r.getCat());
         vo.setDistance(r.getDistance());
         vo.setTags(splitTags(r.getTags()));
+        vo.setMinOrder(r.getMinOrder() == null ? null : r.getMinOrder().doubleValue());
+        vo.setDeliveryFee(r.getDeliveryFee() == null ? null : r.getDeliveryFee().doubleValue());
+        vo.setEta(r.getEta());
+        vo.setOpenStatus(r.getOpenStatus());
     }
 
     private List<String> splitTags(String tags) {
@@ -398,5 +488,64 @@ public class RestaurantServiceImpl extends ServiceImpl<RestaurantMapper, Restaur
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * 解析菜品规格 JSON：[{name,type,options:[{label,price}]}] -> List&lt;DishSpecVO&gt;。
+     * 解析失败或为空时返回 null（前端据此隐藏规格区）。
+     */
+    private List<DishSpecVO> parseSpecs(String specsJson) {
+        if (specsJson == null || specsJson.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            List<Map<String, Object>> raw = OBJECT_MAPPER.readValue(
+                    specsJson, new TypeReference<List<Map<String, Object>>>() {});
+            if (raw == null || raw.isEmpty()) {
+                return null;
+            }
+            List<DishSpecVO> result = new ArrayList<>();
+            for (Map<String, Object> item : raw) {
+                DishSpecVO vo = new DishSpecVO();
+                vo.setName(asString(item.get("name")));
+                vo.setType(asString(item.get("type")));
+                Object optsRaw = item.get("options");
+                List<DishSpecOptionVO> options = new ArrayList<>();
+                if (optsRaw instanceof List) {
+                    for (Object o : (List<?>) optsRaw) {
+                        if (o instanceof Map) {
+                            Map<?, ?> om = (Map<?, ?>) o;
+                            DishSpecOptionVO opt = new DishSpecOptionVO();
+                            opt.setLabel(asString(om.get("label")));
+                            opt.setPrice(asDouble(om.get("price")));
+                            options.add(opt);
+                        }
+                    }
+                }
+                vo.setOptions(options);
+                result.add(vo);
+            }
+            return result.isEmpty() ? null : result;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String asString(Object o) {
+        return o == null ? "" : String.valueOf(o);
+    }
+
+    private Double asDouble(Object o) {
+        if (o == null) {
+            return 0.0;
+        }
+        if (o instanceof Number) {
+            return ((Number) o).doubleValue();
+        }
+        try {
+            return Double.parseDouble(String.valueOf(o));
+        } catch (Exception e) {
+            return 0.0;
+        }
     }
 }

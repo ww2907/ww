@@ -8,7 +8,7 @@
 // 注意：本文件只定义「前端调用契约」，不实现后端逻辑。
 // ============================================================
 
-import { MOCK_RESTAURANTS } from './food.js'
+import { MOCK_RESTAURANTS, enrichRestaurant } from './food.js'
 
 export const RESTAURANT_USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false'
 export const RESTAURANT_FALLBACK_MOCK = import.meta.env.VITE_RESTAURANT_FALLBACK_MOCK !== 'false'
@@ -518,10 +518,45 @@ const STORE_MENUS = {
   ]
 }
 
+function specsFor(cat) {
+  const T = {
+    面食: [
+      { name: '分量', type: 'single', options: [{ label: '标准', price: 0 }, { label: '大份', price: 5 }] },
+      { name: '辣度', type: 'single', options: [{ label: '不辣', price: 0 }, { label: '微辣', price: 0 }, { label: '中辣', price: 0 }, { label: '特辣', price: 1 }] },
+      { name: '加料', type: 'multi', options: [{ label: '加蛋', price: 2 }, { label: '加牛肉', price: 8 }, { label: '加青菜', price: 3 }] }
+    ],
+    快餐: [
+      { name: '分量', type: 'single', options: [{ label: '标准', price: 0 }, { label: '大份', price: 6 }] },
+      { name: '辣度', type: 'single', options: [{ label: '不辣', price: 0 }, { label: '微辣', price: 0 }, { label: '中辣', price: 0 }, { label: '特辣', price: 1 }] },
+      { name: '加料', type: 'multi', options: [{ label: '加芝士', price: 3 }, { label: '加薯条', price: 5 }, { label: '加鸡块', price: 6 }] }
+    ],
+    甜点: [
+      { name: '甜度', type: 'single', options: [{ label: '正常', price: 0 }, { label: '少甜', price: 0 }, { label: '半甜', price: 0 }, { label: '无糖', price: 0 }] },
+      { name: '加料', type: 'multi', options: [{ label: '加奶油', price: 4 }, { label: '加水果', price: 5 }, { label: '加坚果', price: 3 }] }
+    ],
+    饮品: [
+      { name: '甜度', type: 'single', options: [{ label: '正常', price: 0 }, { label: '七分甜', price: 0 }, { label: '半糖', price: 0 }, { label: '三分糖', price: 0 }] },
+      { name: '冰量', type: 'single', options: [{ label: '正常冰', price: 0 }, { label: '少冰', price: 0 }, { label: '去冰', price: 0 }] },
+      { name: '加料', type: 'multi', options: [{ label: '珍珠', price: 3 }, { label: '椰果', price: 2 }, { label: '芋圆', price: 4 }] }
+    ],
+    轻食: [
+      { name: '分量', type: 'single', options: [{ label: '标准', price: 0 }, { label: '大份', price: 8 }] },
+      { name: '酱汁', type: 'single', options: [{ label: '油醋汁', price: 0 }, { label: '凯撒酱', price: 2 }, { label: '蜂蜜芥末', price: 2 }, { label: '芝麻酱', price: 2 }] }
+    ],
+    火锅: [
+      { name: '锅底', type: 'single', options: [{ label: '牛油锅', price: 0 }, { label: '番茄锅', price: 0 }, { label: '菌汤锅', price: 0 }] },
+      { name: '辣度', type: 'single', options: [{ label: '微辣', price: 0 }, { label: '中辣', price: 0 }, { label: '特辣', price: 2 }] },
+      { name: '加菜', type: 'multi', options: [{ label: '毛肚', price: 20 }, { label: '黄喉', price: 18 }, { label: '虾滑', price: 16 }] }
+    ]
+  }
+  return T[cat] || [{ name: '规格', type: 'single', options: [{ label: '标准', price: 0 }] }]
+}
+
 function buildMenu(r) {
   const list = (STORE_MENUS[r.id] || STORE_MENUS[1]).map((m, i) => ({
     id: `${r.id}-m${i + 1}`,
-    ...m
+    ...m,
+    specs: specsFor(r.cat)
   }))
   return list
 }
@@ -1046,7 +1081,7 @@ function buildDetail(id) {
   const reviews = buildReviews(base)
   const avg = reviews.reduce((s, x) => s + x.rating, 0) / reviews.length
   return {
-    ...base,
+    ...enrichRestaurant(base),
     menu,
     reviews,
     avgRating: Number(avg.toFixed(1)),
@@ -1071,24 +1106,38 @@ function buildSuggestions(keyword, limit = 8) {
   if (!k) return []
   const out = []
   const seen = new Set()
+  // 与后端一致：店铺最多占 60%，给菜品留位置，否则搜「面」只能看到一堆面馆
+  const restaurantQuota = Math.max(1, Math.ceil(limit * 0.6))
 
-  // 1) 店铺名匹配（优先）
+  // 1) 店铺名匹配（优先，但不超过配额）
   for (const r of MOCK_RESTAURANTS) {
+    if (out.length >= restaurantQuota) break
     if (r.name.toLowerCase().includes(k) || r.cat.toLowerCase().includes(k)) {
       out.push({ kind: 'restaurant', id: r.id, name: r.name, sub: r.cat, emoji: r.emoji })
       seen.add('r-' + r.id)
-      if (out.length >= limit) return out
     }
   }
 
   // 2) 菜品名匹配（去重，点选后跳转到所属店铺）
   for (const r of MOCK_RESTAURANTS) {
+    if (out.length >= limit) break
     const menu = STORE_MENUS[r.id] || STORE_MENUS[1]
     for (const m of menu) {
+      if (out.length >= limit) break
       if (m.name.toLowerCase().includes(k) && !seen.has('d-' + m.name)) {
         out.push({ kind: 'dish', id: r.id, name: m.name, sub: r.name, emoji: m.emoji })
         seen.add('d-' + m.name)
-        if (out.length >= limit) return out
+      }
+    }
+  }
+
+  // 3) 菜品没占满时，用剩余店铺补齐，避免结果比 limit 少
+  if (out.length < limit) {
+    for (const r of MOCK_RESTAURANTS) {
+      if (out.length >= limit) break
+      if ((r.name.toLowerCase().includes(k) || r.cat.toLowerCase().includes(k)) && !seen.has('r-' + r.id)) {
+        out.push({ kind: 'restaurant', id: r.id, name: r.name, sub: r.cat, emoji: r.emoji })
+        seen.add('r-' + r.id)
       }
     }
   }
