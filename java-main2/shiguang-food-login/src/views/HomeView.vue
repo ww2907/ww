@@ -9,13 +9,14 @@ import AppHeader from '../components/layout/AppHeader.vue'
 import AppNav from '../components/layout/AppNav.vue'
 import AppSearch from '../components/layout/AppSearch.vue'
 import AppTabbar from '../components/layout/AppTabbar.vue'
+import CartEntry from '../components/layout/CartEntry.vue'
 import LocationBar from '../components/LocationBar.vue'
 
 const router = useRouter()
 const route = useRoute()
 
 // 顶部/底部导航、后台入口、退出登录：四页共用同一套逻辑
-const { topNav, bottomNav, activeNav, account, setActive, onNav, goAdmin, logout } = useShellNav('home')
+const { topNav, bottomNav, activeNav, account, setActive, onNav, showAdmin, goAdmin, logout } = useShellNav('home')
 setActive('home')
 
 // 根据时间生成问候语
@@ -128,19 +129,28 @@ function showToast(msg) {
 
 onMounted(async () => {
   setActive('home')
-  // 真实后端模式：先从后台拉取导航/搜索/推荐配置，使首页与后台管理保持一致
-  if (!ADMIN_USE_MOCK) {
-    try {
-      const [nav, search, rec] = await Promise.all([getNavConfig(), fetchSearchConfig(), getRecommend()])
-      if (nav) {
-        adminData.navTop = nav.top || adminData.navTop
-        adminData.navBottom = nav.bottom || adminData.navBottom
-      }
-      if (search) adminData.search = search
-      if (rec && Array.isArray(rec.ids)) adminData.recommendedIds = rec.ids
-    } catch (e) { /* 拉取失败则保持本地兜底 */ }
-  }
+  // 首屏先用兜底数据立即渲染推荐列表：后台配置接口可能较慢或挂起，
+  // 不能让它阻塞首屏（否则页面会长时间停在「0 家推荐」）。
   await loadRecommended()
+
+  // 真实后端模式：异步拉取后台导航/搜索/推荐配置，成功后再覆盖。
+  // 用 then/catch 而非 await，失败或超时都不影响已显示的内容。
+  if (!ADMIN_USE_MOCK) {
+    Promise.all([getNavConfig(), fetchSearchConfig(), getRecommend()])
+      .then(([nav, search, rec]) => {
+        if (nav) {
+          adminData.navTop = nav.top || adminData.navTop
+          adminData.navBottom = nav.bottom || adminData.navBottom
+        }
+        if (search) adminData.search = search
+        // 后台勾选了推荐店铺才覆盖兜底列表；空配置表示「未设置」，保留兜底
+        if (rec && Array.isArray(rec.ids) && rec.ids.length) {
+          adminData.recommendedIds = rec.ids
+          loadRecommended()
+        }
+      })
+      .catch(() => { /* 拉取失败则保持本地兜底 */ })
+  }
 })
 onUnmounted(() => {
   clearTimeout(searchTimer)
@@ -151,10 +161,15 @@ onUnmounted(() => {
 <template>
   <div class="sh-page">
     <!-- 顶部导航栏（四页统一） -->
-    <AppHeader :account="account" @logout="logout" @admin="goAdmin" />
+    <AppHeader :account="account" :show-admin="showAdmin" @logout="logout" @admin="goAdmin" />
 
-    <!-- 顶部横向导航（桌面端） -->
-    <AppNav :items="topNav" :active="activeNav" @select="handleNav" />
+    <!-- 顶部横向导航（桌面端）+ 购物车入口（与店铺页共用一个购物车） -->
+    <div class="sh-nav-row">
+      <div class="sh-nav-grow">
+        <AppNav :items="topNav" :active="activeNav" @select="handleNav" />
+      </div>
+      <CartEntry />
+    </div>
 
     <!-- 搜索栏（尺寸四页统一） -->
     <AppSearch
@@ -246,6 +261,10 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+/* 顶部导航行：横向导航占满剩余宽度，右侧固定购物车入口 */
+.sh-nav-row { display: flex; align-items: stretch; gap: 8px; }
+.sh-nav-grow { flex: 1; min-width: 0; }
+
 /* 卡片内部排版（外框尺寸由全局 .sh-tile 统一提供） */
 .card-top { display: flex; align-items: center; justify-content: space-between; }
 .card-emoji {

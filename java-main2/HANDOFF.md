@@ -18,7 +18,7 @@ D:\workSpace\ww\java-main2\
 │  ├─ src\store\               # 全局 store（cart / profile / admin，reactive + localStorage）
 │  ├─ src\components\          # 通用组件（DishPopup / OrderDetailModal / EmptyState / ToastHost …）
 │  ├─ src\views\               # 用户端页面 + views\admin\* 后台页面
-│  └─ vite.config.js           # dev 代理 /api -> http://localhost:8081
+│  └─ vite.config.js           # dev 代理 /api -> http://192.168.68.31:8081（host 也绑定该 IP）
 ├─ springBootTest\             # 后端 Spring Boot 3.4 + MyBatis-Plus 3.5 + MySQL
 │  ├─ src\main\java\com\fenglin\springboottest\
 │  │  ├─ controller\           # Auth / Restaurant / Order / UserProfile / Admin

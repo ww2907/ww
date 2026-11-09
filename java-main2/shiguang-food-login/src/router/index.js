@@ -19,8 +19,8 @@ import DishManageView from '../views/admin/DishManageView.vue'
 import PriceManageView from '../views/admin/PriceManageView.vue'
 import UserManageView from '../views/admin/UserManageView.vue'
 import OrderManageView from '../views/admin/OrderManageView.vue'
-import { isLoggedIn } from '../store.js'
-import { isAdminLoggedIn } from '../store/admin.js'
+import { isLoggedIn, session } from '../store.js'
+import { isAdminLoggedIn, canEnterAdmin, adminSession, clearAdminSession } from '../store/admin.js'
 
 const routes = [
   { path: '/', name: 'entry', component: EntryView },
@@ -61,15 +61,23 @@ const router = createRouter({
 
 // 路由守卫：
 //  - 用户受保护页面未登录 → 登录页
-//  - 后台受保护页面未登录 → 后台登录页
+//  - 后台受保护页面未登录 / 账号不在白名单 → 后台登录页
+//  - 非白名单账号访问后台登录页 → 首页（后台只对 www 开放）
 //  - 已登录访问进入页 → 首页
 const PROTECTED = ['home', 'food', 'restaurant', 'order', 'orders', 'order-detail', 'profile']
 router.beforeEach((to) => {
   if (PROTECTED.includes(to.name) && !isLoggedIn()) {
     return { name: 'login' }
   }
-  if (to.meta && to.meta.admin && !isAdminLoggedIn()) {
-    return { name: 'admin-login' }
+  // 后台只对白名单账号开放：旧会话（如 admin）一旦不合法就清掉
+  if (to.meta && to.meta.admin) {
+    if (!isAdminLoggedIn() || !canEnterAdmin(adminSession.account)) {
+      clearAdminSession()
+      return { name: 'admin-login' }
+    }
+  }
+  if (to.name === 'admin-login' && isLoggedIn() && !canEnterAdmin(session.account)) {
+    return { name: 'home' }
   }
   if (to.name === 'entry' && isLoggedIn()) {
     return { name: 'home' }

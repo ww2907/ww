@@ -6,10 +6,15 @@ import { createOrder } from '../api/order.js'
 import { cart } from '../store/cart.js'
 import { session } from '../store.js'
 import { toast } from '../composables/useToast.js'
+import { useShellNav } from '../composables/useShellNav.js'
+import AppHeader from '../components/layout/AppHeader.vue'
 import EmptyState from '../components/EmptyState.vue'
 
 const route = useRoute()
 const router = useRouter()
+
+// 顶部栏（与首页同一套）：账号、后台入口、退出
+const { account, showAdmin, goAdmin, logout } = useShellNav('home')
 
 const rid = computed(() => route.params.id)
 const store = ref(null)
@@ -73,7 +78,10 @@ onMounted(async () => {
 
 <template>
   <div class="order">
-    <!-- 顶部：返回 -->
+    <!-- 顶部导航栏：与首页尺寸完全一致 -->
+    <AppHeader :account="account" :show-admin="showAdmin" @logout="logout" @admin="goAdmin" />
+
+    <!-- 二级：返回 / 页面标题 -->
     <header class="topbar">
       <button class="back" @click="goBack">‹ 返回</button>
       <span class="top-title">购物车 · 结算</span>
@@ -219,7 +227,7 @@ onMounted(async () => {
 .store-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
 
 /* 菜单 */
-.menu { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+.menu { list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
 .dish {
   display: flex; gap: 12px; align-items: center;
   background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 12px;

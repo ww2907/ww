@@ -17,6 +17,8 @@ rem 松散绑定会把它当成 server.port，而它指向的端口被 IDE 自己占用，
 rem 会导致后端起不来，所以这里必须显式清空
 set "SERVER__PORT="
 set "SERVER_PORT="
+set "SERVER__ADDRESS="
+set "SERVER_ADDRESS="
 
 rem ---- 1. 定位 JAVA_HOME（mvnw 必需） ----
 if defined JAVA_HOME goto :java_ok
@@ -90,7 +92,7 @@ if errorlevel 1 (
     timeout /t 3 /nobreak >nul
     goto :wait8081
 )
-echo [后端] 已就绪: http://localhost:8081
+echo [后端] 已就绪: http://192.168.68.31:8081
 
 :frontend
 rem ---- 6. 确保前端 .env（关键，决定连真实后端还是 MOCK） ----
@@ -141,15 +143,15 @@ if errorlevel 1 (
     timeout /t 3 /nobreak >nul
     goto :wait5173
 )
-echo [前端] 已就绪: http://localhost:5173/login
+echo [前端] 已就绪: http://192.168.68.31:5173/#/login
 
 :done
 
 echo.
 echo ============================================================
 echo   启动完成！
-echo     前端页面 : http://localhost:5173/login
-echo     后端接口 : http://localhost:8081
+echo     前端页面 : http://192.168.68.31:5173/#/login
+echo     后端接口 : http://192.168.68.31:8081
 echo     数据库   : shiguang_food （root / 123456）
 echo     测试账号 : demo / 123456（管理员 admin / admin123）
 echo   前端已锁定真实后端（.env: VITE_USE_MOCK=false），无需担心 MOCK 空转

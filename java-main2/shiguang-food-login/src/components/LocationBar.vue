@@ -62,7 +62,9 @@ function onDocClick(e) {
 }
 
 onMounted(() => {
-  initProfileForAccount(session.account).catch(() => {})
+  // initProfileForAccount 是同步函数（内部异步刷新已自行 catch），
+  // 不能直接链式 .catch，否则会抛 "Cannot read properties of undefined (reading 'catch')"
+  Promise.resolve(initProfileForAccount(session.account)).catch(() => {})
   document.addEventListener('click', onDocClick)
 })
 onUnmounted(() => {

@@ -4,10 +4,15 @@ import { useRoute, useRouter } from 'vue-router'
 import { getRestaurantDetail } from '../api/restaurant.js'
 import { cart } from '../store/cart.js'
 import { toast } from '../composables/useToast.js'
+import { useShellNav } from '../composables/useShellNav.js'
+import AppHeader from '../components/layout/AppHeader.vue'
 import DishPopup from '../components/DishPopup.vue'
 
 const route = useRoute()
 const router = useRouter()
+
+// 顶部栏（与首页同一套）：账号、后台入口、退出
+const { account, showAdmin, goAdmin, logout } = useShellNav('home')
 
 const store = ref(null)
 const loading = ref(true)
@@ -81,7 +86,10 @@ onMounted(async () => {
 
 <template>
   <div class="detail">
-    <!-- 顶部：返回 -->
+    <!-- 顶部导航栏：与首页尺寸完全一致 -->
+    <AppHeader :account="account" :show-admin="showAdmin" @logout="logout" @admin="goAdmin" />
+
+    <!-- 二级：返回 / 页面标题 -->
     <header class="topbar">
       <button class="back" @click="goBack">‹ 返回</button>
       <span class="top-title">店铺详情</span>
@@ -125,6 +133,8 @@ onMounted(async () => {
           </div>
           <p class="store-desc">{{ store.desc }}</p>
         </div>
+        <!-- 右侧大号装饰（宽屏时填补留白，与首页横幅的视觉重心一致） -->
+        <div class="store-watermark">{{ store.emoji }}</div>
       </section>
 
       <!-- 店内美食（点击查看菜品详情 / 加入购物车） -->
@@ -283,15 +293,27 @@ onMounted(async () => {
 
 /* 店铺信息 */
 .store {
+  position: relative;
+  overflow: hidden;
   display: flex; gap: 16px; padding: 20px;
   border-radius: 22px; background: linear-gradient(135deg, rgba(0,184,148,0.92), rgba(0,206,201,0.92));
   color: #fff; box-shadow: var(--shadow);
+}
+.store-watermark {
+  position: absolute;
+  right: 24px;
+  bottom: -26px;
+  font-size: 140px;
+  line-height: 1;
+  opacity: 0.14;
+  pointer-events: none;
+  user-select: none;
 }
 .store-emoji {
   width: 64px; height: 64px; flex: none; border-radius: 18px;
   background: rgba(255,255,255,0.25); display: grid; place-items: center; font-size: 34px;
 }
-.store-info { min-width: 0; flex: 1; }
+.store-info { min-width: 0; flex: 1; max-width: 800px; }
 .store-name-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .store-name { font-size: 22px; font-weight: 900; text-shadow: 0 3px 14px rgba(0,80,70,0.3); }
 .store .open-badge { font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 999px; flex: none; }
@@ -317,7 +339,13 @@ onMounted(async () => {
 .count { font-size: 12px; color: var(--muted); }
 
 /* 菜单 */
-.menu { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+/* 菜单：宽屏按卡片网格排布（与首页推荐区同一密度），窄屏自动落成单列 */
+.menu {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+}
 .dish {
   display: flex; gap: 12px; align-items: center;
   background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 12px;
@@ -355,7 +383,7 @@ onMounted(async () => {
 .rate-num { font-size: 30px; font-weight: 900; color: #f39c12; }
 .rate-stars { font-size: 16px; color: #f39c12; letter-spacing: 2px; }
 .rate-count { font-size: 12px; color: var(--muted); }
-.reviews { list-style: none; display: flex; flex-direction: column; gap: 14px; }
+.reviews { list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 16px 22px; }
 .review { display: flex; gap: 12px; }
 .rv-avatar {
   width: 38px; height: 38px; flex: none; border-radius: 50%;
@@ -439,6 +467,7 @@ onMounted(async () => {
 
 @media (max-width: 600px) {
   .store { padding: 16px; gap: 12px; }
+  .store-watermark { display: none; }
   .store-emoji { width: 54px; height: 54px; font-size: 30px; border-radius: 15px; }
   .store-name { font-size: 19px; }
   .dish { flex-wrap: wrap; }

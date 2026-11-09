@@ -11,6 +11,7 @@
 | 项目根 | `D:\workSpace\ww\java-main2\`（历史上移动过、用户名变过，先 `ls` 核实） |
 | 后端 | `springBootTest\`，Spring Boot 3.4.5 + MyBatis-Plus 3.5.9，端口 **8081**，profile dev |
 | 前端 | `shiguang-food-login\`，Vue3 + Vite，端口 **5173**（vite 代理 /api → 8081） |
+| **访问地址** | 前后端均绑定本机局域网 IP **192.168.68.31**：前端 `http://192.168.68.31:5173/#/login`、后端 `http://192.168.68.31:8081`。**`localhost` 已不再监听**，排查时别再用 localhost 探活；换网络后需同步改 `vite.config.js` 的 `LAN_HOST` 与 `application-dev.properties` 的 `server.address`，或把后端改成 `server.address=0.0.0.0` 同时兼容 |
 | 数据库 | MySQL **8.0**，`127.0.0.1:3306`，root / 123456，库 `shiguang_food`，测试账号 **demo / 123456**（管理员 **admin / admin123**） |
 | 一键脚本 | `start-all.bat`（起） / `stop-all.bat`（停），GBK 编码 + CRLF |
 | 健康检查 | `POST /api/auth/captcha` 空 body → 返回 `code:0` |
@@ -32,6 +33,7 @@ mvnw 编译启动后端 → npm install（缺才装）→ 启动前端 → 等�
 # 2) 后端（在 springBootTest 目录）
 $env:JAVA_HOME = "C:\Program Files\Java\jdk-17"
 Remove-Item Env:SERVER__PORT -ErrorAction SilentlyContinue   # 关键！见坑 1
+Remove-Item Env:SERVER__ADDRESS -ErrorAction SilentlyContinue  # 同上，避免覆盖 server.address
 $mvn = (Get-ChildItem "$env:USERPROFILE\.m2\wrapper\dists\apache-maven-*\*\bin\mvn.cmd" | Select-Object -First 1).FullName
 & $mvn spring-boot:run "-Dspring-boot.run.profiles=dev" "-Dspring-boot.run.arguments=--server.port=8081"
 
@@ -86,13 +88,13 @@ cd shiguang-food-login
 ## 3. 启动后验证（端到端）
 
 ```text
-1. POST http://localhost:8081/api/auth/captcha  (空 body)
+1. POST http://192.168.68.31:8081/api/auth/captcha  (空 body)
    → {"code":0,"data":{"captchaId":"...","image":"data:image/png;base64,..."}}
 2. 想做真实登录验证时：把 image 的 base64 解码存成 PNG，用视觉直接读出 4 位验证码
    （AI 识图即可，无需 OCR），再 POST /api/auth/login：
    {"account":"demo","password":"123456","captchaId":"...","captchaCode":"<图中字符>"}
    → code:0 且返回 token 即全链路通
-3. 前端代理：POST http://localhost:5173/api/auth/captcha 同样应返回 code:0
+3. 前端代理：POST http://192.168.68.31:5173/api/auth/captcha 同样应返回 code:0
 4. 管理员登录无需验证码：POST /api/admin/login {"account":"admin","password":"admin123"} → code:0
    即后台链路通（已用 bcrypt 核验，SQL 中 admin/admin123、demo/123456 哈希均匹配）
 ```

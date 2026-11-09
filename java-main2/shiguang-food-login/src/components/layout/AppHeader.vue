@@ -4,7 +4,8 @@ import { computed } from 'vue'
 // 顶部栏：四页共用（尺寸取自首页，勿在页面内另写一套）
 const props = defineProps({
   account: { type: String, default: '美食家' },
-  showAdmin: { type: Boolean, default: true }
+  // 后台入口默认不显示，由调用方按「准入白名单」显式打开（见 useShellNav 的 showAdmin）
+  showAdmin: { type: Boolean, default: false }
 })
 const emit = defineEmits(['logout', 'admin'])
 

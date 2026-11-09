@@ -2,14 +2,17 @@
 import { ref, computed, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { adminLogin } from '../api/admin.js'
+import { canEnterAdmin, ADMIN_PRIMARY_ACCOUNT } from '../store/admin.js'
 
 const router = useRouter()
 
-const account = ref('')
+// 后台只对白名单账号开放，账号框默认填入并锁定为 www
+const account = ref(ADMIN_PRIMARY_ACCOUNT)
 const password = ref('')
 const showPw = ref(false)
 const loading = ref(false)
 const errAccount = ref(false)
+const errAccountMsg = ref('')
 const errPassword = ref(false)
 const toastMsg = ref('')
 const toastShow = ref(false)
@@ -28,13 +31,24 @@ function togglePw() { showPw.value = !showPw.value }
 
 async function onSubmit() {
   let ok = true
-  if (!account.value.trim()) { errAccount.value = true; ok = false } else errAccount.value = false
+  const acc = account.value.trim()
+  if (!acc) {
+    errAccountMsg.value = '请输入管理员账号'
+    errAccount.value = true
+    ok = false
+  } else if (!canEnterAdmin(acc)) {
+    errAccountMsg.value = `该账号无后台管理权限，仅 ${ADMIN_PRIMARY_ACCOUNT} 可进入`
+    errAccount.value = true
+    ok = false
+  } else {
+    errAccount.value = false
+  }
   if (password.value.length < 1) { errPassword.value = true; ok = false } else errPassword.value = false
   if (!ok) return
 
   loading.value = true
   try {
-    const res = await adminLogin({ account: account.value, password: password.value })
+    await adminLogin({ account: acc, password: password.value })
     showToast('登录成功，进入后台管理系统 🎉')
     router.replace('/admin')
   } catch (e) {
@@ -60,9 +74,10 @@ onUnmounted(() => clearTimeout(toastTimer))
       <label for="a-account">管理员账号</label>
       <div class="input">
         <span class="icon">👤</span>
-        <input type="text" id="a-account" v-model="account" placeholder="请输入管理员账号" autocomplete="username" />
+        <input type="text" id="a-account" :value="account" readonly class="locked" autocomplete="username" />
       </div>
-      <div class="err" v-show="errAccount">请输入管理员账号</div>
+      <div class="hint">仅 <b>{{ ADMIN_PRIMARY_ACCOUNT }}</b> 账号可进入后台管理</div>
+      <div class="err" v-show="errAccount">{{ errAccountMsg }}</div>
     </div>
 
     <div class="field">
@@ -87,8 +102,6 @@ onUnmounted(() => clearTimeout(toastTimer))
       <span v-if="loading"><span class="spinner"></span> 登录中…</span>
       <span v-else>登 录 后 台</span>
     </button>
-
-    <div class="tip">演示账号：<b>admin</b> / 密码：<b>admin123</b></div>
 
     <button type="button" class="back" @click="backHome">← 返回用户首页</button>
     <div class="toast" :class="{ show: toastShow }">{{ toastMsg }}</div>
@@ -157,6 +170,14 @@ onUnmounted(() => clearTimeout(toastTimer))
   cursor: pointer; font-size: 13px; color: var(--muted); user-select: none;
 }
 .err { color: #e5533c; font-size: 12px; margin-top: 6px; }
+.hint { font-size: 12px; color: var(--muted); margin-top: 8px; }
+.hint b { color: var(--deep); }
+.field input.locked {
+  background: #eef7f4;
+  color: var(--deep);
+  font-weight: 700;
+  cursor: not-allowed;
+}
 .pw-meta { display: flex; align-items: center; gap: 10px; margin-top: 8px; min-height: 16px; }
 .count { margin-left: auto; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
 
@@ -177,10 +198,8 @@ onUnmounted(() => clearTimeout(toastTimer))
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-.tip { text-align: center; margin-top: 18px; font-size: 12px; color: var(--muted); }
-.tip b { color: var(--deep); }
 .back {
-  display: block; width: 100%; margin-top: 14px; padding: 10px;
+  display: block; width: 100%; margin-top: 18px; padding: 10px;
   border: 1.5px solid var(--line); border-radius: 12px; background: transparent;
   color: var(--muted); font-size: 13px; font-weight: 600; cursor: pointer;
   transition: border-color 0.2s, color 0.2s;

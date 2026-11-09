@@ -2,9 +2,14 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getOrderDetail, updateOrderStatus } from '../api/order.js'
+import { useShellNav } from '../composables/useShellNav.js'
+import AppHeader from '../components/layout/AppHeader.vue'
 
 const route = useRoute()
 const router = useRouter()
+
+// 顶部栏（与首页同一套）：账号、后台入口、退出
+const { account, showAdmin, goAdmin, logout } = useShellNav('orders')
 
 const order = ref(null)
 const loading = ref(true)
@@ -90,7 +95,10 @@ onUnmounted(() => clearTimeout(toastTimer))
 
 <template>
   <div class="detail">
-    <!-- 顶部：返回 -->
+    <!-- 顶部导航栏：与首页尺寸完全一致 -->
+    <AppHeader :account="account" :show-admin="showAdmin" @logout="logout" @admin="goAdmin" />
+
+    <!-- 二级：返回 / 页面标题 -->
     <header class="topbar">
       <button class="back" @click="goBack">‹ 返回</button>
       <span class="top-title">订单详情</span>

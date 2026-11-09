@@ -11,7 +11,7 @@
  Target Server Version : 80039 (8.0.39)
  File Encoding         : 65001
 
- Date: 06/11/2026 16:54:47
+ Date: 09/11/2026 11:57:40
 */
 
 SET NAMES utf8mb4;
@@ -30,7 +30,7 @@ CREATE TABLE `admin_account`  (
 -- ----------------------------
 -- Records of admin_account
 -- ----------------------------
-INSERT INTO `admin_account` VALUES ('admin', '$2a$10$4gE3JPFqhAfx9oB4E/cbZ.w8Tdj0HM4EylGAywshQUQJJPuAmRiNC');
+INSERT INTO `admin_account` VALUES ('www', '$2a$10$VgURhD5pSY/BOx3nw2cbNOQtaw0Yu3JoVg2HgzleQpPaxFALOjU8y');
 
 -- ----------------------------
 -- Table structure for admin_category
@@ -557,7 +557,7 @@ CREATE TABLE `order_item`  (
   `created_at` datetime NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_order`(`order_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 64 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '订单明细表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 66 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '订单明细表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of order_item
@@ -613,6 +613,8 @@ INSERT INTO `order_item` VALUES (48, 25, 9, '鸡胸蔬菜沙拉', 26.00, 3, 78.0
 INSERT INTO `order_item` VALUES (49, 26, 1, '招牌牛肉面', 28.00, 2, 56.00, '2026-11-04 09:56:27');
 INSERT INTO `order_item` VALUES (50, 27, 1, '招牌牛肉面', 28.00, 1, 28.00, '2026-11-04 09:57:26');
 INSERT INTO `order_item` VALUES (51, 28, 191, '暖糖海盐提拉米苏', 28.00, 2, 56.00, '2026-11-06 15:41:40');
+INSERT INTO `order_item` VALUES (64, 41, 14, '焦糖布丁（正常）', 20.00, 1, 20.00, '2026-11-09 11:21:05');
+INSERT INTO `order_item` VALUES (65, 41, 15, '芋泥啵啵杯（正常）', 24.00, 1, 24.00, '2026-11-09 11:21:05');
 
 -- ----------------------------
 -- Table structure for orders
@@ -634,7 +636,7 @@ CREATE TABLE `orders`  (
   UNIQUE INDEX `uk_order_no`(`order_no` ASC) USING BTREE,
   INDEX `idx_account`(`account` ASC) USING BTREE,
   INDEX `idx_rest`(`restaurant_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 41 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '订单主表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 42 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '订单主表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of orders
@@ -666,6 +668,7 @@ INSERT INTO `orders` VALUES (24, 'SG20261021021', 15, 'user003', 5, '老成都�
 INSERT INTO `orders` VALUES (25, 'SG20261101022', 13, 'user006', 2, '麦奇轻食沙拉', 130.00, 5, 2, '2026-11-01 13:50:13', '2026-11-01 13:50:13');
 INSERT INTO `orders` VALUES (26, '17937573875403050', 1, 'demo', 1, '巷子口牛肉面', 56.00, 2, 1, '2026-11-04 09:56:27', '2026-11-04 09:56:29');
 INSERT INTO `orders` VALUES (27, '17937574461047919', 1, 'demo', 1, '巷子口牛肉面', 28.00, 1, 0, '2026-11-04 09:57:26', '2026-11-04 09:57:26');
+INSERT INTO `orders` VALUES (41, '17941944651139942', 2, 'www', 3, '糖潮甜品铺', 44.00, 2, 3, '2026-11-09 11:21:05', '2026-11-09 11:21:08');
 
 -- ----------------------------
 -- Table structure for restaurant

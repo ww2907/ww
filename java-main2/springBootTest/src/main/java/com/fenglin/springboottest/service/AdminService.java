@@ -66,13 +66,62 @@ public class AdminService implements CommandLineRunner {
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     // ============ 登录（仅登录，无注册）============
+    /**
+     * 后台准入白名单：只有这些账号能登录后台管理系统。
+     * 与前端 src/store/admin.js 的 ADMIN_ALLOWED_ACCOUNTS 保持一致，
+     * 需要放开给更多账号时两边同步添加（统一按小写比较）。
+     */
+    public static final List<String> ADMIN_ALLOWED_ACCOUNTS = List.of("www");
+
+    /** 后台账号表里实际使用的账号（白名单第一位，用于启动播种） */
+    private static final String ADMIN_ACCOUNT = ADMIN_ALLOWED_ACCOUNTS.get(0);
+
+    /** 历史遗留的后台账号，启动时清理，避免绕过白名单 */
+    private static final String LEGACY_ADMIN_ACCOUNT = "admin";
+
+    /**
+     * 后台登录：账号必须命中白名单，密码按以下顺序校验——
+     *  1) 站点用户表 user 的密码（www 用自己的前台登录密码即可进后台）；
+     *  2) 后台账号表 admin_account 的密码（默认 admin123）。
+     * 任一命中即通过，避免白名单账号忘记前台密码时被彻底锁在后台之外。
+     */
     public Map<String, Object> adminLogin(String account, String password) {
-        AdminAccount a = accountMapper.selectById(account);
-        if (a == null || !encoder.matches(password, a.getPassword())) {
-            throw new BusinessException("管理员账号或密码错误");
+        String acc = account == null ? "" : account.trim();
+        if (!ADMIN_ALLOWED_ACCOUNTS.contains(acc.toLowerCase())) {
+            throw new BusinessException("该账号无后台管理权限");
         }
+        if (password == null || password.isEmpty()) {
+            throw new BusinessException("请输入密码");
+        }
+
+        boolean passed = false;
+
+        // 1) 前台用户密码
+        User user = regUserMapper.selectOne(new QueryWrapper<User>().eq("account", acc));
+        if (user != null) {
+            if (user.getStatus() != null && user.getStatus() == 0) {
+                throw new BusinessException("该账号已被禁用");
+            }
+            if (user.getPassword() != null && encoder.matches(password, user.getPassword())) {
+                passed = true;
+            }
+        }
+
+        // 2) 后台账号密码
+        if (!passed) {
+            AdminAccount a = accountMapper.selectById(acc);
+            if (a != null && a.getPassword() != null && encoder.matches(password, a.getPassword())) {
+                passed = true;
+            }
+        }
+
+        if (!passed) {
+            throw new BusinessException("账号或密码错误");
+        }
+
         Map<String, Object> r = new LinkedHashMap<>();
-        r.put("account", account);
+        r.put("account", acc);
+        r.put("nickname", user == null || user.getNickname() == null ? acc : user.getNickname());
         r.put("token", UUID.randomUUID().toString());
         return r;
     }
@@ -462,9 +511,14 @@ public class AdminService implements CommandLineRunner {
     // ============ 启动播种（MySQL 库，仅在缺失时补齐，确保可登录 / 有默认配置）============
     @Override
     public void run(String... args) {
-        if (accountMapper.selectById("admin") == null) {
+        // 后台账号：只保留白名单内的 www（默认密码 admin123，也可直接用前台密码登录）。
+        // 旧的 admin 账号已废弃，开库时清理掉，避免绕过白名单残留。
+        if (accountMapper.selectById(LEGACY_ADMIN_ACCOUNT) != null) {
+            accountMapper.deleteById(LEGACY_ADMIN_ACCOUNT);
+        }
+        if (accountMapper.selectById(ADMIN_ACCOUNT) == null) {
             AdminAccount a = new AdminAccount();
-            a.setAccount("admin");
+            a.setAccount(ADMIN_ACCOUNT);
             a.setPassword(encoder.encode("admin123"));
             accountMapper.insert(a);
         }

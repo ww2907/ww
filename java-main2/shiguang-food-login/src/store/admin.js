@@ -8,6 +8,25 @@
 import { reactive } from 'vue'
 import { MOCK_RESTAURANTS, enrichRestaurant } from '../api/food.js'
 
+// ============================================================
+// 后台管理准入白名单
+// ------------------------------------------------------------
+// 只有这些站点账号能进入后台管理系统：
+//   - 顶栏「🛡️ 后台管理」入口只对白名单账号显示；
+//   - /admin-login 只接受白名单账号登录；
+//   - /admin/** 路由守卫会校验，非白名单账号的旧后台会话会被清掉。
+// 后端 AdminService.ADMIN_ALLOWED_ACCOUNTS 保持同一份名单（按小写比较）。
+// ============================================================
+export const ADMIN_ALLOWED_ACCOUNTS = ['www']
+
+/** 默认展示 / 预填的后台账号 */
+export const ADMIN_PRIMARY_ACCOUNT = ADMIN_ALLOWED_ACCOUNTS[0]
+
+/** 该站点账号是否允许进入后台管理系统 */
+export function canEnterAdmin(account) {
+  return ADMIN_ALLOWED_ACCOUNTS.includes(String(account || '').trim().toLowerCase())
+}
+
 const ADMIN_SESSION_KEY = 'shiguang_admin_session'
 const ADMIN_DATA_KEY = 'shiguang_admin_data'
 
@@ -67,7 +86,11 @@ const DEFAULT_ORDERS = [
 function loadSession() {
   try {
     const raw = localStorage.getItem(ADMIN_SESSION_KEY)
-    if (raw) return JSON.parse(raw)
+    if (raw) {
+      const s = JSON.parse(raw)
+      // 账号不在白名单内的历史会话直接作废（旧版 admin 账号会走到这里）
+      if (s && s.token && canEnterAdmin(s.account)) return s
+    }
   } catch (e) { /* ignore */ }
   return { account: '', token: '' }
 }
@@ -114,9 +137,14 @@ export function persistAdminSession() {
 }
 
 export function setAdminSession(account, token) {
+  if (!canEnterAdmin(account)) {
+    clearAdminSession()
+    return false
+  }
   adminSession.account = account
   adminSession.token = token
   persistAdminSession()
+  return true
 }
 export function clearAdminSession() {
   adminSession.account = ''
@@ -124,7 +152,7 @@ export function clearAdminSession() {
   persistAdminSession()
 }
 export function isAdminLoggedIn() {
-  return !!adminSession.token
+  return !!adminSession.token && canEnterAdmin(adminSession.account)
 }
 
 // ---------- 供首页读取的派生数据 ----------

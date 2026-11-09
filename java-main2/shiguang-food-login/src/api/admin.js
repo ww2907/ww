@@ -6,7 +6,7 @@
 //   - 真实后端路由统一挂在 /api/admin 下
 //   - 返回结构约定：{ code: 0, data: {...}, message: 'ok' }
 // ============================================================
-import { adminData, setAdminSession, persistAdminData, clearAdminSession } from '../store/admin.js'
+import { adminData, setAdminSession, persistAdminData, clearAdminSession, canEnterAdmin, ADMIN_PRIMARY_ACCOUNT } from '../store/admin.js'
 
 // 后台是否使用本地模拟：由独立的 VITE_ADMIN_USE_MOCK 控制，
 // 这样可在「用户登录仍走 mock」的前提下，单独把后台管理切到真实后端。
@@ -25,8 +25,8 @@ export const ADMIN_ENDPOINTS = {
   order: '/admin/order'
 }
 
-// 后台管理员（mock）：账号 admin / 密码 admin123
-const mockAdmins = new Map([['admin', 'admin123']])
+// 后台管理员（mock）：只有白名单账号 www / 密码 admin123（与后端播种一致）
+const mockAdmins = new Map([[ADMIN_PRIMARY_ACCOUNT, 'admin123']])
 
 function delay(ms) { return new Promise((r) => setTimeout(r, ms)) }
 function clone(v) { return JSON.parse(JSON.stringify(v)) }
@@ -39,22 +39,42 @@ async function httpReq(method, path, payload, params) {
     timeout: 10000,
     headers: { 'Content-Type': 'application/json' }
   })
-  const res = await http.request({ method, url: path, data: payload, params })
+  let res
+  try {
+    res = await http.request({ method, url: path, data: payload, params })
+  } catch (e) {
+    // 把 axios 的 "Network Error" 翻译成能直接照着排查的提示
+    if (!e.response) {
+      const origin = typeof location !== 'undefined' ? location.origin : ''
+      const viaLocalhost = /localhost|127\.0\.0\.1/.test(origin)
+      throw new Error(
+        '无法连接后端服务（' + (ADMIN_API_BASE + path) + '）' +
+        (viaLocalhost
+          ? '：当前页面是通过 ' + origin + ' 打开的，请改用本机 IP 地址重新打开页面后再登录。'
+          : '：请确认后端已在 8081 端口启动，然后刷新页面重试。')
+      )
+    }
+    throw new Error(e.response.data?.message || e.message || '请求失败')
+  }
   if (res.data.code !== 0) throw new Error(res.data.message || '请求失败')
   return res.data.data
 }
 
 // ============ 登录（仅登录，无注册）============
 export async function adminLogin({ account, password }) {
+  const acc = String(account || '').trim()
+  if (!canEnterAdmin(acc)) {
+    throw new Error('该账号无后台管理权限，仅 ' + ADMIN_PRIMARY_ACCOUNT + ' 可进入后台')
+  }
   if (ADMIN_USE_MOCK) {
     await delay(600)
-    if (!account || !password) throw new Error('请输入账号和密码')
-    if (mockAdmins.get(account.trim()) !== password) throw new Error('管理员账号或密码错误')
+    if (!password) throw new Error('请输入密码')
+    if (mockAdmins.get(acc) !== password) throw new Error('账号或密码错误')
     const token = 'admin-token-' + Date.now()
-    setAdminSession(account.trim(), token)
-    return { token, account: account.trim() }
+    setAdminSession(acc, token)
+    return { token, account: acc }
   }
-  const data = await httpReq('post', ADMIN_ENDPOINTS.login, { account, password })
+  const data = await httpReq('post', ADMIN_ENDPOINTS.login, { account: acc, password })
   setAdminSession(data.account, data.token)
   return data
 }

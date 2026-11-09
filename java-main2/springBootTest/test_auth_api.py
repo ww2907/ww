@@ -9,16 +9,21 @@
   python test_auth_api.py            # 自动化冒烟用例（无需人工输入验证码）
   python test_auth_api.py --login    # 追加一次真实登录: 保存验证码图片后人工输入
 
-依赖: 仅 Python 标准库；后端需已在 8081 运行。
+依赖: 仅 Python 标准库；后端需已在 192.168.68.31:8081 运行
+      （后端 server.address 已绑定该 IP，localhost/127.0.0.1 不再监听；
+        换地址时可用环境变量 SHIGUANG_API 覆盖，例如：
+        set SHIGUANG_API=http://127.0.0.1:8081/api/auth）
 """
 
 import base64
 import json
+import os
 import sys
 import urllib.error
 import urllib.request
 
-BASE = "http://127.0.0.1:8081/api/auth"
+# 后端地址：默认走本机局域网 IP，可用环境变量覆盖
+BASE = os.environ.get("SHIGUANG_API", "http://192.168.68.31:8081/api/auth")
 CAPTCHA_PNG = "captcha_smoke.png"
 
 PASS, FAIL = 0, 0

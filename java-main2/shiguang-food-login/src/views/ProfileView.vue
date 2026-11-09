@@ -17,7 +17,7 @@ import AppTabbar from '../components/layout/AppTabbar.vue'
 const router = useRouter()
 
 // 顶部/底部导航、后台入口、退出登录：与首页同一套逻辑与尺寸
-const { topNav, bottomNav, activeNav, account, setActive, onNav, goAdmin, logout } = useShellNav('mine')
+const { topNav, bottomNav, activeNav, account, setActive, onNav, showAdmin, goAdmin, logout } = useShellNav('mine')
 setActive('mine')
 
 const profile = getProfile()
@@ -104,7 +104,7 @@ onMounted(() => {
 <template>
   <div class="sh-page">
     <!-- 顶部导航栏（四页统一） -->
-    <AppHeader :account="account" @logout="logout" @admin="goAdmin" />
+    <AppHeader :account="account" :show-admin="showAdmin" @logout="logout" @admin="goAdmin" />
 
     <!-- 顶部横向导航（桌面端） -->
     <AppNav :items="topNav" :active="activeNav" @select="handleNav" />

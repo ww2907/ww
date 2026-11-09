@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getNavTop, getNavBottom, isAdminLoggedIn } from '../store/admin.js'
+import { getNavTop, getNavBottom, isAdminLoggedIn, canEnterAdmin } from '../store/admin.js'
 import { clearSession, session } from '../store.js'
 
 // 四个前台页面共用的导航逻辑：顶部菜单 / 底部 Tab / 后台入口 / 退出
@@ -26,6 +26,9 @@ export function useShellNav(initial = 'home') {
   const activeNav = ref(initial)
   const account = computed(() => session.account || '美食家')
 
+  // 「🛡️ 后台管理」入口只对白名单账号（默认 www）显示
+  const showAdmin = computed(() => canEnterAdmin(session.account))
+
   function setActive(key) {
     activeNav.value = key
   }
@@ -40,7 +43,10 @@ export function useShellNav(initial = 'home') {
   }
 
   function goAdmin() {
+    // 双保险：入口已隐藏，这里再挡一次，避免手动调用把非白名单账号带进后台
+    if (!showAdmin.value) return false
     router.push(isAdminLoggedIn() ? '/admin' : '/admin-login')
+    return true
   }
 
   function logout() {
@@ -48,5 +54,5 @@ export function useShellNav(initial = 'home') {
     router.push('/login')
   }
 
-  return { topNav, bottomNav, activeNav, account, setActive, onNav, goAdmin, logout }
+  return { topNav, bottomNav, activeNav, account, showAdmin, setActive, onNav, goAdmin, logout }
 }

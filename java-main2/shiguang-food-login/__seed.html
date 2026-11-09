@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="utf-8" /><title>seed</title></head>
+<body>
+<pre id="out">seeding…</pre>
+<script>
+  // 仅用于本地验证：按查询参数写入登录态，验证完即删除本文件
+  const q = new URLSearchParams(location.search)
+  const acc = q.get('acc') || ''
+  const admin = q.get('admin') || ''
+  const clear = q.get('clear') === '1'
+  const out = []
+  try {
+    if (clear) { localStorage.clear(); out.push('cleared') }
+    if (acc) {
+      localStorage.setItem('shiguang_session', JSON.stringify({
+        account: acc, token: 'seed-' + acc, loginAt: Date.now(), expireAt: Date.now() + 86400000, remember: false
+      }))
+      out.push('session=' + acc)
+    }
+    if (admin) {
+      localStorage.setItem('shiguang_admin_session', JSON.stringify({ account: admin, token: 'seed-admin-' + admin }))
+      out.push('adminSession=' + admin)
+    }
+    if (!acc && !admin && !clear) { localStorage.clear(); out.push('nothing -> cleared') }
+    out.push('sessionNow=' + String(localStorage.getItem('shiguang_session')))
+    out.push('adminNow=' + String(localStorage.getItem('shiguang_admin_session')))
+  } catch (e) { out.push('ERR ' + e.name + ' ' + e.message) }
+  document.getElementById('out').textContent = 'SEED_RESULT ' + out.join(' | ')
+</script>
+</body>
+</html>
