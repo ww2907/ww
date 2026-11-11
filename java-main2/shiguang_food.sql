@@ -11,42 +11,8 @@
  Target Server Version : 80039 (8.0.39)
  File Encoding         : 65001
 
- Date: 09/11/2026 11:57:40
+ Date: 11/11/2026 09:51:56
 */
-
--- ============================================================
--- 分级分类搜索（三级分类 + 物化路径）
--- ------------------------------------------------------------
--- category 是一棵三层树，一条记录一个节点：
---   1  美食                     level=1  path=/1/
---   ├─ 2  面食                 level=2  path=/1/2/
---   │   ├─ 8  汤面             level=3  path=/1/2/8/
---   │   └─ 9  拌面             level=3  path=/1/2/9/
---   └─ 3  快餐 …（共 6 个二级业态、18 个三级品类）
---
--- 关键字段
---   parent_id  父子关系，0=顶级
---   level      1/2/3，前端按层渲染级联筛选
---   path       物化路径，子树查询统一 path LIKE '/1/2/%'（命中自己 + 所有后代，走 idx_path）
---   code       业务编码（noodle-soup 等），给前后端硬编码引用，改名不改码
---   enabled    停用后不出现在分类树与筛选结果里
---
--- 归属口径
---   restaurant.category_id → 二级业态（一家面馆同时卖汤面和拌面，店铺不该挂到三级）
---   dish.category_id       → 三级品类（菜品是分类搜索的最小粒度）
---
--- 典型查询
---   -- ① 取整棵分类树（前端级联筛选数据源）
---   SELECT id,name,parent_id,level,path,code,icon FROM category WHERE enabled=1 ORDER BY level,sort_order,id;
---   -- ② 选中某个分类时，先拿子树（含自己）
---   SELECT id FROM category WHERE path LIKE CONCAT((SELECT path FROM category WHERE id=2), '%');
---   -- ③ 按三级品类搜菜品（菜品级分类搜索）
---   SELECT * FROM dish WHERE category_id IN (8,9);
---   -- ④ 按分类搜店铺：直接挂该业态的店 + 卖该品类菜的店（去重）
---   SELECT DISTINCT r.* FROM restaurant r
---     LEFT JOIN dish d ON d.restaurant_id = r.id
---    WHERE r.category_id IN (2) OR d.category_id IN (8,9);
--- ============================================================
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
@@ -85,31 +51,31 @@ CREATE TABLE `admin_category`  (
 -- ----------------------------
 -- Records of admin_category
 -- ----------------------------
-INSERT INTO `admin_category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `icon`) VALUES (1, '美食', 0, 0, 1, '/1/', '🍽️');
-INSERT INTO `admin_category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `icon`) VALUES (2, '面食', 1, 1, 2, '/1/2/', '🍜');
-INSERT INTO `admin_category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `icon`) VALUES (3, '快餐', 1, 2, 2, '/1/3/', '🍔');
-INSERT INTO `admin_category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `icon`) VALUES (4, '甜点', 1, 3, 2, '/1/4/', '🍰');
-INSERT INTO `admin_category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `icon`) VALUES (5, '饮品', 1, 4, 2, '/1/5/', '🥤');
-INSERT INTO `admin_category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `icon`) VALUES (6, '轻食', 1, 5, 2, '/1/6/', '🥗');
-INSERT INTO `admin_category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `icon`) VALUES (7, '火锅', 1, 6, 2, '/1/7/', '🍲');
-INSERT INTO `admin_category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `icon`) VALUES (8, '汤面', 2, 1, 3, '/1/2/8/', '🍜');
-INSERT INTO `admin_category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `icon`) VALUES (9, '拌面', 2, 2, 3, '/1/2/9/', '🥢');
-INSERT INTO `admin_category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `icon`) VALUES (10, '馄饨抄手', 2, 3, 3, '/1/2/10/', '🥟');
-INSERT INTO `admin_category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `icon`) VALUES (11, '粥粉小食', 2, 4, 3, '/1/2/11/', '🥣');
-INSERT INTO `admin_category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `icon`) VALUES (12, '汉堡披萨', 3, 1, 3, '/1/3/12/', '🍔');
-INSERT INTO `admin_category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `icon`) VALUES (13, '炸鸡烤翅', 3, 2, 3, '/1/3/13/', '🍗');
-INSERT INTO `admin_category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `icon`) VALUES (14, '卷饭塔可', 3, 3, 3, '/1/3/14/', '🌯');
-INSERT INTO `admin_category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `icon`) VALUES (15, '薯条小食', 3, 4, 3, '/1/3/15/', '🍟');
-INSERT INTO `admin_category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `icon`) VALUES (16, '蛋糕千层', 4, 1, 3, '/1/4/16/', '🍰');
-INSERT INTO `admin_category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `icon`) VALUES (17, '布丁芋泥', 4, 2, 3, '/1/4/17/', '🍮');
-INSERT INTO `admin_category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `icon`) VALUES (18, '咖啡', 5, 1, 3, '/1/5/18/', '☕');
-INSERT INTO `admin_category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `icon`) VALUES (19, '奶茶果茶', 5, 2, 3, '/1/5/19/', '🧋');
-INSERT INTO `admin_category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `icon`) VALUES (20, '沙拉', 6, 1, 3, '/1/6/20/', '🥗');
-INSERT INTO `admin_category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `icon`) VALUES (21, '碗卷三明治', 6, 2, 3, '/1/6/21/', '🥙');
-INSERT INTO `admin_category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `icon`) VALUES (22, '浓汤饮品', 6, 3, 3, '/1/6/22/', '🥣');
-INSERT INTO `admin_category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `icon`) VALUES (23, '锅底', 7, 1, 3, '/1/7/23/', '🍲');
-INSERT INTO `admin_category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `icon`) VALUES (24, '涮菜', 7, 2, 3, '/1/7/24/', '🥩');
-INSERT INTO `admin_category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `icon`) VALUES (25, '火锅小食', 7, 3, 3, '/1/7/25/', '🍡');
+INSERT INTO `admin_category` VALUES (1, '美食', 0, 0, 1, '/1/', '🍽️');
+INSERT INTO `admin_category` VALUES (2, '面食', 1, 1, 2, '/1/2/', '🍜');
+INSERT INTO `admin_category` VALUES (3, '快餐', 1, 2, 2, '/1/3/', '🍔');
+INSERT INTO `admin_category` VALUES (4, '甜点', 1, 3, 2, '/1/4/', '🍰');
+INSERT INTO `admin_category` VALUES (5, '饮品', 1, 4, 2, '/1/5/', '🥤');
+INSERT INTO `admin_category` VALUES (6, '轻食', 1, 5, 2, '/1/6/', '🥗');
+INSERT INTO `admin_category` VALUES (7, '火锅', 1, 6, 2, '/1/7/', '🍲');
+INSERT INTO `admin_category` VALUES (8, '汤面', 2, 1, 3, '/1/2/8/', '🍜');
+INSERT INTO `admin_category` VALUES (9, '拌面', 2, 2, 3, '/1/2/9/', '🥢');
+INSERT INTO `admin_category` VALUES (10, '馄饨抄手', 2, 3, 3, '/1/2/10/', '🥟');
+INSERT INTO `admin_category` VALUES (11, '粥粉小食', 2, 4, 3, '/1/2/11/', '🥣');
+INSERT INTO `admin_category` VALUES (12, '汉堡披萨', 3, 1, 3, '/1/3/12/', '🍔');
+INSERT INTO `admin_category` VALUES (13, '炸鸡烤翅', 3, 2, 3, '/1/3/13/', '🍗');
+INSERT INTO `admin_category` VALUES (14, '卷饭塔可', 3, 3, 3, '/1/3/14/', '🌯');
+INSERT INTO `admin_category` VALUES (15, '薯条小食', 3, 4, 3, '/1/3/15/', '🍟');
+INSERT INTO `admin_category` VALUES (16, '蛋糕千层', 4, 1, 3, '/1/4/16/', '🍰');
+INSERT INTO `admin_category` VALUES (17, '布丁芋泥', 4, 2, 3, '/1/4/17/', '🍮');
+INSERT INTO `admin_category` VALUES (18, '咖啡', 5, 1, 3, '/1/5/18/', '☕');
+INSERT INTO `admin_category` VALUES (19, '奶茶果茶', 5, 2, 3, '/1/5/19/', '🧋');
+INSERT INTO `admin_category` VALUES (20, '沙拉', 6, 1, 3, '/1/6/20/', '🥗');
+INSERT INTO `admin_category` VALUES (21, '碗卷三明治', 6, 2, 3, '/1/6/21/', '🥙');
+INSERT INTO `admin_category` VALUES (22, '浓汤饮品', 6, 3, 3, '/1/6/22/', '🥣');
+INSERT INTO `admin_category` VALUES (23, '锅底', 7, 1, 3, '/1/7/23/', '🍲');
+INSERT INTO `admin_category` VALUES (24, '涮菜', 7, 2, 3, '/1/7/24/', '🥩');
+INSERT INTO `admin_category` VALUES (25, '火锅小食', 7, 3, 3, '/1/7/25/', '🍡');
 
 -- ----------------------------
 -- Table structure for admin_config
@@ -214,7 +180,7 @@ CREATE TABLE `category`  (
   `sort_order` int NOT NULL DEFAULT 0 COMMENT '排序权重',
   `level` tinyint NOT NULL DEFAULT 1 COMMENT '层级：1=一级 2=二级 3=三级',
   `path` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '物化路径，形如 /1/2/8/，子树查询走 idx_path',
-  `code` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL COMMENT '业务编码，供前后端硬编码引用',
+  `code` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '业务编码，供前后端硬编码引用',
   `icon` varchar(8) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT '' COMMENT '分类图标 emoji',
   `enabled` tinyint NOT NULL DEFAULT 1 COMMENT '是否启用：1=启用 0=停用',
   PRIMARY KEY (`id`) USING BTREE,
@@ -227,31 +193,31 @@ CREATE TABLE `category`  (
 -- ----------------------------
 -- Records of category
 -- ----------------------------
-INSERT INTO `category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `code`, `icon`, `enabled`) VALUES (1, '美食', 0, 0, 1, '/1/', 'food', '🍽️', 1);
-INSERT INTO `category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `code`, `icon`, `enabled`) VALUES (2, '面食', 1, 1, 2, '/1/2/', 'noodle', '🍜', 1);
-INSERT INTO `category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `code`, `icon`, `enabled`) VALUES (3, '快餐', 1, 2, 2, '/1/3/', 'fastfood', '🍔', 1);
-INSERT INTO `category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `code`, `icon`, `enabled`) VALUES (4, '甜点', 1, 3, 2, '/1/4/', 'dessert', '🍰', 1);
-INSERT INTO `category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `code`, `icon`, `enabled`) VALUES (5, '饮品', 1, 4, 2, '/1/5/', 'drink', '🥤', 1);
-INSERT INTO `category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `code`, `icon`, `enabled`) VALUES (6, '轻食', 1, 5, 2, '/1/6/', 'light', '🥗', 1);
-INSERT INTO `category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `code`, `icon`, `enabled`) VALUES (7, '火锅', 1, 6, 2, '/1/7/', 'hotpot', '🍲', 1);
-INSERT INTO `category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `code`, `icon`, `enabled`) VALUES (8, '汤面', 2, 1, 3, '/1/2/8/', 'noodle-soup', '🍜', 1);
-INSERT INTO `category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `code`, `icon`, `enabled`) VALUES (9, '拌面', 2, 2, 3, '/1/2/9/', 'noodle-mix', '🥢', 1);
-INSERT INTO `category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `code`, `icon`, `enabled`) VALUES (10, '馄饨抄手', 2, 3, 3, '/1/2/10/', 'wonton', '🥟', 1);
-INSERT INTO `category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `code`, `icon`, `enabled`) VALUES (11, '粥粉小食', 2, 4, 3, '/1/2/11/', 'porridge', '🥣', 1);
-INSERT INTO `category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `code`, `icon`, `enabled`) VALUES (12, '汉堡披萨', 3, 1, 3, '/1/3/12/', 'burger', '🍔', 1);
-INSERT INTO `category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `code`, `icon`, `enabled`) VALUES (13, '炸鸡烤翅', 3, 2, 3, '/1/3/13/', 'fried-chicken', '🍗', 1);
-INSERT INTO `category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `code`, `icon`, `enabled`) VALUES (14, '卷饭塔可', 3, 3, 3, '/1/3/14/', 'wrap', '🌯', 1);
-INSERT INTO `category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `code`, `icon`, `enabled`) VALUES (15, '薯条小食', 3, 4, 3, '/1/3/15/', 'snack', '🍟', 1);
-INSERT INTO `category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `code`, `icon`, `enabled`) VALUES (16, '蛋糕千层', 4, 1, 3, '/1/4/16/', 'cake', '🍰', 1);
-INSERT INTO `category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `code`, `icon`, `enabled`) VALUES (17, '布丁芋泥', 4, 2, 3, '/1/4/17/', 'pudding', '🍮', 1);
-INSERT INTO `category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `code`, `icon`, `enabled`) VALUES (18, '咖啡', 5, 1, 3, '/1/5/18/', 'coffee', '☕', 1);
-INSERT INTO `category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `code`, `icon`, `enabled`) VALUES (19, '奶茶果茶', 5, 2, 3, '/1/5/19/', 'tea', '🧋', 1);
-INSERT INTO `category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `code`, `icon`, `enabled`) VALUES (20, '沙拉', 6, 1, 3, '/1/6/20/', 'salad', '🥗', 1);
-INSERT INTO `category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `code`, `icon`, `enabled`) VALUES (21, '碗卷三明治', 6, 2, 3, '/1/6/21/', 'bowl', '🥙', 1);
-INSERT INTO `category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `code`, `icon`, `enabled`) VALUES (22, '浓汤饮品', 6, 3, 3, '/1/6/22/', 'soup', '🥣', 1);
-INSERT INTO `category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `code`, `icon`, `enabled`) VALUES (23, '锅底', 7, 1, 3, '/1/7/23/', 'hotpot-base', '🍲', 1);
-INSERT INTO `category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `code`, `icon`, `enabled`) VALUES (24, '涮菜', 7, 2, 3, '/1/7/24/', 'hotpot-dish', '🥩', 1);
-INSERT INTO `category` (`id`, `name`, `parent_id`, `sort_order`, `level`, `path`, `code`, `icon`, `enabled`) VALUES (25, '火锅小食', 7, 3, 3, '/1/7/25/', 'hotpot-snack', '🍡', 1);
+INSERT INTO `category` VALUES (1, '美食', 0, 0, 1, '/1/', 'food', '🍽️', 1);
+INSERT INTO `category` VALUES (2, '面食', 1, 1, 2, '/1/2/', 'noodle', '🍜', 1);
+INSERT INTO `category` VALUES (3, '快餐', 1, 2, 2, '/1/3/', 'fastfood', '🍔', 1);
+INSERT INTO `category` VALUES (4, '甜点', 1, 3, 2, '/1/4/', 'dessert', '🍰', 1);
+INSERT INTO `category` VALUES (5, '饮品', 1, 4, 2, '/1/5/', 'drink', '🥤', 1);
+INSERT INTO `category` VALUES (6, '轻食', 1, 5, 2, '/1/6/', 'light', '🥗', 1);
+INSERT INTO `category` VALUES (7, '火锅', 1, 6, 2, '/1/7/', 'hotpot', '🍲', 1);
+INSERT INTO `category` VALUES (8, '汤面', 2, 1, 3, '/1/2/8/', 'noodle-soup', '🍜', 1);
+INSERT INTO `category` VALUES (9, '拌面', 2, 2, 3, '/1/2/9/', 'noodle-mix', '🥢', 1);
+INSERT INTO `category` VALUES (10, '馄饨抄手', 2, 3, 3, '/1/2/10/', 'wonton', '🥟', 1);
+INSERT INTO `category` VALUES (11, '粥粉小食', 2, 4, 3, '/1/2/11/', 'porridge', '🥣', 1);
+INSERT INTO `category` VALUES (12, '汉堡披萨', 3, 1, 3, '/1/3/12/', 'burger', '🍔', 1);
+INSERT INTO `category` VALUES (13, '炸鸡烤翅', 3, 2, 3, '/1/3/13/', 'fried-chicken', '🍗', 1);
+INSERT INTO `category` VALUES (14, '卷饭塔可', 3, 3, 3, '/1/3/14/', 'wrap', '🌯', 1);
+INSERT INTO `category` VALUES (15, '薯条小食', 3, 4, 3, '/1/3/15/', 'snack', '🍟', 1);
+INSERT INTO `category` VALUES (16, '蛋糕千层', 4, 1, 3, '/1/4/16/', 'cake', '🍰', 1);
+INSERT INTO `category` VALUES (17, '布丁芋泥', 4, 2, 3, '/1/4/17/', 'pudding', '🍮', 1);
+INSERT INTO `category` VALUES (18, '咖啡', 5, 1, 3, '/1/5/18/', 'coffee', '☕', 1);
+INSERT INTO `category` VALUES (19, '奶茶果茶', 5, 2, 3, '/1/5/19/', 'tea', '🧋', 1);
+INSERT INTO `category` VALUES (20, '沙拉', 6, 1, 3, '/1/6/20/', 'salad', '🥗', 1);
+INSERT INTO `category` VALUES (21, '碗卷三明治', 6, 2, 3, '/1/6/21/', 'bowl', '🥙', 1);
+INSERT INTO `category` VALUES (22, '浓汤饮品', 6, 3, 3, '/1/6/22/', 'soup', '🥣', 1);
+INSERT INTO `category` VALUES (23, '锅底', 7, 1, 3, '/1/7/23/', 'hotpot-base', '🍲', 1);
+INSERT INTO `category` VALUES (24, '涮菜', 7, 2, 3, '/1/7/24/', 'hotpot-dish', '🥩', 1);
+INSERT INTO `category` VALUES (25, '火锅小食', 7, 3, 3, '/1/7/25/', 'hotpot-snack', '🍡', 1);
 
 -- ----------------------------
 -- Table structure for dish
@@ -641,7 +607,7 @@ CREATE TABLE `order_item`  (
   `created_at` datetime NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_order`(`order_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 66 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '订单明细表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 71 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '订单明细表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of order_item
@@ -699,6 +665,8 @@ INSERT INTO `order_item` VALUES (50, 27, 1, '招牌牛肉面', 28.00, 1, 28.00, 
 INSERT INTO `order_item` VALUES (51, 28, 191, '暖糖海盐提拉米苏', 28.00, 2, 56.00, '2026-11-06 15:41:40');
 INSERT INTO `order_item` VALUES (64, 41, 14, '焦糖布丁（正常）', 20.00, 1, 20.00, '2026-11-09 11:21:05');
 INSERT INTO `order_item` VALUES (65, 41, 15, '芋泥啵啵杯（正常）', 24.00, 1, 24.00, '2026-11-09 11:21:05');
+INSERT INTO `order_item` VALUES (66, 42, 11, '现烤舒芙蕾（正常 / 加水果）', 37.00, 1, 37.00, '2026-11-11 09:29:34');
+INSERT INTO `order_item` VALUES (67, 42, 13, '莓果千层（正常）', 30.00, 1, 30.00, '2026-11-11 09:29:34');
 
 -- ----------------------------
 -- Table structure for orders
@@ -723,7 +691,7 @@ CREATE TABLE `orders`  (
   UNIQUE INDEX `uk_order_no`(`order_no` ASC) USING BTREE,
   INDEX `idx_account`(`account` ASC) USING BTREE,
   INDEX `idx_rest`(`restaurant_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 42 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '订单主表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 43 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '订单主表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of orders
@@ -753,9 +721,10 @@ INSERT INTO `orders` VALUES (22, 'SG20261027019', 11, 'user002', 6, '脆脆炸�
 INSERT INTO `orders` VALUES (23, 'SG20261022020', 8, 'user003', 5, '老成都火锅', 150.00, 4, 3, '2026-10-22 20:15:31', '2026-10-22 20:15:31', '', '', '');
 INSERT INTO `orders` VALUES (24, 'SG20261021021', 15, 'user003', 5, '老成都火锅', 174.00, 3, 3, '2026-10-21 19:02:05', '2026-10-21 19:02:05', '', '', '');
 INSERT INTO `orders` VALUES (25, 'SG20261101022', 13, 'user006', 2, '麦奇轻食沙拉', 130.00, 5, 2, '2026-11-01 13:50:13', '2026-11-01 13:50:13', '', '', '');
-INSERT INTO `orders` VALUES (26, '17937573875403050', 1, 'demo', 1, '巷子口牛肉面', 56.00, 2, 1, '2026-11-04 09:56:27', '2026-11-04 09:56:29', '演示用户', '13800000000', '广东省 深圳市 科技园南路 8 号 3 栋 501');
-INSERT INTO `orders` VALUES (27, '17937574461047919', 1, 'demo', 1, '巷子口牛肉面', 28.00, 1, 0, '2026-11-04 09:57:26', '2026-11-04 09:57:26', '演示用户', '13800000000', '广东省 深圳市 科技园南路 8 号 3 栋 501');
+INSERT INTO `orders` VALUES (26, '17937573875403050', 1, 'demo', 1, '巷子口牛肉面', 56.00, 2, 1, '2026-11-04 09:56:27', '2026-11-11 09:34:32', '演示用户', '13800000000', '广东省 深圳市 科技园南路 8 号 3 栋 501');
+INSERT INTO `orders` VALUES (27, '17937574461047919', 1, 'demo', 1, '巷子口牛肉面', 28.00, 1, 0, '2026-11-04 09:57:26', '2026-11-11 09:34:32', '演示用户', '13800000000', '广东省 深圳市 科技园南路 8 号 3 栋 501');
 INSERT INTO `orders` VALUES (41, '17941944651139942', 2, 'www', 3, '糖潮甜品铺', 44.00, 2, 3, '2026-11-09 11:21:05', '2026-11-09 11:21:08', '', '', '');
+INSERT INTO `orders` VALUES (42, '17943605744754076', 2, 'www', 3, '糖潮甜品铺', 67.00, 2, 0, '2026-11-11 09:29:34', '2026-11-11 09:29:34', '', '', '');
 
 -- ----------------------------
 -- Table structure for restaurant
@@ -1246,7 +1215,7 @@ CREATE TABLE `user`  (
   `updated_at` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `uk_account`(`account` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 17 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '用户表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 18 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '用户表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of user
@@ -1265,6 +1234,7 @@ INSERT INTO `user` VALUES (13, 'user009', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdj
 INSERT INTO `user` VALUES (14, 'user010', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdjwJZgpO60ObfiAvvvbslm9ey', '丸子', '', '', '', '', 0, 1, '2026-10-31 17:51:28', '2026-10-31 17:51:28');
 INSERT INTO `user` VALUES (15, 'user011', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdjwJZgpO60ObfiAvvvbslm9ey', '果果', '', '', '', '', 0, 1, '2026-10-31 17:20:51', '2026-10-31 17:20:51');
 INSERT INTO `user` VALUES (16, 'user012', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdjwJZgpO60ObfiAvvvbslm9ey', '阿橙', '', '', '', '', 0, 1, '2026-10-31 11:34:42', '2026-10-31 11:34:42');
+INSERT INTO `user` VALUES (17, 'Z123', '$2a$10$oiH4qgqx1vv1LNc2OVUbqezzik6u8QEV3LjTjeVa/D4G8XsJzteRy', '嘤嘤嘤', '', '', '', '', 0, 1, '2026-11-11 09:34:40', '2026-11-11 09:34:40');
 
 -- ----------------------------
 -- Table structure for user_address
@@ -1284,12 +1254,13 @@ CREATE TABLE `user_address`  (
   `updated_at` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_account`(`account` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 7 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '用户收货地址' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 8 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '用户收货地址' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of user_address
 -- ----------------------------
 INSERT INTO `user_address` VALUES (1, 'demo', '演示用户', '13800000000', '家', '广东省', '深圳市', '科技园南路 8 号 3 栋 501', 0, '2026-11-04 09:52:48', '2026-11-06 15:58:34');
+INSERT INTO `user_address` VALUES (7, 'www', 'www', '12345678901', '家', 'jxs', 'www', '00', 0, '2026-11-11 09:40:46', '2026-11-11 09:40:46');
 
 -- ----------------------------
 -- Table structure for verify_code
