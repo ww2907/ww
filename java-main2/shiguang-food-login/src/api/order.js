@@ -127,20 +127,25 @@ async function httpGet(path, params) {
 // ============================================================
 
 /**
- * 提交订单。参数：{ restaurantId, restaurantName, account, items }
+ * 提交订单。参数：{ restaurantId, restaurantName, account, items, addressId }
  *   items: [{ dishId, name, price, qty }]
+ *   addressId: 收货地址 id（user_address.id）。不传时后端自动取该账号默认地址；
+ *              账号一条地址都没有会返回「请先填写收货地址，再提交订单」。
  * 策略：mock 模式直接返回内存订单；真实模式下请求后端 POST /api/orders，
  *       若后端尚未实现该接口（报错 / 404），则回退到本地模拟，保证页面可用。
  */
-export async function createOrder({ restaurantId, restaurantName, account, items = [] } = {}) {
+export async function createOrder({ restaurantId, restaurantName, account, items = [], addressId = null } = {}) {
   if (ORDER_USE_MOCK) {
     await delay(500)
     return buildMockOrder({ restaurantId, restaurantName, account, items })
   }
   try {
-    return await httpPost(ORDER_ENDPOINTS.create, { restaurantId, restaurantName, account, items })
+    const payload = { restaurantId, restaurantName, account, items }
+    if (addressId != null && addressId !== '') payload.addressId = addressId
+    return await httpPost(ORDER_ENDPOINTS.create, payload)
   } catch (e) {
-    if (ORDER_FALLBACK_MOCK) {
+    // 地址类错误是业务规则（用户必须先去填地址），不能悄悄回退到 mock 假装成功
+    if (ORDER_FALLBACK_MOCK && !/地址/.test(e.message || '')) {
       console.warn('[order] 后端下单接口暂不可用，已回退到本地模拟：', e.message)
       return buildMockOrder({ restaurantId, restaurantName, account, items })
     }

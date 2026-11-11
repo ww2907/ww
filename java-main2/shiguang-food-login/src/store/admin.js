@@ -75,11 +75,14 @@ const DEFAULT_USERS = [
   { id: 3, account: 'lili', nickname: '丽丽', avatar: '🐱', gender: '女', phone: '13700003456', bio: '甜品收集者 🍰', accountType: 0, status: 1, createdAt: '2026-10-24 10:30:00', addressCount: 0 },
   { id: 4, account: 'blocked_user', nickname: '已封禁用户', avatar: '', gender: '', phone: '', bio: '', accountType: 0, status: 0, createdAt: '2026-10-25 08:05:00', addressCount: 0 }
 ]
+// 后台订单（mock 兜底，结构必须与后端 /admin/order 对齐：
+// id / orderNo / account / restaurant / items / amount / status / statusCode
+// / receiverName / receiverPhone / address / createdAt）
 const DEFAULT_ORDERS = [
-  { id: 'OD20261026001', account: 'demo', restaurant: '巷子口牛肉面', items: '招牌牛肉面 x1, 冰镇酸梅汤 x1', amount: 36, status: '已支付', createdAt: '2026-10-26 11:02:11' },
-  { id: 'OD20261026002', account: 'xiaoming', restaurant: '麦奇轻食沙拉', items: '鸡胸蔬菜沙拉 x1', amount: 26, status: '已完成', createdAt: '2026-10-26 11:20:45' },
-  { id: 'OD20261026003', account: 'lili', restaurant: '老成都火锅', items: '麻辣牛油锅 x1, 鲜切黄喉 x1', amount: 100, status: '待支付', createdAt: '2026-10-26 11:35:09' },
-  { id: 'OD20261025018', account: 'demo', restaurant: '拾光咖啡', items: '生椰拿铁 x2', amount: 44, status: '已取消', createdAt: '2026-10-25 18:44:20' }
+  { id: '26', orderNo: '17937573875403050', account: 'demo', restaurant: '巷子口牛肉面', items: '招牌牛肉面 x1, 冰镇酸梅汤 x1', amount: 36, status: '已支付', statusCode: 1, receiverName: '演示用户', receiverPhone: '13800000000', address: '广东省 深圳市 科技园南路 8 号 3 栋 501', createdAt: '2026-11-04 09:56:27' },
+  { id: '27', orderNo: '17937574461047919', account: 'demo', restaurant: '巷子口牛肉面', items: '招牌牛肉面 x1', amount: 28, status: '待支付', statusCode: 0, receiverName: '演示用户', receiverPhone: '13800000000', address: '广东省 深圳市 科技园南路 8 号 3 栋 501', createdAt: '2026-11-04 09:57:26' },
+  { id: '28', orderNo: '17937580000000001', account: 'xiaoming', restaurant: '麦奇轻食沙拉', items: '鸡胸蔬菜沙拉 x1', amount: 26, status: '已完成', statusCode: 2, receiverName: '小明', receiverPhone: '13900002345', address: '浙江省 杭州市 文一西路 969 号', createdAt: '2026-11-05 12:20:45' },
+  { id: '29', orderNo: '17937580000000002', account: 'lili', restaurant: '老成都火锅', items: '麻辣牛油锅 x1, 鲜切黄喉 x1', amount: 100, status: '已取消', statusCode: 3, receiverName: '', receiverPhone: '', address: '', createdAt: '2026-11-06 18:35:09' }
 ]
 
 // ---------- 读取 / 持久化 ----------

@@ -39,6 +39,7 @@ public class AdminService implements CommandLineRunner {
     private final AdminOrderMapper orderMapper;
     private final AdminAccountMapper accountMapper;
     private final OrderMapper bizOrderMapper;
+    private final OrderItemMapper orderItemMapper;
     private final UserMapper regUserMapper;
     private final UserAddressMapper addressMapper;
     private final UserProfileService profileService;
@@ -47,7 +48,7 @@ public class AdminService implements CommandLineRunner {
     public AdminService(AdminConfigMapper configMapper, AdminCategoryMapper categoryMapper,
                         AdminDishMapper dishMapper,
                         AdminOrderMapper orderMapper, AdminAccountMapper accountMapper,
-                        OrderMapper bizOrderMapper, UserMapper regUserMapper,
+                        OrderMapper bizOrderMapper, OrderItemMapper orderItemMapper, UserMapper regUserMapper,
                         UserAddressMapper addressMapper, UserProfileService profileService) {
         this.configMapper = configMapper;
         this.categoryMapper = categoryMapper;
@@ -55,6 +56,7 @@ public class AdminService implements CommandLineRunner {
         this.orderMapper = orderMapper;
         this.accountMapper = accountMapper;
         this.bizOrderMapper = bizOrderMapper;
+        this.orderItemMapper = orderItemMapper;
         this.regUserMapper = regUserMapper;
         this.addressMapper = addressMapper;
         this.profileService = profileService;
@@ -493,19 +495,81 @@ public class AdminService implements CommandLineRunner {
     }
 
     // ============ 7. 订单 ============
-    public List<AdminOrder> listOrders() {
-        return orderMapper.selectList(null);
+    // 说明：早期后台订单管理读的是 admin_order 表（4 条演示数据），与真实下单产生的 orders
+    // 完全脱节。2026-11-11 起统一改为读真实订单，并顺带展示下单时的收货地址快照。
+    public List<Map<String, Object>> listOrders() {
+        List<Order> orders = bizOrderMapper.selectList(new QueryWrapper<Order>().orderByDesc("id"));
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (Order o : orders) {
+            List<OrderItem> its = orderItemMapper.selectList(
+                    new QueryWrapper<OrderItem>().eq("order_id", o.getId()));
+            String items = its.stream()
+                    .map(i -> nvl(i.getDishName()) + " x" + (i.getQty() == null ? 0 : i.getQty()))
+                    .collect(java.util.stream.Collectors.joining(", "));
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("id", String.valueOf(o.getId()));
+            m.put("orderNo", nvl(o.getOrderNo()));
+            m.put("account", nvl(o.getAccount()));
+            m.put("restaurant", nvl(o.getRestaurantName()));
+            m.put("items", items);
+            m.put("amount", o.getTotalAmount());
+            m.put("status", orderStatusText(o.getStatus()));   // 中文文案，前端 select 直接绑定
+            m.put("statusCode", o.getStatus());
+            m.put("receiverName", nvl(o.getReceiverName()));
+            m.put("receiverPhone", nvl(o.getReceiverPhone()));
+            m.put("address", nvl(o.getAddress()));
+            m.put("createdAt", o.getCreatedAt() == null ? "" : o.getCreatedAt().format(TIME_FMT));
+            rows.add(m);
+        }
+        return rows;
     }
 
     public void updateOrderStatus(String id, String status) {
-        AdminOrder o = orderMapper.selectById(id);
+        Order o = bizOrderMapper.selectById(parseOrderId(id));
         if (o == null) throw new BusinessException("订单不存在");
-        o.setStatus(status);
-        orderMapper.updateById(o);
+        o.setStatus(parseOrderStatus(status));
+        bizOrderMapper.updateById(o);
     }
 
     public void removeOrder(String id) {
-        orderMapper.deleteById(id);
+        Long oid = parseOrderId(id);
+        orderItemMapper.delete(new QueryWrapper<OrderItem>().eq("order_id", oid));
+        bizOrderMapper.deleteById(oid);
+    }
+
+    /** 后台表格里的订单 id 是字符串，这里统一转数字主键（旧的 OD2026... 早已不存在） */
+    private Long parseOrderId(String id) {
+        try {
+            return Long.valueOf(String.valueOf(id).trim());
+        } catch (NumberFormatException e) {
+            throw new BusinessException("订单不存在");
+        }
+    }
+
+    /** 中文文案 / 数字 都能落成 0-3 状态码 */
+    private Integer parseOrderStatus(String status) {
+        String s = status == null ? "" : status.trim();
+        switch (s) {
+            case "待支付": case "0": return 0;
+            case "已支付": case "1": return 1;
+            case "已完成": case "2": return 2;
+            case "已取消": case "3": return 3;
+            default: throw new BusinessException("未知的订单状态：" + s);
+        }
+    }
+
+    private String orderStatusText(Integer status) {
+        if (status == null) return "待支付";
+        switch (status) {
+            case 1: return "已支付";
+            case 2: return "已完成";
+            case 3: return "已取消";
+            default: return "待支付";
+        }
+    }
+
+    private String nvl(String s) {
+        return s == null ? "" : s;
     }
 
     // ============ 启动播种（MySQL 库，仅在缺失时补齐，确保可登录 / 有默认配置）============

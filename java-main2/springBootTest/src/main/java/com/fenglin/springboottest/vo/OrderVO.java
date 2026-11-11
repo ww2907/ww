@@ -30,6 +30,15 @@ public class OrderVO {
     /** 状态中文文案 */
     private String statusText;
 
+    /** 收货人姓名（下单快照） */
+    private String receiverName;
+
+    /** 收货电话（下单快照） */
+    private String receiverPhone;
+
+    /** 收货地址全文（下单快照） */
+    private String address;
+
     /** 订单明细 */
     private List<OrderItemVO> items;
 

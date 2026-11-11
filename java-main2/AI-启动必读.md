@@ -84,6 +84,32 @@ cd shiguang-food-login
     `#/login?account=xxx&registered=1`，登录页自动回填用户名并提示"注册成功"，参数消费后会被清掉。
 11. **H2 已废弃**：原 `schema.sql`/`data.sql`/`application-h2.properties` 已并入 MySQL 并删除，
     `pom.xml` 无 h2 依赖。库 `shiguang_food` 现含 14 张表（8 业务 + 6 admin_*）。勿再启用 H2。
+12. **改了后端源码必须重编译 + 重启，否则新路由被旧类吃掉**：源码里有 `GET /api/restaurants/category-tree`
+    （分级分类树），但 `target/classes` 是旧的就只认得 `/{id}`，访问会返回
+    `code:500 Method parameter 'id': Failed to convert ... 'category-tree'`。看到这个报错先
+    `mvn -o -DskipTests compile` + 重启后端，不要怀疑数据库。
+13. **数据库已是三级分类（2026-11-11）**：`category` 有 level/path/code/icon/enabled 五列，`dish` 有
+    `category_id`（三级品类）。全量脚本 `shiguang_food.sql` 已同步，**重新导入不会退回旧的平铺 7 分类**。
+    若哪天导完库 `category` 只剩 7 行或 `dish` 没有 `category_id`，说明用的是旧备份脚本
+    （`.bak_20261106` 及更早），换成当前文件。美食页前端已消费 `/category-tree` 做「业态 tab + 品类 chip」
+    级联筛选（筛选参数是 `categoryId`，旧的 7 个平铺分类名只作兼容保留）。
+14. **白屏（页面只剩背景 emoji）＝ 某个模块求值就抛错，先看控制台第一条 Uncaught**：2026-11-11 实例——
+    `src/api/food.js` 的 `MOCK_CATEGORY_TREE` 立即执行函数引用了定义在其后的 `MOCK_RESTAURANTS`，
+    抛 `ReferenceError: Cannot access 'MOCK_RESTAURANTS' before initialization`（TDZ），整个 food.js 加载失败，
+    `#app` 永远空着 → 登录页白屏、看起来像"登录不了"，其实连表单都没渲染。修法：把依赖 `MOCK_RESTAURANTS`
+    的常量挪到它之后。**无头排查命令**（不用装 agent-browser，Chrome 自带）：
+    ```bash
+    "/c/Program Files (x86)/Google/Chrome/Application/chrome.exe" --headless=new --disable-gpu \
+      --enable-logging=stderr --log-level=0 --virtual-time-budget=8000 --dump-dom \
+      "http://192.168.68.31:5173/#/login" 2>&1 | grep -i "CONSOLE.*\(error\|uncaught\)"
+    ```
+    判据：`--dump-dom` 若输出 `id="app"></div>`（空），就是 JS 没跑起来，与后端/数据库无关。
+15. **下单必须有收货地址（2026-11-11 起）**：`orders` 表有 `receiver_name / receiver_phone / address`
+    三个快照列，`OrderServiceImpl.createOrder` 会解析地址（`addressId` → 账号默认地址 → 最早一条），
+    都取不到就抛 `请先填写收货地址，再提交订单`，`code=1`。
+    **测试下单接口时如果返回这句话，不是接口坏了**，是那个账号（如 `www`）在 `user_address` 里没有记录，
+    换 `demo` 或先 POST `/api/users/addresses` 加一条即可。
+    前端 `OrderView.vue` 没地址时会把「提交订单」置灰并显示「＋ 添加收货地址」，属于预期行为。
 
 ## 3. 启动后验证（端到端）
 

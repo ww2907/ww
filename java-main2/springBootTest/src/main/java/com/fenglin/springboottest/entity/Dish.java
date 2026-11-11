@@ -37,4 +37,10 @@ public class Dish {
 
     /** 规格 JSON 字符串：[{name,type,options:[{label,price}]}]，可为空 */
     private String specs;
+
+    /**
+     * 所属三级分类 id（分级分类搜索用）。
+     * 店铺本身只挂二级业态，顾客选到三级品类时，靠这个字段反查「有该品类菜品的店铺」。
+     */
+    private Long categoryId;
 }

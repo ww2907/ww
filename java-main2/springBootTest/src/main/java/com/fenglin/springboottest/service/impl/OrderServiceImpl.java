@@ -9,9 +9,11 @@ import com.fenglin.springboottest.entity.Order;
 import com.fenglin.springboottest.entity.OrderItem;
 import com.fenglin.springboottest.entity.Restaurant;
 import com.fenglin.springboottest.entity.User;
+import com.fenglin.springboottest.entity.UserAddress;
 import com.fenglin.springboottest.mapper.OrderItemMapper;
 import com.fenglin.springboottest.mapper.OrderMapper;
 import com.fenglin.springboottest.mapper.RestaurantMapper;
+import com.fenglin.springboottest.mapper.UserAddressMapper;
 import com.fenglin.springboottest.mapper.UserMapper;
 import com.fenglin.springboottest.service.OrderService;
 import com.fenglin.springboottest.vo.FrequentFoodVO;
@@ -30,8 +32,8 @@ import java.util.Random;
 
 /**
  * 订单业务实现：
- *   - 创建订单：校验店铺 + 明细，计算金额与件数，关联用户（按账号解析 user_id），
- *     落库主表与明细表，返回订单详情。
+ *   - 创建订单：校验店铺 + 明细 + **收货地址**，计算金额与件数，关联用户（按账号解析 user_id），
+ *     把地址以快照形式写进订单，落库主表与明细表，返回订单详情。
  *   - 查询订单：按账号倒序返回订单与明细。
  */
 @Service
@@ -40,13 +42,16 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     private final OrderItemMapper orderItemMapper;
     private final UserMapper userMapper;
     private final RestaurantMapper restaurantMapper;
+    private final UserAddressMapper userAddressMapper;
 
     public OrderServiceImpl(OrderItemMapper orderItemMapper,
                             UserMapper userMapper,
-                            RestaurantMapper restaurantMapper) {
+                            RestaurantMapper restaurantMapper,
+                            UserAddressMapper userAddressMapper) {
         this.orderItemMapper = orderItemMapper;
         this.userMapper = userMapper;
         this.restaurantMapper = restaurantMapper;
+        this.userAddressMapper = userAddressMapper;
     }
 
     @Override
@@ -95,6 +100,11 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
             throw new BusinessException("购物车为空，无法下单");
         }
 
+        // 收货地址：没地址就不允许下单（"请先填写收货地址"）
+        // 优先用前端传来的 addressId，其次取该账号的默认地址，最后退到最早一条；
+        // 都拿不到说明这个账号还没维护过地址 → 直接拦下。
+        UserAddress address = resolveAddress(req.getAddressId(), account);
+
         // 落库主表
         Order order = new Order();
         order.setOrderNo(genOrderNo());
@@ -106,6 +116,10 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         order.setTotalAmount(total);
         order.setItemCount(itemCount);
         order.setStatus(0); // 待支付
+        // 地址以「快照」写入订单：之后用户改/删地址，历史订单不受影响
+        order.setReceiverName(address.getName() == null ? "" : address.getName());
+        order.setReceiverPhone(address.getPhone() == null ? "" : address.getPhone());
+        order.setAddress(fullAddressOf(address));
         // 显式写入下单时间：MySQL 的 DEFAULT CURRENT_TIMESTAMP 不会回填到实体，
         // 不设置会导致「下单成功」返回的 createdAt 为空串
         order.setCreatedAt(LocalDateTime.now());
@@ -275,6 +289,66 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         return toVO(order, itemVos);
     }
 
+    /**
+     * 解析下单用的收货地址。
+     *
+     * 查找顺序：
+     *   1. 前端显式传的 addressId（校验归属，防止拿别人地址下单）
+     *   2. 该账号的默认地址（is_default = 1）
+     *   3. 该账号最早创建的一条地址
+     * 三条都落空 → 抛业务异常，前端据此提示「请先填写收货地址」。
+     */
+    private UserAddress resolveAddress(Long addressId, String account) {
+        UserAddress addr = null;
+        if (addressId != null) {
+            addr = userAddressMapper.selectById(addressId);
+            if (addr == null) {
+                throw new BusinessException("收货地址不存在，请重新选择");
+            }
+            if (account != null && !account.isEmpty() && !account.equals(addr.getAccount())) {
+                throw new BusinessException("该收货地址不属于当前账号");
+            }
+        }
+        if (addr == null && account != null && !account.isEmpty()) {
+            addr = userAddressMapper.selectOne(new QueryWrapper<UserAddress>()
+                    .eq("account", account)
+                    .eq("is_default", 1)
+                    .orderByAsc("id")
+                    .last("LIMIT 1"));
+            if (addr == null) {
+                addr = userAddressMapper.selectOne(new QueryWrapper<UserAddress>()
+                        .eq("account", account)
+                        .orderByAsc("id")
+                        .last("LIMIT 1"));
+            }
+        }
+        if (addr == null) {
+            throw new BusinessException("请先填写收货地址，再提交订单");
+        }
+        String full = fullAddressOf(addr);
+        if (full.isEmpty()) {
+            throw new BusinessException("收货地址不完整，请补充详细地址后再下单");
+        }
+        return addr;
+    }
+
+    /** 省 市 详细地址 拼成一行（空段自动跳过） */
+    private String fullAddressOf(UserAddress a) {
+        if (a == null) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        for (String part : new String[]{a.getProvince(), a.getCity(), a.getDetail()}) {
+            if (part != null && !part.trim().isEmpty()) {
+                if (sb.length() > 0) {
+                    sb.append(' ');
+                }
+                sb.append(part.trim());
+            }
+        }
+        return sb.toString();
+    }
+
     private OrderVO toVO(Order o, List<OrderItemVO> itemVos) {
         OrderVO vo = new OrderVO();
         vo.setId(o.getId());
@@ -285,6 +359,9 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         vo.setItemCount(o.getItemCount());
         vo.setStatus(o.getStatus());
         vo.setStatusText(statusText(o.getStatus()));
+        vo.setReceiverName(o.getReceiverName());
+        vo.setReceiverPhone(o.getReceiverPhone());
+        vo.setAddress(o.getAddress());
         vo.setItems(itemVos);
         vo.setCreatedAt(o.getCreatedAt() == null ? ""
                 : o.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));

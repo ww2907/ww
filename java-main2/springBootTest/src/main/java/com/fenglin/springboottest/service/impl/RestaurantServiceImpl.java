@@ -14,6 +14,7 @@ import com.fenglin.springboottest.mapper.DishMapper;
 import com.fenglin.springboottest.mapper.RestaurantMapper;
 import com.fenglin.springboottest.mapper.ReviewMapper;
 import com.fenglin.springboottest.service.RestaurantService;
+import com.fenglin.springboottest.vo.CategoryTreeVO;
 import com.fenglin.springboottest.vo.DishSpecOptionVO;
 import com.fenglin.springboottest.vo.DishSpecVO;
 import com.fenglin.springboottest.vo.DishVO;
@@ -67,6 +68,20 @@ public class RestaurantServiceImpl extends ServiceImpl<RestaurantMapper, Restaur
 
     @Override
     public List<RestaurantVO> search(String keyword, String category, String sort, String order) {
+        return doSearch(keyword, null, category, sort, order);
+    }
+
+    @Override
+    public List<RestaurantVO> search(String keyword, Long categoryId, String sort, String order) {
+        return doSearch(keyword, categoryId, null, sort, order);
+    }
+
+    /**
+     * 首页 / 通用搜索的统一实现。
+     * 分类既能按 id（推荐，走 path 子树 + dish 反查），也能按名称（兼容旧链接）。
+     */
+    private List<RestaurantVO> doSearch(String keyword, Long categoryId, String categoryName,
+                                        String sort, String order) {
         QueryWrapper<Restaurant> qw = new QueryWrapper<>();
 
         // 关键字：匹配店名 / 简介 / 标签
@@ -75,13 +90,21 @@ public class RestaurantServiceImpl extends ServiceImpl<RestaurantMapper, Restaur
             qw.and(w -> w.like("name", k).or().like("description", k).or().like("tags", k));
         }
 
-        // 分级分类搜索：传入父分类时，自动包含其下所有子分类
-        if (category != null && !category.trim().isEmpty() && !"全部".equals(category.trim())) {
-            List<String> names = resolveCategoryNames(category.trim());
-            if (names.isEmpty()) {
-                qw.eq("cat", category.trim());
+        // 分级分类搜索：categoryId 命中整棵子树；为空表示不限分类
+        List<Long> catIds = resolveSubtreeIds(categoryId, categoryName);
+        if (catIds != null) {
+            if (catIds.isEmpty()) {
+                // 分类表里查不到这个名字：退回按店铺 cat 字段精确匹配（兼容历史调用）
+                if (categoryName == null || categoryName.trim().isEmpty()) {
+                    return new ArrayList<>();
+                }
+                qw.eq("cat", categoryName.trim());
             } else {
-                qw.in("cat", names);
+                // 店铺自身挂二级业态；选到三级品类时，靠 dish.category_id 反查有该菜品的店铺
+                String inIds = joinIds(catIds);
+                qw.and(w -> w.in("category_id", catIds).or()
+                        .apply("EXISTS (SELECT 1 FROM dish d WHERE d.restaurant_id = restaurant.id"
+                                + " AND d.category_id IN (" + inIds + "))"));
             }
         }
 
@@ -109,6 +132,16 @@ public class RestaurantServiceImpl extends ServiceImpl<RestaurantMapper, Restaur
 
     @Override
     public List<RestaurantVO> foodList(String keyword, String category, String sort, String order) {
+        return doFoodList(keyword, null, category, sort, order);
+    }
+
+    @Override
+    public List<RestaurantVO> foodList(String keyword, Long categoryId, String sort, String order) {
+        return doFoodList(keyword, categoryId, null, sort, order);
+    }
+
+    private List<RestaurantVO> doFoodList(String keyword, Long categoryId, String categoryName,
+                                          String sort, String order) {
         List<Restaurant> all = baseMapper.selectList(null);
 
         // 与 recommended 共用口径：评分最高的 12 家作为「推荐集」，从美食页中剔除
@@ -118,15 +151,22 @@ public class RestaurantServiceImpl extends ServiceImpl<RestaurantMapper, Restaur
 
         // 关键字：匹配店名 / 简介 / 标签
         String k = (keyword == null) ? null : keyword.trim();
-        // 分级分类：传入父分类时包含其下所有子分类
-        List<String> names = (category != null && !category.trim().isEmpty() && !"全部".equals(category.trim()))
-                ? resolveCategoryNames(category.trim()) : null;
+
+        // 分级分类：按 id 解析整棵子树；同时取出「有该子树品类菜品的店铺 id 集合」
+        List<Long> catIds = resolveSubtreeIds(categoryId, categoryName);
+        Set<Long> catIdsSet = (catIds == null) ? null : new HashSet<>(catIds);
+        Set<Long> dishHitRestIds = (catIds == null) ? null : restaurantIdsByDishCategory(catIds);
+        boolean legacyByName = catIds != null && catIds.isEmpty()
+                && categoryName != null && !categoryName.trim().isEmpty();
 
         Map<Long, Integer> priceMap = avgPriceByRestaurant();
         List<RestaurantVO> list = all.stream()
                 .filter(r -> !recommendedIds.contains(r.getId()))
                 .filter(r -> matchKeyword(r, k))
-                .filter(r -> matchCategory(r, category, names))
+                .filter(r -> catIdsSet == null
+                        || (legacyByName && categoryName.trim().equals(r.getCat()))
+                        || catIdsSet.contains(r.getCategoryId())
+                        || dishHitRestIds.contains(r.getId()))
                 .sorted((a, b) -> compareSortDesc(a, b))
                 .map(r -> toVO(r, priceMap))
                 .collect(Collectors.toList());
@@ -222,27 +262,94 @@ public class RestaurantServiceImpl extends ServiceImpl<RestaurantMapper, Restaur
                 || (r.getTags() != null && r.getTags().contains(k));
     }
 
-    private boolean matchCategory(Restaurant r, String category, List<String> names) {
-        if (names == null) {
-            return true; // "全部" 或未传分类
-        }
-        if (names.isEmpty()) {
-            // 未匹配到分级分类，按精确分类名匹配
-            return category != null && category.trim().equals(r.getCat());
-        }
-        return names.contains(r.getCat());
-    }
-
     @Override
     public List<String> categories() {
+        // 兼容旧调用：只返回二级业态名称（一级「美食」固定在最前由前端补）
         List<Category> all = categoryMapper.selectList(
-                new QueryWrapper<Category>().orderByAsc("sort_order"));
+                new QueryWrapper<Category>().eq("level", 2).eq("enabled", 1)
+                        .orderByAsc("sort_order").orderByAsc("id"));
         List<String> result = new ArrayList<>();
         result.add("全部");
         for (Category c : all) {
             result.add(c.getName());
         }
         return result;
+    }
+
+    @Override
+    public List<CategoryTreeVO> categoryTree() {
+        List<Category> all = categoryMapper.selectList(
+                new QueryWrapper<Category>().eq("enabled", 1)
+                        .orderByAsc("level").orderByAsc("sort_order").orderByAsc("id"));
+
+        // 口径：店铺挂二级业态 → 直接计数；菜品挂三级品类 → 有该菜品的店铺也算命中该品类
+        Map<Long, Set<Long>> restIdsByCat = new HashMap<>();
+        for (Restaurant r : baseMapper.selectList(null)) {
+            if (r.getCategoryId() != null) {
+                restIdsByCat.computeIfAbsent(r.getCategoryId(), x -> new HashSet<>()).add(r.getId());
+            }
+        }
+        Map<Long, Integer> dishCountByCat = new HashMap<>();
+        List<Dish> dishes = dishMapper.selectList(
+                new QueryWrapper<Dish>().select("id", "restaurant_id", "category_id"));
+        for (Dish d : dishes) {
+            if (d.getCategoryId() == null) {
+                continue;
+            }
+            dishCountByCat.merge(d.getCategoryId(), 1, Integer::sum);
+            if (d.getRestaurantId() != null) {
+                restIdsByCat.computeIfAbsent(d.getCategoryId(), x -> new HashSet<>()).add(d.getRestaurantId());
+            }
+        }
+
+        // 建节点并挂父子关系
+        Map<Long, CategoryTreeVO> voMap = new LinkedHashMap<>();
+        for (Category c : all) {
+            CategoryTreeVO vo = new CategoryTreeVO();
+            vo.setId(c.getId());
+            vo.setName(c.getName());
+            vo.setLevel(c.getLevel());
+            vo.setPath(c.getPath());
+            vo.setCode(c.getCode());
+            vo.setIcon(c.getIcon());
+            vo.setSortOrder(c.getSortOrder());
+            vo.setRestaurantCount(0);
+            vo.setDishCount(0);
+            voMap.put(c.getId(), vo);
+        }
+        List<CategoryTreeVO> roots = new ArrayList<>();
+        for (Category c : all) {
+            CategoryTreeVO vo = voMap.get(c.getId());
+            Long pid = (c.getParentId() == null) ? 0L : c.getParentId();
+            CategoryTreeVO parent = voMap.get(pid);
+            if (parent != null) {
+                parent.getChildren().add(vo);
+            } else {
+                roots.add(vo);
+            }
+        }
+
+        // 自底向上汇总：按 level 倒序处理，保证子节点先算完
+        List<Category> byLevelDesc = new ArrayList<>(all);
+        byLevelDesc.sort((a, b) -> Integer.compare(
+                b.getLevel() == null ? 0 : b.getLevel(),
+                a.getLevel() == null ? 0 : a.getLevel()));
+        Map<Long, Set<Long>> accRest = new HashMap<>();
+        Map<Long, Integer> accDish = new HashMap<>();
+        for (Category c : byLevelDesc) {
+            CategoryTreeVO vo = voMap.get(c.getId());
+            Set<Long> restSet = new HashSet<>(restIdsByCat.getOrDefault(c.getId(), Collections.emptySet()));
+            int dish = dishCountByCat.getOrDefault(c.getId(), 0);
+            for (CategoryTreeVO child : vo.getChildren()) {
+                restSet.addAll(accRest.getOrDefault(child.getId(), Collections.emptySet()));
+                dish += accDish.getOrDefault(child.getId(), 0);
+            }
+            accRest.put(c.getId(), restSet);
+            accDish.put(c.getId(), dish);
+            vo.setRestaurantCount(restSet.size());
+            vo.setDishCount(dish);
+        }
+        return roots;
     }
 
     @Override
@@ -287,28 +394,67 @@ public class RestaurantServiceImpl extends ServiceImpl<RestaurantMapper, Restaur
         return vo;
     }
 
-    /** 解析分类及其所有后代分类的名称集合（用于分级分类搜索） */
-    private List<String> resolveCategoryNames(String categoryName) {
-        List<Category> all = categoryMapper.selectList(null);
-        Category target = all.stream()
-                .filter(c -> c.getName().equals(categoryName))
-                .findFirst().orElse(null);
-        if (target == null) {
-            return Collections.emptyList();
+    /**
+     * 解析分类子树的所有节点 id（分级分类搜索的核心）。
+     *
+     * 走物化路径：拿到目标节点的 path（如二级「面食」是 /1/2/），
+     * 用 path LIKE '/1/2/%' 一次查出它自己和全部后代，命中 idx_path 索引。
+     *
+     * @return null 表示「不限分类」；空集合表示分类不存在（调用方应返回空结果）
+     */
+    private List<Long> resolveSubtreeIds(Long categoryId, String categoryName) {
+        Category root;
+        if (categoryId != null) {
+            root = categoryMapper.selectById(categoryId);
+            if (root == null) {
+                return Collections.emptyList();
+            }
+        } else {
+            String name = (categoryName == null) ? "" : categoryName.trim();
+            if (name.isEmpty() || "全部".equals(name)) {
+                return null; // 不限分类
+            }
+            // 同名分类可能存在于不同分支，优先取层级最浅的那个
+            List<Category> matched = categoryMapper.selectList(
+                    new QueryWrapper<Category>().eq("name", name)
+                            .eq("enabled", 1).orderByAsc("level").orderByAsc("id"));
+            if (matched.isEmpty()) {
+                return Collections.emptyList();
+            }
+            root = matched.get(0);
         }
-        Set<String> names = new HashSet<>();
-        names.add(target.getName());
-        collectDescendants(target.getId(), all, names);
-        return new ArrayList<>(names);
+
+        String path = root.getPath();
+        if (path == null || path.isEmpty()) {
+            return Collections.singletonList(root.getId());
+        }
+        // path 形如 /1/2/，LIKE '/1/2/%' 会同时命中自己与所有后代
+        List<Category> subtree = categoryMapper.selectList(
+                new QueryWrapper<Category>().likeRight("path", path).eq("enabled", 1));
+        List<Long> ids = subtree.stream().map(Category::getId)
+                .filter(Objects::nonNull).collect(Collectors.toList());
+        if (ids.isEmpty()) {
+            ids = Collections.singletonList(root.getId());
+        }
+        return ids;
     }
 
-    private void collectDescendants(Long parentId, List<Category> all, Set<String> names) {
-        for (Category c : all) {
-            if (parentId.equals(c.getParentId())) {
-                names.add(c.getName());
-                collectDescendants(c.getId(), all, names);
-            }
+    /** 拥有指定分类（含子树）菜品的店铺 id 集合 —— 三级品类搜索靠它反查店铺 */
+    private Set<Long> restaurantIdsByDishCategory(Collection<Long> catIds) {
+        if (catIds == null || catIds.isEmpty()) {
+            return Collections.emptySet();
         }
+        List<Dish> dishes = dishMapper.selectList(
+                new QueryWrapper<Dish>().select("DISTINCT restaurant_id").in("category_id", catIds));
+        return dishes.stream()
+                .map(Dish::getRestaurantId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+    }
+
+    /** 拼接 id 列表用于 EXISTS 子查询（id 来自数据库自增主键，无注入风险） */
+    private String joinIds(Collection<Long> ids) {
+        return ids.stream().map(String::valueOf).collect(Collectors.joining(","));
     }
 
     private RestaurantVO toVO(Restaurant r, Map<Long, Integer> priceMap) {
@@ -463,6 +609,7 @@ public class RestaurantServiceImpl extends ServiceImpl<RestaurantMapper, Restaur
         vo.setDeliveryFee(r.getDeliveryFee() == null ? null : r.getDeliveryFee().doubleValue());
         vo.setEta(r.getEta());
         vo.setOpenStatus(r.getOpenStatus());
+        vo.setCategoryId(r.getCategoryId());
     }
 
     private void copyBase(Restaurant r, RestaurantDetailVO vo) {

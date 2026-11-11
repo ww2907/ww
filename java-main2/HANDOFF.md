@@ -102,6 +102,40 @@ hover 质感、响应式（860/600/520/380 断点 + 安全区）。
 2. `POST /api/orders` 返回的 `createdAt` 是空串（MySQL 默认值不回填实体）→ 已在下单时显式写入。
 3. 前端 `food.js` 的 `getCategories` 少了 `await`，导致后端异常时回退逻辑失效。
 
+### 第四轮：数据库分级分类（2026-11-11）
+
+分类从「平铺 7 个」变成三级树，**数据库 + 后端接口 + 前端级联筛选都已落地**：
+
+- 分类树：美食(1) → 面食/快餐/甜点/饮品/轻食/火锅(2~7) → 18 个品类(8~25)，带 `level` 和物化路径 `path`
+- 归属：`restaurant.category_id` 挂二级业态，`dish.category_id` 挂三级品类（350 道菜全部归类）
+- 接口：`GET /api/restaurants/category-tree`（三级树 + 含子孙的店铺/菜品计数）；
+  `/search`、`/food` 支持 `categoryId`（子树 + 菜品反查，优先级高于旧的 `category` 名称）
+- 前端：`FoodView.vue` 消费 `/category-tree`，渲染「二级业态 tab + 三级品类 chip」；
+  `api/food.js` 新增 `getCategoryTree()`，`getFoodList/getRestaurants` 支持 `categoryId`
+  （mock 模式下用 `catNameById` 反查名称过滤）。支持深链 `/food?categoryId=8`
+- 全量脚本 `shiguang_food.sql` 已同步改造（重新导入即为分级分类结构），增量迁移见
+  `springBootTest/sql/2026-11-11_category_hierarchy_v2.sql`
+- 验证：重新导入全量脚本后，category/dish/restaurant/admin_category/admin_dish 五表数据校验和与线上库一致；
+  浏览器 CDP 实测点击链路（全部 58 → 快餐 10 → 炸鸡烤翅 9 → 本类全部 10 → 饮品 11 → 全部 58）
+
+### 第五轮：下单收货地址（2026-11-11）
+
+需求：**没填收货地址就不允许提交订单**。原状是整条链路压根没有地址这回事
+（`orders` 无地址字段、`createOrder` 不校验），所以「校验」和「记录」都得新建。
+
+- 数据库：`orders` 加 `receiver_name / receiver_phone / address` 三个**快照**列
+  （`sql/2026-11-11_order_address.sql`，幂等；有地址的老订单按默认地址回填，其余留空）
+- 后端：`OrderCreateRequest.addressId` → `OrderServiceImpl.resolveAddress()` 按
+  「显式 id → 账号默认地址 → 最早一条」顺序解析；校验归属（不许拿别人地址下单）；
+  一条都没有 → `请先填写收货地址，再提交订单`。地址写进订单快照，`OrderVO` 一并返回
+- 前端：`OrderView.vue` 顶部新增收货地址卡（可切换/新增，复用 `AddressManageModal`）；
+  无地址时「提交订单」置灰 + 橙框提示 + 一键去添加；`api/order.js` 下传 `addressId`，
+  且**地址类错误不再回退 mock**（否则会假装下单成功）
+- 全量脚本：`migrate_order_address_dump.py` 同步建表与 28 条 INSERT（demo 两单回填了地址）
+- 后台联动：订单管理原先读的是 `admin_order` 假数据（4 条），现改为读真实 `orders`
+  （多表拼装：订单 + 明细摘要 + 收货快照），并新增「收货信息」列；状态改用中文文案，
+  后台 select 改状态会真实写回前台订单。`admin_order` 表就此废弃
+
 ## 5. 关键约定（改代码前务必看）
 
 - **契约优先**：所有 `src/api/*.js` 的 `ENDPOINTS` 就是前后端契约，后端路径不要单方面改。
@@ -109,14 +143,21 @@ hover 质感、响应式（860/600/520/380 断点 + 安全区）。
 - **Spring 路由顺序**：`/search/suggest` 必须声明在 `/{id}` **之前**，否则被路径变量吃掉。
 - **统一返回**：`Result<T>{code,message,data}`，`code === 0` 成功；异常走 `BusinessException` + `GlobalExceptionHandler`。
 - **购物车按店铺隔离**：同一店铺加购合并，下单后只清该店铺。
+- **下单必须有收货地址**：`orders.address / receiver_name / receiver_phone` 是**快照**（不是外键），
+  用户改/删地址不影响历史订单；`resolveAddress()` 找不到地址就抛业务异常，前端据此提示。
+  新增下单入口时记得带 `addressId`，或确认该账号有地址（后端会自动取默认地址）。
 - **`user` 表新增字段**：`avatar / gender / phone / bio`；地址在 `user_address` 表（`is_default` 唯一默认）。
 
 ## 6. 剩余待办（可选，按优先级）
 
-1. **真实模式浏览器走查**：`.env` 已是真实后端模式，但到目前为止只做了**接口级**验证（curl 全链路通过），没在浏览器里点过。启动前后端后走一遍首页/美食/店铺/购物车/订单/我的/后台，确认字段与样式无错位（重点看：人均价格、距离排序、再来一单、后台用户管理的新列）。
+0. **~~前端美食页三级级联筛选~~**（2026-11-11 已完成）：`FoodView.vue` 已改为「业态 tab + 品类 chip」，
+   筛选传 `categoryId`，支持 `/food?categoryId=<id>` 深链；mock 模式降级为两级（无菜品级数据）。
+1. **真实模式浏览器走查**：`.env` 已是真实后端模式，但到目前为止只做了**接口级**验证（curl 全链路通过）＋美食页的 CDP 点击验证，
+   没在浏览器里人工点过。启动前后端后走一遍首页/店铺/购物车/订单/我的/后台，确认字段与样式无错位（重点看：人均价格、距离排序、再来一单、后台用户管理的新列）。
 2. **遗留文件清理**：`src/views/OrderDetailView.vue` 已不被使用（订单详情改成弹窗了），路由表中仍挂着，可删。
 3. **Toast 未统一**：`HomeView`、登录/注册/找回、各 admin 页面仍是各自本地 `showToast`，可统一到 `composables/useToast.js`。
-4. **无用表**：数据库 `admin_user` 表已废弃（后台用户管理改读 `user` 表），可删。
+4. **无用表**：`admin_user`（后台用户管理改读 `user` 表）与 `admin_order`（后台订单管理已改读 `orders` 表）
+   都已废弃，可删。注意 `AdminService` 里仍注入着 `AdminOrderMapper`（保留未用），删表前先去掉这个依赖。
 5. **店铺管理后台未做**：当时按「没有则不用」跳过。若要补，做营业状态 / 公告 / 配送费即可。
 6. **地址表单**：省、市目前是两个文本框，可换成省市区级联选择器。
 7. **头像**：只有 emoji 选择，没有文件上传。

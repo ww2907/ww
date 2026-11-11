@@ -2,6 +2,7 @@ package com.fenglin.springboottest.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.fenglin.springboottest.entity.Restaurant;
+import com.fenglin.springboottest.vo.CategoryTreeVO;
 import com.fenglin.springboottest.vo.RestaurantDetailVO;
 import com.fenglin.springboottest.vo.RestaurantVO;
 
@@ -37,8 +38,25 @@ public interface RestaurantService extends IService<Restaurant> {
      */
     List<RestaurantVO> search(String keyword, String category, String sort, String order);
 
+    /**
+     * 按分类 id 做分级分类搜索（推荐用法）。
+     * categoryId 命中该分类的整棵子树：一级=全部美食，二级=该业态下所有品类，
+     * 三级=具体品类（通过 dish.category_id 反查出「有该品类菜品的店铺」）。
+     * @param keyword    关键字，可空
+     * @param categoryId 分类 id，为空表示不限分类
+     * @param sort       排序字段：default / price / distance
+     * @param order      排序方向：asc / desc
+     */
+    List<RestaurantVO> search(String keyword, Long categoryId, String sort, String order);
+
     /** 分类列表（第一个元素固定为 "全部"，之后为数据库中的分类，含分级父分类） */
     List<String> categories();
+
+    /**
+     * 分级分类树：三级结构（L1 美食 → L2 业态 → L3 品类），带店铺数与菜品数汇总。
+     * 前端分类筛选直接消费该结构，点哪一级就传哪个节点的 id 回来。
+     */
+    List<CategoryTreeVO> categoryTree();
 
     /**
      * 首页「推荐美食」：返回评分最高的 limit 家店铺（评分相同按 id 升序），默认 12 家。
@@ -64,6 +82,15 @@ public interface RestaurantService extends IService<Restaurant> {
      * @param order    排序方向：asc / desc
      */
     List<RestaurantVO> foodList(String keyword, String category, String sort, String order);
+
+    /**
+     * 美食页列表 + 按分类 id 的分级筛选（与 search 同一套子树口径）。
+     * @param keyword    关键字，可空
+     * @param categoryId 分类 id，为空表示不限分类
+     * @param sort       排序字段：default / price / distance
+     * @param order      排序方向：asc / desc
+     */
+    List<RestaurantVO> foodList(String keyword, Long categoryId, String sort, String order);
 
     /** 店铺详情：含店内菜单、用户评价、平均评分与评价数 */
     RestaurantDetailVO detail(Long id);

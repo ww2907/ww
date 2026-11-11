@@ -68,6 +68,16 @@ const canReorder = computed(() => props.order && props.order.items && props.orde
             </div>
           </section>
 
+          <!-- 收货信息（下单时的地址快照；历史订单没有地址时整块不显示） -->
+          <section class="block addr" v-if="order.address">
+            <div class="addr-label">📍 配送至</div>
+            <div class="addr-main">
+              <span class="addr-name">{{ order.receiverName }}</span>
+              <span class="addr-phone">{{ order.receiverPhone }}</span>
+            </div>
+            <div class="addr-text">{{ order.address }}</div>
+          </section>
+
           <!-- 菜品明细 -->
           <section class="block">
             <div class="block-head">
@@ -163,6 +173,14 @@ const canReorder = computed(() => props.order && props.order.items && props.orde
 .count { font-size: 12px; color: var(--muted); }
 
 .store { display: flex; align-items: center; gap: 12px; }
+
+/* 收货信息块 */
+.addr { display: flex; flex-direction: column; gap: 4px; }
+.addr-label { font-size: 12px; font-weight: 800; color: var(--muted); }
+.addr-main { display: flex; align-items: center; gap: 8px; }
+.addr-name { font-size: 14px; font-weight: 800; color: var(--ink); }
+.addr-phone { font-size: 12px; font-weight: 700; color: var(--muted); }
+.addr-text { font-size: 13px; color: var(--ink); line-height: 1.6; }
 .store-emoji {
   width: 44px; height: 44px; flex: none; border-radius: 13px; font-size: 24px;
   background: linear-gradient(135deg, rgba(0,184,148,0.15), rgba(0,206,201,0.15));

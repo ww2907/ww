@@ -38,4 +38,7 @@ public class RestaurantVO {
 
     /** 营业状态：1=营业中 0=已打烊 */
     private Integer openStatus;
+
+    /** 所属二级业态分类 id（分级分类筛选用） */
+    private Long categoryId;
 }

@@ -1,7 +1,7 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { getFoodList, getCategories, sortRestaurants, MOCK_CATEGORIES } from '../api/food.js'
+import { getFoodList, getCategoryTree, sortRestaurants } from '../api/food.js'
 import { getSearchSuggestions } from '../api/restaurant.js'
 import { useShellNav } from '../composables/useShellNav.js'
 import { toast } from '../composables/useToast.js'
@@ -24,8 +24,30 @@ const loading = ref(false)
 let searchTimer = null
 let suggestTimer = null
 
-const categories = ref(MOCK_CATEGORIES)
-const activeCat = ref('全部')
+// ---------- 分级分类（三级：美食 → 业态 → 品类）----------
+// 筛选口径由 categoryId 驱动：后端拿到 id 后按物化路径命中整棵子树，
+// 所以选中「面食」会同时包含汤面/拌面/馄饨抄手/粥粉小食下的店。
+const catTree = ref([])
+const activeL2 = ref(null) // 二级业态 id，null = 全部
+const activeL3 = ref(null) // 三级品类 id，null = 该业态全部
+const loadingCat = ref(false)
+
+// 树根通常只有一个「美食」，二级业态全部平铺出来（多根时也一并展开）
+const level2List = computed(() => (catTree.value || []).flatMap((n) => n.children || []))
+const activeL2Node = computed(() => level2List.value.find((n) => n.id === activeL2.value) || null)
+const level3List = computed(() => activeL2Node.value?.children || [])
+// 三级优先，其次二级，都没有就是「全部」
+const activeCatId = computed(() => activeL3.value ?? activeL2.value ?? null)
+
+const activeCatName = computed(() => {
+  if (activeL3.value != null) {
+    const hit = level3List.value.find((n) => n.id === activeL3.value)
+    if (hit) return hit.name
+  }
+  return activeL2Node.value ? activeL2Node.value.name : ''
+})
+const listTitle = computed(() => (activeCatName.value ? activeCatName.value + ' · 精选' : '全部美食'))
+
 const sortBy = ref('default') // default | distance | price
 const sortOptions = [
   { key: 'default', label: '综合推荐' },
@@ -44,7 +66,7 @@ async function loadList() {
   try {
     const data = await getFoodList({
       keyword: keyword.value,
-      category: activeCat.value,
+      categoryId: activeCatId.value,
       sort: sortBy.value,
       order: 'asc'
     })
@@ -73,8 +95,27 @@ function clearSearch() {
   suggestions.value = []
   loadList()
 }
-function pickCat(c) {
-  activeCat.value = c
+
+// 点「全部」：回到不限分类
+function pickAll() {
+  if (activeL2.value === null && activeL3.value === null) return
+  activeL2.value = null
+  activeL3.value = null
+  loadList()
+}
+// 点业态：切换二级，三级自动回到「本类全部」
+function pickL2(node) {
+  const id = node == null ? null : node.id
+  if (activeL2.value === id && activeL3.value === null) return
+  activeL2.value = id
+  activeL3.value = null
+  loadList()
+}
+// 点品类：同一品类再点一次取消，回到所属业态全部
+function pickL3(node) {
+  const id = node == null ? null : node.id
+  if (activeL3.value === id) return
+  activeL3.value = id
   loadList()
 }
 function changeSort(key) {
@@ -83,6 +124,28 @@ function changeSort(key) {
   // 排序下推到后端（sort/order 参数），前端 sorted 再做同口径兜底，
   // 这样真实模式下排序由数据库侧完成，数据量大时也不会只排当前页。
   loadList()
+}
+
+// 深链支持：/food?categoryId=8 直接定位到对应节点（三级优先，其次二级）
+function applyRouteCategory() {
+  const raw = route.query.categoryId
+  if (raw == null || raw === '') return false
+  const id = Number(raw)
+  if (!id) return false
+  for (const l2 of level2List.value) {
+    if (l2.id === id) {
+      activeL2.value = l2.id
+      activeL3.value = null
+      return true
+    }
+    const l3 = (l2.children || []).find((n) => n.id === id)
+    if (l3) {
+      activeL2.value = l2.id
+      activeL3.value = l3.id
+      return true
+    }
+  }
+  return false
 }
 
 // ---------- 实时联想 ----------
@@ -121,19 +184,33 @@ function handleNav(item) {
   if (!onNav(item)) toast(`「${item.label}」页面开发中，敬请期待 🚧`)
 }
 
-onMounted(() => {
+onMounted(async () => {
   loadList()
-  getCategories()
-    .then((c) => {
-      if (Array.isArray(c) && c.length) categories.value = c
-    })
-    .catch(() => {})
   if (keyword.value.trim()) fetchSuggest()
+  // 分类树先拉：深链参数要等树到了才能定位，定位成功就按该分类重查一次
+  loadingCat.value = true
+  try {
+    const tree = await getCategoryTree()
+    catTree.value = Array.isArray(tree) ? tree : []
+    if (applyRouteCategory()) loadList()
+  } catch (e) {
+    catTree.value = []
+  } finally {
+    loadingCat.value = false
+  }
 })
 onUnmounted(() => {
   clearTimeout(searchTimer)
   clearTimeout(suggestTimer)
 })
+
+// 同一页面内被导航到别的分类时（如首页跳 /food?categoryId=12），同步切筛选
+watch(
+  () => route.query.categoryId,
+  () => {
+    if (applyRouteCategory()) loadList()
+  }
+)
 </script>
 
 <template>
@@ -161,24 +238,47 @@ onUnmounted(() => {
     <section class="sh-banner">
       <div class="sh-banner-text">
         <h1>🍽️ 美食 · 全部好店</h1>
-        <p>这里收录了推荐之外的全部美食，按口味分类，慢慢挑。</p>
+        <p>先挑业态，再挑品类，越点越准；也能和关键字、排序叠加使用。</p>
       </div>
       <div class="sh-banner-emoji">🍜</div>
     </section>
 
-    <!-- 分类筛选 + 排序 -->
+    <!-- 分类筛选（二级业态 tab + 三级品类 chip）+ 排序 -->
     <div class="toolbar">
-      <nav class="sh-chips">
-        <button
-          v-for="c in categories"
-          :key="c"
-          class="sh-chip"
-          :class="{ active: activeCat === c }"
-          @click="pickCat(c)"
-        >
-          {{ c }}
-        </button>
-      </nav>
+      <div class="cat-panel">
+        <nav v-if="!loadingCat || level2List.length" class="cat-tabs" aria-label="业态分类">
+          <button class="cat-tab" :class="{ active: activeL2 === null }" @click="pickAll">
+            <span class="cat-ico">🍴</span>全部
+          </button>
+          <button
+            v-for="n in level2List"
+            :key="n.id"
+            class="cat-tab"
+            :class="{ active: activeL2 === n.id }"
+            @click="pickL2(n)"
+          >
+            <span class="cat-ico">{{ n.icon || '🍽️' }}</span>{{ n.name }}
+          </button>
+        </nav>
+        <div v-else class="cat-loading"><span class="sh-spinner"></span> 正在加载分类…</div>
+
+        <!-- 三级品类：只有选中某个业态且该业态有子品类时才出现 -->
+        <div v-if="level3List.length" class="cat-sub">
+          <button
+            class="cat-sub-chip"
+            :class="{ active: activeL3 === null }"
+            @click="pickL3(null)"
+          >本类全部</button>
+          <button
+            v-for="n in level3List"
+            :key="n.id"
+            class="cat-sub-chip"
+            :class="{ active: activeL3 === n.id }"
+            @click="pickL3(n)"
+          >{{ n.name }}</button>
+        </div>
+      </div>
+
       <div class="sort-group">
         <button
           v-for="s in sortOptions"
@@ -193,7 +293,7 @@ onUnmounted(() => {
     <!-- 店铺列表 -->
     <section class="sh-block">
       <div class="sh-block-head">
-        <h2>{{ activeCat === '全部' ? '全部美食' : activeCat + ' · 精选' }}</h2>
+        <h2>{{ listTitle }}</h2>
         <span class="sh-count">{{ loading ? '加载中…' : sorted.length + ' 家' }}</span>
       </div>
 
@@ -255,8 +355,59 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-/* 工具栏：分类胶囊 + 排序 */
+/* 工具栏：分级分类面板 + 排序 */
 .toolbar { display: flex; flex-direction: column; gap: 10px; }
+
+/* 分级分类面板：一级业态 tab + 二级品类 chip */
+.cat-panel {
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 10px 12px;
+  backdrop-filter: blur(6px);
+}
+.cat-tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.cat-tabs::-webkit-scrollbar { display: none; }
+.cat-tab {
+  flex: none; display: inline-flex; align-items: center; gap: 5px;
+  border: 1px solid var(--line); background: #fff;
+  color: var(--deep); padding: 8px 15px; border-radius: 999px;
+  font-size: 13px; font-weight: 800; font-family: inherit; cursor: pointer;
+  white-space: nowrap; transition: all 0.15s;
+}
+.cat-tab:hover { background: rgba(0, 184, 148, 0.12); }
+.cat-tab.active {
+  background: linear-gradient(135deg, var(--teal), var(--cyan));
+  color: #fff; border-color: transparent; box-shadow: 0 6px 16px rgba(0, 150, 136, 0.4);
+}
+.cat-ico { font-size: 14px; line-height: 1; }
+.cat-loading { font-size: 12px; color: var(--muted); padding: 6px 2px; }
+
+/* 窄屏：业态 tab 换行铺满，避免横向滚动藏起一半分类 */
+@media (max-width: 560px) {
+  .cat-tabs { flex-wrap: wrap; overflow-x: visible; }
+  .cat-tab { padding: 7px 12px; font-size: 12px; }
+  .cat-sub-chip { padding: 5px 10px; }
+}
+
+/* 三级品类：从属于上方业态，视觉上弱一级 */
+.cat-sub {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  margin-top: 9px; padding-top: 9px;
+  border-top: 1px dashed rgba(0, 150, 136, 0.22);
+}
+.cat-sub-chip {
+  border: 1px solid transparent; background: rgba(0, 184, 148, 0.09);
+  color: var(--deep); padding: 5px 12px; border-radius: 9px;
+  font-size: 12px; font-weight: 700; font-family: inherit; cursor: pointer;
+  transition: all 0.15s;
+}
+.cat-sub-chip:hover { background: rgba(0, 184, 148, 0.2); }
+.cat-sub-chip.active {
+  background: rgba(0, 184, 148, 0.95); color: #fff;
+  box-shadow: 0 4px 12px rgba(0, 150, 136, 0.32);
+}
+
 .sort-group { display: flex; gap: 8px; flex-wrap: wrap; }
 .sort-btn {
   border: 1px solid var(--line); background: rgba(255,255,255,0.7);

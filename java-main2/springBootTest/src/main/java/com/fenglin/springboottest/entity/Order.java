@@ -43,6 +43,18 @@ public class Order {
     /** 订单状态：0=待支付 1=已支付 2=已完成 3=已取消 */
     private Integer status;
 
+    /**
+     * 收货人姓名（下单快照）。
+     * 存快照而不是外键：用户事后改地址或删地址，历史订单的配送信息不应跟着变。
+     */
+    private String receiverName;
+
+    /** 收货电话（下单快照） */
+    private String receiverPhone;
+
+    /** 收货地址全文（下单快照，省市区 + 详细地址用空格拼接） */
+    private String address;
+
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;

@@ -5,9 +5,11 @@ import { getRestaurantDetail } from '../api/restaurant.js'
 import { createOrder } from '../api/order.js'
 import { cart } from '../store/cart.js'
 import { session } from '../store.js'
+import { getAddresses, initProfileForAccount, loadAddresses } from '../store/profile.js'
 import { toast } from '../composables/useToast.js'
 import { useShellNav } from '../composables/useShellNav.js'
 import AppHeader from '../components/layout/AppHeader.vue'
+import AddressManageModal from '../components/AddressManageModal.vue'
 import EmptyState from '../components/EmptyState.vue'
 
 const route = useRoute()
@@ -25,6 +27,31 @@ const { items, totalCount, totalPrice } = cart.useCartTotals(rid)
 
 const submitting = ref(false)
 
+// ---------- 收货地址 ----------
+// 下单必须有地址（后端同样会校验）：这里展示当前选中的地址，
+// 没地址时把「提交订单」按钮禁用并给出添加入口，避免用户点了才看到报错。
+const addresses = computed(() => getAddresses())
+const activeAddrId = ref(null)
+const addrOpen = ref(false) // 地址切换面板
+const addrModal = ref(false) // 地址新增/管理弹窗
+
+const currentAddress = computed(() => {
+  const list = addresses.value || []
+  if (!list.length) return null
+  return list.find((a) => a.id === activeAddrId.value)
+    || list.find((a) => a.isDefault)
+    || list[0]
+})
+const addressText = computed(() => {
+  const a = currentAddress.value
+  return a ? [a.province, a.city, a.detail].filter(Boolean).join(' ') : ''
+})
+
+function pickAddress(a) {
+  activeAddrId.value = a.id
+  addrOpen.value = false
+}
+
 function inc(d) {
   cart.inc(rid.value, { ...d, id: d.id != null ? d.id : d.dishKey })
 }
@@ -37,6 +64,11 @@ function remove(d) {
 
 async function submitOrder() {
   if (totalCount.value === 0 || submitting.value) return
+  if (!currentAddress.value) {
+    toast('请先填写收货地址，再提交订单', 'error')
+    addrModal.value = true
+    return
+  }
   submitting.value = true
   const orderItems = items.value.map((it) => ({
     dishId: it.id != null ? it.id : null,
@@ -49,6 +81,7 @@ async function submitOrder() {
       restaurantId: rid.value,
       restaurantName: store.value ? store.value.name : cart.getRestaurantCart(rid.value).restaurantName,
       account: session.account,
+      addressId: currentAddress.value.id,
       items: orderItems
     })
     toast(`下单成功 🎉 订单号 ${order.orderNo}`, 'success')
@@ -66,6 +99,13 @@ function goBack() {
 }
 
 onMounted(async () => {
+  // 地址走 profile store（与「我的 → 收货地址」同一份数据），先初始化再取列表
+  initProfileForAccount(session.account)
+  try {
+    await loadAddresses(session.account)
+  } catch (e) {
+    /* 后端不可用时保留本地缓存，不阻塞结算页渲染 */
+  }
   try {
     store.value = await getRestaurantDetail(route.params.id)
   } catch (e) {
@@ -107,6 +147,52 @@ onMounted(async () => {
 
     <!-- 购物车内容 -->
     <template v-else>
+      <!-- 收货地址：下单必须有地址，没有就先引导去添加 -->
+      <section class="block addr" :class="{ 'addr-empty': !currentAddress }">
+        <div class="addr-head">
+          <span class="addr-label">📍 配送至</span>
+          <button v-if="addresses.length > 1" class="addr-link" @click="addrOpen = !addrOpen">
+            {{ addrOpen ? '收起' : '更换地址' }}
+          </button>
+          <button v-else class="addr-link" @click="addrModal = true">管理地址</button>
+        </div>
+
+        <template v-if="currentAddress">
+          <div class="addr-line1">
+            <span class="addr-name">{{ currentAddress.name }}</span>
+            <span class="addr-phone">{{ currentAddress.phone }}</span>
+            <span class="addr-tag">{{ currentAddress.tag }}</span>
+          </div>
+          <div class="addr-line2">{{ addressText }}</div>
+        </template>
+        <div v-else class="addr-none">
+          <div class="addr-none-text">还没有收货地址，填好地址才能提交订单</div>
+          <button class="addr-add" @click="addrModal = true">＋ 添加收货地址</button>
+        </div>
+
+        <!-- 切换地址 -->
+        <ul v-if="addrOpen && addresses.length" class="addr-list">
+          <li
+            v-for="a in addresses"
+            :key="a.id"
+            class="addr-item"
+            :class="{ active: currentAddress && a.id === currentAddress.id }"
+            @click="pickAddress(a)"
+          >
+            <span class="addr-tag">{{ a.tag }}</span>
+            <div class="addr-item-main">
+              <div class="addr-line1">
+                <span class="addr-name">{{ a.name }}</span>
+                <span class="addr-phone">{{ a.phone }}</span>
+              </div>
+              <div class="addr-line2">{{ [a.province, a.city, a.detail].filter(Boolean).join(' ') }}</div>
+            </div>
+            <span class="addr-check">{{ currentAddress && a.id === currentAddress.id ? '✓' : '' }}</span>
+          </li>
+          <li class="addr-item addr-item-add" @click="addrModal = true">＋ 新增 / 管理地址</li>
+        </ul>
+      </section>
+
       <!-- 店铺信息 -->
       <section class="block store">
         <div class="store-emoji">{{ store ? store.emoji : '🍜' }}</div>
@@ -149,13 +235,19 @@ onMounted(async () => {
     <div class="cartbar" v-if="totalCount > 0">
       <div class="cart-info">
         <div class="cart-count">🛒 {{ totalCount }} 件</div>
-        <div class="cart-total">合计 <span class="amount">¥{{ totalPrice.toFixed(2) }}</span></div>
+        <div class="cart-total">
+          合计 <span class="amount">¥{{ totalPrice.toFixed(2) }}</span>
+          <span v-if="!currentAddress" class="cart-warn">· 待填写收货地址</span>
+        </div>
       </div>
-      <button class="submit" :disabled="submitting" @click="submitOrder">
+      <button class="submit" :disabled="submitting || !currentAddress" @click="submitOrder">
         <span v-if="submitting" class="btn-spin"></span>
         {{ submitting ? '提交中…' : '提交订单' }}
       </button>
     </div>
+
+    <!-- 地址新增 / 管理弹窗（与「我的」页面共用同一个组件） -->
+    <AddressManageModal :show="addrModal" @close="addrModal = false" />
   </div>
 </template>
 
@@ -215,9 +307,51 @@ onMounted(async () => {
 .block-head h2 { font-size: 17px; font-weight: 900; color: var(--deep); }
 .count { font-size: 12px; color: var(--muted); }
 
+/* 收货地址卡片 */
+.addr { display: flex; flex-direction: column; gap: 6px; }
+.addr-empty { border-color: rgba(232, 115, 12, 0.35); background: rgba(255, 249, 240, 0.95); }
+.addr-head { display: flex; align-items: center; justify-content: space-between; }
+.addr-label { font-size: 12px; font-weight: 800; color: var(--muted); }
+.addr-link {
+  border: none; cursor: pointer; background: rgba(0, 184, 148, 0.12);
+  color: var(--deep); font-size: 12px; font-weight: 800; font-family: inherit;
+  padding: 5px 11px; border-radius: 9px; transition: background 0.15s;
+}
+.addr-link:hover { background: rgba(0, 184, 148, 0.24); }
+.addr-line1 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.addr-name { font-size: 15px; font-weight: 800; color: var(--ink); }
+.addr-phone { font-size: 13px; font-weight: 700; color: var(--muted); }
+.addr-tag {
+  flex: none; font-size: 11px; font-weight: 800; color: var(--deep);
+  background: rgba(0, 184, 148, 0.14); padding: 2px 8px; border-radius: 7px;
+}
+.addr-line2 { font-size: 13px; color: var(--ink); line-height: 1.6; }
+.addr-none { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.addr-none-text { font-size: 13px; font-weight: 700; color: #b4620a; }
+.addr-add {
+  border: none; cursor: pointer; padding: 8px 15px; border-radius: 11px;
+  background: linear-gradient(135deg, #f7a03c, #ef7d18); color: #fff;
+  font-size: 13px; font-weight: 800; font-family: inherit;
+  box-shadow: 0 6px 14px rgba(239, 125, 24, 0.35);
+}
+.addr-add:hover { transform: translateY(-1px); }
+.addr-list { list-style: none; margin-top: 6px; border-top: 1px dashed var(--line); padding-top: 6px; }
+.addr-item {
+  display: flex; align-items: flex-start; gap: 10px; padding: 9px 8px;
+  border-radius: 11px; cursor: pointer; transition: background 0.12s;
+}
+.addr-item:hover { background: rgba(0, 184, 148, 0.08); }
+.addr-item.active { background: rgba(0, 184, 148, 0.12); }
+.addr-item-main { flex: 1; min-width: 0; }
+.addr-check { flex: none; color: var(--teal); font-weight: 900; font-size: 14px; }
+.addr-item-add {
+  justify-content: center; font-size: 13px; font-weight: 800; color: var(--deep);
+  border: 1px dashed rgba(0, 150, 136, 0.35);
+}
+.cart-warn { color: #b4620a; font-weight: 800; }
+
 /* 店铺信息 */
-.store { display: flex; align-items: center; gap: 14px; }
-.store-emoji {
+.store { display: flex; align-items: center; gap: 14px; }.store-emoji {
   width: 46px; height: 46px; flex: none; border-radius: 13px; font-size: 26px;
   background: linear-gradient(135deg, rgba(0, 184, 148, 0.15), rgba(0, 206, 201, 0.15));
   display: grid; place-items: center;

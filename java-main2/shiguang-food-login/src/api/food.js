@@ -25,11 +25,33 @@ export const FOOD_ENDPOINTS = {
   search: '/restaurants/search',
   recommended: '/restaurants/recommended',
   food: '/restaurants/food',
-  categories: '/restaurants/categories'
+  categories: '/restaurants/categories',
+  // 分级分类树（三级：美食 → 面食 → 汤面），前端级联筛选直接消费
+  categoryTree: '/restaurants/category-tree'
 }
 
 // 预留分类列表（真实接口返回时会被覆盖）
 export const MOCK_CATEGORIES = ['全部', '面食', '快餐', '甜点', '饮品', '轻食', '火锅']
+
+// 注意：MOCK_CATEGORY_TREE 依赖下面的 MOCK_RESTAURANTS 统计店铺数，
+// 必须定义在 MOCK_RESTAURANTS 之后，否则模块求值时抛
+// ReferenceError: Cannot access 'MOCK_RESTAURANTS' before initialization，
+// 整个 api/food.js 加载失败 → 入口白屏。见文件末尾「本地模拟数据」之后。
+
+/** 分类 id → 分类名称（mock 模式按 id 筛选时用；真实模式由后端按子树解析） */
+export function catNameById(id) {
+  if (id == null || id === '') return ''
+  let hit = ''
+  const walk = (nodes) => {
+    nodes.forEach((n) => {
+      if (String(n.id) === String(id)) hit = n.name
+      if (n.children && n.children.length) walk(n.children)
+    })
+  }
+  walk(MOCK_CATEGORY_TREE)
+  return hit
+}
+
 
 // ---------- 人均价格（演示用确定性取值，避免改动 70 条原始数据）----------
 // 不同品类给出价格区间，再按 id 做稳定偏移，使「按人均排序」真实可演示。
@@ -186,6 +208,36 @@ export const MOCK_RESTAURANTS = [
   { id: 70, name: '蜀大火锅', emoji: '🍲', cat: '火锅', rating: 4.7, distance: '320m', tags: ['过瘾', '鲜切'], desc: '蜀大火锅，咕嘟咕嘟，是最治愈的烟火气。' }
 ]
 
+// 分类树兜底数据（后端不可用时使用）。
+// 只能还原两级：三级品类依赖真实库里 dish.category_id 的归类结果，mock 无菜品级数据。
+// 放在 MOCK_RESTAURANTS 之后，避免 TDZ（提前引用会整模块加载失败 → 白屏）。
+export const MOCK_CATEGORY_TREE = (() => {
+  const children = MOCK_CATEGORIES
+    .filter((name) => name !== '全部')
+    .map((name, i) => ({
+      id: i + 2,
+      name,
+      level: 2,
+      path: `/1/${i + 2}/`,
+      icon: '',
+      sortOrder: i + 1,
+      restaurantCount: MOCK_RESTAURANTS.filter((r) => r.cat === name).length,
+      dishCount: 0,
+      children: []
+    }))
+  return [{
+    id: 1,
+    name: '美食',
+    level: 1,
+    path: '/1/',
+    icon: '🍽️',
+    sortOrder: 0,
+    restaurantCount: MOCK_RESTAURANTS.length,
+    dishCount: 0,
+    children
+  }]
+})()
+
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
@@ -279,25 +331,55 @@ function filterFoodMock({ keyword = '', category = '全部' } = {}) {
 }
 
 // ============================================================
+// 分类参数处理
+// ============================================================
+
+/**
+ * 解析「按分类筛选」要用的分类名：给了 categoryId 就用 id 反查名称（mock 只能按名称过滤），
+ * 否则退回旧的 category 名称。查不到名称时返回空串（= 不过滤），避免静默返回空列表。
+ */
+function resolveCatName(categoryId, category) {
+  if (categoryId != null && categoryId !== '') return catNameById(categoryId)
+  return category || '全部'
+}
+
+/**
+ * 组装请求参数：categoryId 优先，为空时回退 category 名称；
+ * 同时剔除空值，避免 axios 把 null 序列化成 "null" 传给后端。
+ */
+function categoryParams({ keyword, categoryId, category, sort, order }) {
+  const params = { keyword, sort, order }
+  if (categoryId != null && categoryId !== '') {
+    params.categoryId = categoryId
+  } else if (category && category !== '全部') {
+    params.category = category
+  }
+  return params
+}
+
+// ============================================================
 // 统一对外接口（前端直接调用，无需关心 mock / 真实）
 // ============================================================
 
 /**
- * 获取餐厅列表 / 搜索。参数：{ keyword, category, sort, order }
+ * 获取餐厅列表 / 搜索。参数：{ keyword, categoryId, category, sort, order }
+ *   - categoryId：分级分类节点 id（优先），后端按物化路径命中整棵子树
+ *   - category：分类名称，仅保留给旧调用方兼容
  * 策略：mock 模式直接返回本地数据；真实模式下优先请求后端，
  *       若后端尚未实现该接口（报错 / 404），则回退到本地模拟，保证页面可用。
  */
-export async function getRestaurants({ keyword = '', category = '全部', sort = 'default', order = 'asc' } = {}) {
+export async function getRestaurants({ keyword = '', categoryId = null, category = '全部', sort = 'default', order = 'asc' } = {}) {
+  const catName = resolveCatName(categoryId, category)
   if (FOOD_USE_MOCK) {
     await delay(400)
-    return sortRestaurants(filterMock({ keyword, category }), sort, order)
+    return sortRestaurants(filterMock({ keyword, category: catName }), sort, order)
   }
   try {
-    return normalizeList(await httpGet(FOOD_ENDPOINTS.search, { keyword, category, sort, order }))
+    return normalizeList(await httpGet(FOOD_ENDPOINTS.search, categoryParams({ keyword, categoryId, category, sort, order })))
   } catch (e) {
     if (FOOD_FALLBACK_MOCK) {
       console.warn('[food] 后端餐厅接口暂不可用，已回退到本地模拟数据：', e.message)
-      return sortRestaurants(filterMock({ keyword, category }), sort, order)
+      return sortRestaurants(filterMock({ keyword, category: catName }), sort, order)
     }
     throw e
   }
@@ -332,19 +414,43 @@ export async function getRecommended(limit = 12) {
 
 /**
  * 美食页面列表：返回「全部店铺剔除推荐集」后的其余店铺，支持分类 / 关键字筛选。
+ * 分类既可传 categoryId（分级分类，命中整棵子树），也可传旧的 category 名称。
  * 策略：mock 模式直接返回本地数据；真实模式请求 /food，缺失则回退本地。
  */
-export async function getFoodList({ keyword = '', category = '全部', sort = 'default', order = 'asc' } = {}) {
+export async function getFoodList({ keyword = '', categoryId = null, category = '全部', sort = 'default', order = 'asc' } = {}) {
+  const catName = resolveCatName(categoryId, category)
   if (FOOD_USE_MOCK) {
     await delay(350)
-    return sortRestaurants(filterFoodMock({ keyword, category }), sort, order)
+    return sortRestaurants(filterFoodMock({ keyword, category: catName }), sort, order)
   }
   try {
-    return normalizeList(await httpGet(FOOD_ENDPOINTS.food, { keyword, category, sort, order }))
+    return normalizeList(await httpGet(FOOD_ENDPOINTS.food, categoryParams({ keyword, categoryId, category, sort, order })))
   } catch (e) {
     if (FOOD_FALLBACK_MOCK) {
       console.warn('[food] 后端美食页接口暂不可用，已回退到本地模拟数据：', e.message)
-      return sortRestaurants(filterFoodMock({ keyword, category }), sort, order)
+      return sortRestaurants(filterFoodMock({ keyword, category: catName }), sort, order)
+    }
+    throw e
+  }
+}
+
+/**
+ * 获取分级分类树（一级美食 → 二级业态 → 三级品类），每个节点带 restaurantCount / dishCount。
+ * 真实模式走后端 /category-tree（按物化路径汇总子树计数），失败时回退到本地两级兜底树。
+ */
+export async function getCategoryTree() {
+  if (FOOD_USE_MOCK) {
+    await delay(150)
+    return MOCK_CATEGORY_TREE
+  }
+  try {
+    // 同样必须 await，否则异常绕过 catch，回退逻辑失效
+    const data = await httpGet(FOOD_ENDPOINTS.categoryTree, {})
+    return Array.isArray(data) && data.length ? data : MOCK_CATEGORY_TREE
+  } catch (e) {
+    if (FOOD_FALLBACK_MOCK) {
+      console.warn('[food] 后端分类树接口暂不可用，已回退到本地模拟数据：', e.message)
+      return MOCK_CATEGORY_TREE
     }
     throw e
   }
