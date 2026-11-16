@@ -6,6 +6,7 @@ import com.fenglin.springboottest.controller.dto.PriceUpdateRequest;
 import com.fenglin.springboottest.controller.dto.PriceBatchRequest;
 import com.fenglin.springboottest.entity.*;
 import com.fenglin.springboottest.service.AdminService;
+import com.fenglin.springboottest.vo.AdminDishVO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -94,20 +95,27 @@ public class AdminController {
         return Result.success();
     }
 
-    // ---------- 5. 菜品 ----------
+    // ---------- 5. 菜品（真实 dish 表，按店铺隔离）----------
+    /** 店铺下拉：GET /api/admin/restaurant/options → [{id,name}] */
+    @GetMapping("/restaurant/options")
+    public Result<?> restaurantOptions() {
+        return Result.success(adminService.listRestaurantOptions());
+    }
+
+    /** 某店菜品：GET /api/admin/dish?restaurantId=1（不传则取第一家店） */
     @GetMapping("/dish")
-    public Result<?> listDish() {
-        return Result.success(adminService.listDishes());
+    public Result<?> listDish(@RequestParam(required = false) Long restaurantId) {
+        return Result.success(adminService.listDishes(restaurantId));
     }
 
     @PostMapping("/dish")
-    public Result<?> addDish(@RequestBody AdminDish dish) {
+    public Result<?> addDish(@RequestBody AdminDishVO dish) {
         adminService.saveDish(dish);
         return Result.success();
     }
 
     @PutMapping("/dish")
-    public Result<?> updDish(@RequestBody AdminDish dish) {
+    public Result<?> updDish(@RequestBody AdminDishVO dish) {
         adminService.saveDish(dish);
         return Result.success();
     }

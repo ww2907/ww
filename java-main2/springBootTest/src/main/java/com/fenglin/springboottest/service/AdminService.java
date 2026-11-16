@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.fenglin.springboottest.common.BusinessException;
 import com.fenglin.springboottest.entity.*;
 import com.fenglin.springboottest.mapper.*;
+import com.fenglin.springboottest.vo.AdminDishVO;
 import com.fenglin.springboottest.vo.UserAddressVO;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -35,7 +36,9 @@ public class AdminService implements CommandLineRunner {
 
     private final AdminConfigMapper configMapper;
     private final AdminCategoryMapper categoryMapper;
-    private final AdminDishMapper dishMapper;
+    private final DishMapper dishMapper;
+    private final CategoryMapper bizCategoryMapper;
+    private final RestaurantMapper restaurantMapper;
     private final AdminAccountMapper accountMapper;
     private final OrderMapper bizOrderMapper;
     private final OrderItemMapper orderItemMapper;
@@ -45,12 +48,15 @@ public class AdminService implements CommandLineRunner {
 
     @Autowired
     public AdminService(AdminConfigMapper configMapper, AdminCategoryMapper categoryMapper,
-                        AdminDishMapper dishMapper, AdminAccountMapper accountMapper,
+                        DishMapper dishMapper, CategoryMapper bizCategoryMapper, RestaurantMapper restaurantMapper,
+                        AdminAccountMapper accountMapper,
                         OrderMapper bizOrderMapper, OrderItemMapper orderItemMapper, UserMapper regUserMapper,
                         UserAddressMapper addressMapper, UserProfileService profileService) {
         this.configMapper = configMapper;
         this.categoryMapper = categoryMapper;
         this.dishMapper = dishMapper;
+        this.bizCategoryMapper = bizCategoryMapper;
+        this.restaurantMapper = restaurantMapper;
         this.accountMapper = accountMapper;
         this.bizOrderMapper = bizOrderMapper;
         this.orderItemMapper = orderItemMapper;
@@ -211,24 +217,130 @@ public class AdminService implements CommandLineRunner {
         categoryMapper.deleteById(id);
     }
 
-    // ============ 5. 菜品 ============
-    public List<AdminDish> listDishes() {
-        return dishMapper.selectList(null);
+    // ============ 5. 菜品（真实 dish 表，按店铺隔离）============
+    /**
+     * 店铺下拉：后台「菜品管理 / 价格管理」都先选一家店再看菜。
+     * 只返回 id + name，70 条量级不需要分页。
+     */
+    public List<Map<String, Object>> listRestaurantOptions() {
+        List<Restaurant> stores = restaurantMapper.selectList(
+                new QueryWrapper<Restaurant>().select("id", "name").orderByAsc("id"));
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (Restaurant r : stores) {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("id", r.getId());
+            m.put("name", r.getName());
+            out.add(m);
+        }
+        return out;
     }
 
-    public void saveDish(AdminDish dish) {
-        if (dish.getId() == null) dishMapper.insert(dish);
-        else dishMapper.updateById(dish);
+    /** 未指定店铺时默认落到 id 最小的那家，保证后台页面一打开就有数据 */
+    public Long resolveRestaurantId(Long restaurantId) {
+        if (restaurantId != null && restaurantId > 0) {
+            return restaurantId;
+        }
+        Restaurant first = restaurantMapper.selectOne(
+                new QueryWrapper<Restaurant>().select("id").orderByAsc("id").last("LIMIT 1"));
+        return first == null ? null : first.getId();
+    }
+
+    /**
+     * 某家店的菜品列表（后台视图）。
+     * 2026-11-16 之前这里读的是已删除的 admin_dish 表（10 条演示数据），
+     * 与前台 dish 表（350 条）完全脱节，后台改价对前台无效；现在两边同一张表。
+     */
+    public List<AdminDishVO> listDishes(Long restaurantId) {
+        Long rid = resolveRestaurantId(restaurantId);
+        if (rid == null) {
+            return new ArrayList<>();
+        }
+        List<Dish> dishes = dishMapper.selectList(new QueryWrapper<Dish>()
+                .eq("restaurant_id", rid).orderByAsc("sort").orderByAsc("id"));
+        if (dishes.isEmpty()) {
+            return new ArrayList<>();
+        }
+        Restaurant store = restaurantMapper.selectById(rid);
+        String storeName = store == null ? "" : nvl(store.getName());
+        Map<Long, String> catNames = categoryNameMap();
+        List<AdminDishVO> out = new ArrayList<>();
+        for (Dish d : dishes) {
+            AdminDishVO vo = new AdminDishVO();
+            vo.setId(d.getId());
+            vo.setRestaurantId(d.getRestaurantId());
+            vo.setRestaurantName(storeName);
+            vo.setName(d.getName());
+            vo.setPrice(d.getPrice());
+            vo.setEmoji(d.getEmoji());
+            vo.setCategoryId(d.getCategoryId());
+            vo.setCategoryName(catNames.getOrDefault(d.getCategoryId(), "未分类"));
+            vo.setDescription(d.getDescription());
+            vo.setSort(d.getSort());
+            vo.setEnabled(d.getEnabled() == null ? 1 : d.getEnabled());
+            out.add(vo);
+        }
+        return out;
+    }
+
+    /** 三级分类 id → 名称（菜品表格里显示分类名用） */
+    private Map<Long, String> categoryNameMap() {
+        Map<Long, String> m = new HashMap<>();
+        for (Category c : bizCategoryMapper.selectList(
+                new QueryWrapper<Category>().select("id", "name"))) {
+            m.put(c.getId(), c.getName());
+        }
+        return m;
+    }
+
+    /**
+     * 新增 / 编辑菜品（写 dish 表）。
+     * 新增必须带店铺（dish.restaurant_id 是 NOT NULL），编辑时店铺不允许改。
+     */
+    public void saveDish(AdminDishVO vo) {
+        if (vo == null) {
+            throw new BusinessException("缺少菜品信息");
+        }
+        if (vo.getName() == null || vo.getName().trim().isEmpty()) {
+            throw new BusinessException("菜品名称不能为空");
+        }
+        Dish d = new Dish();
+        d.setId(vo.getId());
+        d.setName(vo.getName().trim());
+        d.setPrice(vo.getPrice() == null ? BigDecimal.ZERO : vo.getPrice().setScale(2, RoundingMode.HALF_UP));
+        d.setEmoji(vo.getEmoji());
+        d.setCategoryId(vo.getCategoryId());
+        d.setDescription(vo.getDescription());
+        d.setSort(vo.getSort());
+        if (vo.getEnabled() != null) {
+            d.setEnabled(vo.getEnabled() == 0 ? 0 : 1);
+        }
+
+        if (vo.getId() == null) {
+            Long rid = resolveRestaurantId(vo.getRestaurantId());
+            if (rid == null) {
+                throw new BusinessException("请先选择店铺，再新增菜品");
+            }
+            d.setRestaurantId(rid);
+            dishMapper.insert(d);
+        } else {
+            if (dishMapper.selectById(vo.getId()) == null) {
+                throw new BusinessException(404, "菜品不存在（id=" + vo.getId() + "）");
+            }
+            dishMapper.updateById(d);
+        }
     }
 
     public void removeDish(Long id) {
+        if (id == null) {
+            throw new BusinessException("缺少菜品 id");
+        }
         dishMapper.deleteById(id);
     }
 
     // ============ 8. 价格（数字管理）============
     /** 单条改价：价格四舍五入 2 位、不允许为负 */
     public void updateDishPrice(Long id, BigDecimal price) {
-        AdminDish d = dishMapper.selectById(id);
+        Dish d = dishMapper.selectById(id);
         if (d == null) throw new BusinessException("菜品不存在（id=" + id + "）");
         if (price == null || price.compareTo(BigDecimal.ZERO) < 0) {
             throw new BusinessException("价格不能为负数");
@@ -253,9 +365,9 @@ public class AdminService implements CommandLineRunner {
         if ("rate".equals(mode) && value.compareTo(BigDecimal.ZERO) <= 0) {
             throw new BusinessException("百分比系数必须大于 0");
         }
-        List<AdminDish> dishes = dishMapper.selectBatchIds(ids);
+        List<Dish> dishes = dishMapper.selectBatchIds(ids);
         int n = 0;
-        for (AdminDish d : dishes) {
+        for (Dish d : dishes) {
             BigDecimal base = d.getPrice() == null ? BigDecimal.ZERO : d.getPrice();
             BigDecimal np;
             if ("rate".equals(mode)) np = base.multiply(value);
@@ -286,7 +398,7 @@ public class AdminService implements CommandLineRunner {
         overview.put("userTotal", regUserMapper.countUsers());
         overview.put("dishTotal", dishMapper.selectCount(null));
         overview.put("dishOnSale", dishMapper.countOnSale());
-        overview.put("categoryTotal", categoryMapper.selectCount(null));
+        overview.put("categoryTotal", bizCategoryMapper.selectCount(null));
         overview.put("todayOrder", bizOrderMapper.countTodayOrders());
         overview.put("todayGmv", bizOrderMapper.sumTodayGmv());
 

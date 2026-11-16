@@ -83,7 +83,7 @@ mysql -uroot -p123456 --default-character-set=utf8mb4 shiguang_food < shiguang_f
 mysql -uroot -p123456 --default-character-set=utf8mb4 shiguang_food < springBootTest/sql/2026-11-04_profile_address.sql
 ```
 
-## 4. 已完成（六轮需求）
+## 4. 已完成（八轮需求）
 
 ### 第一轮：五类交互/功能
 1. 美食卡片：点击进店铺详情、菜品弹窗、加入购物车（`store/cart.js` 按店铺维度）
@@ -129,6 +129,7 @@ hover 质感、响应式（860/600/520/380 断点 + 安全区）。
   `springBootTest/sql/2026-11-11_category_hierarchy_v2.sql`
 - 验证：重新导入全量脚本后，category/dish/restaurant/admin_category/admin_dish 五表数据校验和与线上库一致；
   浏览器 CDP 实测点击链路（全部 58 → 快餐 10 → 炸鸡烤翅 9 → 本类全部 10 → 饮品 11 → 全部 58）
+  （`admin_dish` 已在第八轮删除，当时的校验和记录仅作历史参考）
 
 ### 第五轮：下单收货地址（2026-11-11）
 
@@ -171,15 +172,20 @@ hover 质感、响应式（860/600/520/380 断点 + 安全区）。
   `README.md` 修正了不存在的 `start-backend.bat / start-frontend.bat` 引用
 - 顺手修：`App.vue` 的 `WIDE_SHELL_PAGES` 补上 `buy`（立即下单页此前被当窄壳渲染，还叠了一层品牌头）
 
-### 第八轮：删废弃表 + 表注释（2026-11-16）
+### 第八轮：删废弃表 + 后台菜品统一到 dish（2026-11-16）
 
-数据层收尾，让「库里每一张表都能一眼看出干什么的」：
+数据层收尾，让「库里每一张表都能一眼看出干什么的」，并修掉一个真 bug：
 
-- 删 3 张零读写的历史表：`admin_order`（后台订单管理 11-11 已改读 `orders`，只剩一个没人用的 Mapper 注入）、
-  `admin_user`（后台用户管理早改读 `user`）、`verify_code`（旧数字验证码方案遗留）。删前用 `mysqldump` 备份过
-- 代码同步：删 `AdminOrder.java` / `AdminOrderMapper.java`，`AdminService` 去掉对应注入
-- 12 张存活表全部带 `COMMENT`：补上原本为空的 `admin_account` / `admin_config` / `admin_dish`
-- `shiguang_food.sql` 同步（去掉三张表整块 + 补注释），临时库导入 12 张表、注释逐条比对一致
+- 删 4 张零读写的历史表：`admin_order`（后台订单管理 11-11 已改读 `orders`，只剩一个没人用的 Mapper 注入）、
+  `admin_user`（后台用户管理早改读 `user`）、`verify_code`（旧数字验证码方案遗留）、
+  `admin_dish`（见下一条）。删前都用 `mysqldump` 备份过
+- 代码同步：删 `AdminOrder.java` / `AdminOrderMapper.java` / `AdminDish.java` / `AdminDishMapper.java`
+- **修 bug**：后台「菜品管理 / 价格管理」原先读写 `admin_dish`（10 条演示数据），前台菜单读 `dish`（350 条），
+  两张表互不相干 —— 后台改价、上下架、新增菜品对顾客端**完全无效**。现在后台直接操作 `dish`，
+  并给 `dish` 补了 `enabled`（上架）字段，前台菜单/搜索/联想/人均价共 6 处过滤下架菜
+- 后台菜品改为**按店铺筛选**：每家约 5 道菜，一屏放得下；新增菜品自动落在当前店铺
+- 11 张存活表全部带 `COMMENT`
+- `shiguang_food.sql` 同步，临时库导入比对：11 张表、`dish` 10 列、数据 CHECKSUM 与线上库完全一致
 
 ## 5. 关键约定（改代码前务必看）
 
@@ -197,7 +203,7 @@ hover 质感、响应式（860/600/520/380 断点 + 安全区）。
 
 **唯一清单在 `AI-CONTINUE.md` §8**（两份待办各自维护只会互相过期，2026-11-16 已合并）。
 
-人看的一句话版本：功能已齐，剩下的都是"可选优化"——Toast 统一、`admin_dish` 与前台 `dish` 数据对齐、
+人看的一句话版本：功能已齐，剩下的都是"可选优化"——Toast 统一、`admin_category` 与前台 `category` 对齐、
 后台店铺管理、地址省市区级联、头像上传、接口鉴权。另外 `start-all.bat` 用的 `mvnw.cmd` 在本机有问题，
 需要实测一次，不行就改成调 `restart_backend.py`。
 

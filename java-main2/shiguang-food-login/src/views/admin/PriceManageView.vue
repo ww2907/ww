@@ -1,9 +1,11 @@
 <script setup>
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
-import { listCategories, listDishes, updateDishPrice, batchUpdatePrice, getDashboard } from '../../api/admin.js'
+import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
+import { listCategories, listDishes, updateDishPrice, batchUpdatePrice, getDashboard, listRestaurantOptions } from '../../api/admin.js'
 
 const categories = ref([])
 const dishes = ref([])
+const restaurants = ref([])   // 菜品按店铺隔离，先选店再看价
+const storeId = ref(0)
 const loading = ref(false)
 
 // 数字管理看板数据
@@ -161,8 +163,11 @@ async function loadStats() {
 async function load() {
   loading.value = true
   try {
-    const [c, d] = await Promise.all([listCategories(), listDishes()])
+    const [c, r] = await Promise.all([listCategories(), listRestaurantOptions()])
     categories.value = c
+    restaurants.value = r
+    storeId.value = r.length ? r[0].id : 0
+    const d = await listDishes(storeId.value)
     dishes.value = d.map((x) => ({ ...x, editPrice: x.price, selected: false }))
   } catch (e) {
     showToast(e.message || '加载失败')
@@ -170,6 +175,20 @@ async function load() {
     loading.value = false
   }
 }
+
+// 换店铺 → 重新加载该店菜品与价格
+watch(storeId, async (id) => {
+  if (!id) return
+  loading.value = true
+  try {
+    const d = await listDishes(id)
+    dishes.value = d.map((x) => ({ ...x, editPrice: x.price, selected: false }))
+  } catch (e) {
+    showToast(e.message || '加载失败')
+  } finally {
+    loading.value = false
+  }
+})
 
 onMounted(() => { loadStats(); load() })
 onUnmounted(() => clearTimeout(toastTimer))
@@ -297,6 +316,12 @@ onUnmounted(() => clearTimeout(toastTimer))
           <div class="card-head">
             <h2>🍜 菜品价格明细（{{ dishes.length }}）</h2>
             <div class="steps">
+              <label class="store-pick">
+                <span>店铺</span>
+                <select v-model.number="storeId">
+                  <option v-for="r in restaurants" :key="r.id" :value="r.id">{{ r.name }}</option>
+                </select>
+              </label>
               <span>步进</span>
               <button v-for="s in steps" :key="s" :class="{ on: step === s }" @click="step = s">{{ s }}</button>
             </div>
@@ -411,6 +436,8 @@ onUnmounted(() => clearTimeout(toastTimer))
 .steps { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #6f8c88; }
 .steps button { border: 1.5px solid #e0e8e7; background: #f7fffc; color: #0c3d39; border-radius: 8px; padding: 5px 10px; font-weight: 700; cursor: pointer; }
 .steps button.on { border-color: #00cec9; background: #e6f6f3; color: #0c8f7f; }
+.store-pick { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: #6f8c88; }
+.store-pick select { padding: 5px 8px; border: 1.5px solid #e0e8e7; border-radius: 8px; background: #f7fffc; font-size: 12px; max-width: 190px; }
 
 /* 明细行 */
 .rows { display: flex; flex-direction: column; gap: 8px; }

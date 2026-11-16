@@ -1,9 +1,11 @@
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { listCategories, saveCategory, removeCategory, listDishes, saveDish, removeDish } from '../../api/admin.js'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
+import { listCategories, saveCategory, removeCategory, listDishes, saveDish, removeDish, listRestaurantOptions } from '../../api/admin.js'
 
 const categories = ref([])
 const dishes = ref([])
+const restaurants = ref([])   // 店铺下拉：菜品按店铺隔离，后台必须先选店
+const storeId = ref(0)
 const loading = ref(false)
 const toastMsg = ref('')
 const toastShow = ref(false)
@@ -24,10 +26,19 @@ function showToast(msg) {
 onMounted(async () => {
   loading.value = true
   try {
-    const [c, d] = await Promise.all([listCategories(), listDishes()])
+    const [c, r] = await Promise.all([listCategories(), listRestaurantOptions()])
     categories.value = c
-    dishes.value = d
+    restaurants.value = r
+    storeId.value = r.length ? r[0].id : 0
+    dishes.value = await listDishes(storeId.value)
   } catch (e) { showToast(e.message || '加载失败') } finally { loading.value = false }
+})
+
+// 换店铺 → 重新拉该店菜品
+watch(storeId, async (id) => {
+  if (!id) return
+  loading.value = true
+  try { dishes.value = await listDishes(id) } catch (e) { showToast(e.message || '加载失败') } finally { loading.value = false }
 })
 
 async function addCategory() {
@@ -37,10 +48,19 @@ async function updCategory(c) { try { await saveCategory(c); showToast('分类�
 async function delCategory(id) { try { await removeCategory(id); categories.value = await listCategories(); showToast('分类已删除') } catch (e) { showToast(e.message) } }
 
 async function addDish() {
-  try { await saveDish({ name: '新菜品', price: 0, emoji: '🍽️', categoryId: categories.value[0]?.id || 0, description: '', sort: dishes.value.length + 1, enabled: true }); dishes.value = await listDishes(); showToast('已新增菜品') } catch (e) { showToast(e.message) }
+  try {
+    await saveDish({
+      name: '新菜品', price: 0, emoji: '🍽️',
+      categoryId: categories.value[0]?.id || 0,
+      description: '', sort: dishes.value.length + 1,
+      enabled: 1, restaurantId: storeId.value
+    })
+    dishes.value = await listDishes(storeId.value)
+    showToast('已新增菜品')
+  } catch (e) { showToast(e.message) }
 }
-async function updDish(d) { try { await saveDish(d); showToast('菜品已保存') } catch (e) { showToast(e.message) } }
-async function delDish(id) { try { await removeDish(id); dishes.value = await listDishes(); showToast('菜品已删除') } catch (e) { showToast(e.message) } }
+async function updDish(d) { try { await saveDish({ ...d, restaurantId: storeId.value }); showToast('菜品已保存') } catch (e) { showToast(e.message) } }
+async function delDish(id) { try { await removeDish(id); dishes.value = await listDishes(storeId.value); showToast('菜品已删除') } catch (e) { showToast(e.message) } }
 
 onUnmounted(() => clearTimeout(toastTimer))
 </script>
@@ -50,8 +70,14 @@ onUnmounted(() => clearTimeout(toastTimer))
     <div class="page-head">
       <div>
         <h1>🍱 菜品管理</h1>
-        <p>维护「下单点餐」所需的分类与菜品数据。分类可分级，菜品归属到分类并控制上下架。</p>
+        <p>菜品与前台菜单是同一张 dish 表：这里的改价、上下架会立刻反映到顾客端。先选店铺，再看该店菜品。</p>
       </div>
+      <label class="store-pick">
+        <span>店铺</span>
+        <select v-model.number="storeId">
+          <option v-for="r in restaurants" :key="r.id" :value="r.id">{{ r.name }}</option>
+        </select>
+      </label>
     </div>
 
     <div v-if="loading" class="state"><span class="spinner"></span> 加载中…</div>
@@ -93,7 +119,7 @@ onUnmounted(() => clearTimeout(toastTimer))
               <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
             </select>
             <input class="num" type="number" v-model.number="d.sort" @change="updDish(d)" />
-            <label class="sw"><input type="checkbox" v-model="d.enabled" @change="updDish(d)" /><span></span></label>
+            <label class="sw"><input type="checkbox" v-model="d.enabled" :true-value="1" :false-value="0" @change="updDish(d)" /><span></span></label>
             <button class="del" @click="delDish(d.id)">删除</button>
           </div>
         </div>
@@ -105,9 +131,12 @@ onUnmounted(() => clearTimeout(toastTimer))
 
 <style scoped>
 .page { max-width: 1000px; animation: adIn 0.4s ease both; }
+.page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .page-head h1 { font-size: 22px; font-weight: 900; color: #0c3d39; position: relative; padding-left: 14px; }
 .page-head h1::before { content: ""; position: absolute; left: 0; top: 4px; bottom: 4px; width: 5px; border-radius: 4px; background: linear-gradient(180deg, #00b894, #00cec9); }
 .page-head p { margin-top: 6px; font-size: 13px; color: #6f8c88; line-height: 1.6; }
+.store-pick { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: #6f8c88; }
+.store-pick select { padding: 9px 12px; border: 1.5px solid #e0e8e7; border-radius: 10px; background: #f7fffc; font-size: 13px; max-width: 220px; }
 .state { text-align: center; padding: 40px; color: #6f8c88; }
 .stack { display: flex; flex-direction: column; gap: 18px; }
 .card { background: #fff; border-radius: 20px; padding: 18px; box-shadow: 0 10px 30px rgba(15,61,57,0.08); border: 1px solid #e9f0ef; transition: box-shadow 0.2s, transform 0.2s; }

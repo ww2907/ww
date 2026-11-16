@@ -244,24 +244,48 @@ orders : +receiver_name varchar(20)  NOT NULL DEFAULT ''   -- 收货人（快照
 
 ### 2026-11-16 删废弃表 + 补全表注释
 
-现在库里有 **12 张表**，每张都带 `COMMENT`（客户端侧边可见作用）：
+现在库里有 **11 张表**，每张都带 `COMMENT`（客户端侧边可见作用）：
 
 ```sql
--- 删（代码零读写的三张历史表，删前 mysqldump 备份过）
+-- 删（代码零读写的历史表，删前 mysqldump 备份过）
 DROP TABLE `admin_order`;   -- 后台订单管理 2026-11-11 已改读 orders，只剩注入未删
 DROP TABLE `admin_user`;    -- 后台用户管理改读 user，表早就不再引用
 DROP TABLE `verify_code`;   -- 旧数字验证码方案遗留，现用图片验证码，零读写
+DROP TABLE `admin_dish`;    -- 后台菜品统一到 dish 后删除（见下一节）
 
--- 补注释（原来 COMMENT 为空的三张）
+-- 补注释（原来 COMMENT 为空的两张）
 ALTER TABLE `admin_account` COMMENT = '后台管理员账号（BCrypt 密码，仅白名单账号可登录）';
 ALTER TABLE `admin_config`  COMMENT = '后台首页配置（导航 / 搜索 / 推荐，JSON 文本）';
-ALTER TABLE `admin_dish`    COMMENT = '后台菜品表（后台菜品管理与统计读写，前台菜单读 dish 表）';
 ```
 
 - 代码同步：删 `entity/AdminOrder.java`、`mapper/AdminOrderMapper.java`，`AdminService` 去掉 `AdminOrderMapper` 注入。
-- `shiguang_food.sql` 已同步（去掉三张表整块，补三条 COMMENT），临时库导入实测 12 张表 / 注释逐条一致。
-- 建库脚本重建后表清单：admin_account, admin_category, admin_config, admin_dish, category, dish,
+- `shiguang_food.sql` 已同步，临时库导入实测 11 张表 / 注释逐条一致。
+- 表清单：admin_account, admin_category, admin_config, category, dish,
   order_item, orders, restaurant, review, user, user_address。
+
+### 2026-11-16 后台菜品统一到 dish（修「后台改价对前台无效」）
+
+原来后台「菜品管理 / 价格管理」读写 `admin_dish`（10 条演示数据），前台菜单读 `dish`（350 条），
+**两张表毫无关系**：后台改价、上下架、新增菜品对顾客端完全无效。现在后台直接操作 `dish`。
+
+```sql
+ALTER TABLE `dish` ADD `enabled` tinyint NOT NULL DEFAULT 1 COMMENT '上架状态：1=上架（前台可见）0=下架';
+-- 列序：… sort, specs, category_id, enabled（建库脚本里也是最后一列，350 条 INSERT 末尾补了值 1）
+```
+
+- 接口（契约有变，前端已同步）：
+  - `GET /api/admin/restaurant/options` → `[{id,name}]`，70 家；菜品按店铺隔离，后台必须先选店（每店约 5 道菜）
+  - `GET /api/admin/dish?restaurantId=1` → 该店菜品；不传则后端取第一家店
+  - `POST/PUT /api/admin/dish` 收 `AdminDishVO`；新增必须带 `restaurantId`（`dish.restaurant_id` 是 NOT NULL）
+- 代码：删 `entity/AdminDish.java`、`mapper/AdminDishMapper.java`，新增 `vo/AdminDishVO.java`（摊平店铺名/分类名）；
+  统计用的 3 条 `@Select`（`countOnSale` / `dishByCategory` / `priceDistribution`）搬到 `DishMapper`，JOIN 从 `admin_category` 改为 `category`。
+- 前台过滤「下架」共 6 处：店铺菜单、分类树菜品计数、三级品类反查店铺、搜索 EXISTS、搜索联想、人均价。
+  （当前 350 条 `enabled` 全 = 1，所以线上行为无变化）
+- 前端：`DishManageView` / `PriceManageView` 各加店铺下拉，切店重载；新增/编辑自动带 `restaurantId`；
+  上架开关用 `:true-value="1" :false-value="0"`（后端收 Integer，布尔会 400）。
+- 验证 12 项全 PASS：改价 28 → 29.11 前台菜单同步；下架后菜单 5 → 4 道且后台仍可见；恢复后回到 28；
+  新增落库 id=351 后删除；仪表盘 `dishTotal=350 / dishOnSale=350 / categoryTotal=25`；两页实机截图正常。
+
 
 ### 2026-11-16 仓库清理（一次性，勿重复劳动）
 
@@ -326,9 +350,12 @@ ALTER TABLE `admin_dish`    COMMENT = '后台菜品表（后台菜品管理与�
       有表才导入）正确。**注意：`shiguang_food.sql` 本身不含建库语句，靠脚本这一句建库**
 - [x] 2026-11-16 删数据库废弃表 `admin_user`、`admin_order`、`verify_code`（已去掉 `AdminOrderMapper` 注入），
       并给所有表补 `COMMENT`；`shiguang_food.sql` 同步、临时库导入验证
+- [x] 2026-11-16 后台菜品统一到 `dish`（原先读 `admin_dish` 导致后台改价对前台无效），
+      补 `dish.enabled` 上架字段、后台按店铺筛选、前台 6 处过滤下架菜
 - [ ] `HomeView` / auth / admin 页的本地 `showToast` 统一到 `composables/useToast.js`
-- [ ] 可选：`admin_dish` 只有 10 行演示数据，而后台菜品管理/仪表盘统计都读它 —— 与前台 `dish`(350) 不一致，
-      要么改成读 `dish`，要么把 `admin_dish` 补齐
+- [ ] 可选：`admin_category` 仍是独立表（后台分类管理只写它，前台搜索读 `category`，同样存在「改了不生效」）。
+      要统一得顺带维护 `level/path`（分级搜索依赖 `path LIKE '/1/2/%'`），改父节点要重算整棵子树，属独立任务
+- [ ] 可选：后台「店铺管理」（营业状态/公告/配送费）——前端展示已支持，后台编辑入口未做
 - [ ] 可选：后台「店铺管理」（营业状态/公告/配送费）——前端展示已支持，后台编辑入口未做
 - [ ] 可选：地址表单换省市区级联
 - [ ] 可选：头像改文件上传

@@ -104,6 +104,7 @@ public class RestaurantServiceImpl extends ServiceImpl<RestaurantMapper, Restaur
                 String inIds = joinIds(catIds);
                 qw.and(w -> w.in("category_id", catIds).or()
                         .apply("EXISTS (SELECT 1 FROM dish d WHERE d.restaurant_id = restaurant.id"
+                                + " AND d.enabled = 1"
                                 + " AND d.category_id IN (" + inIds + "))"));
             }
         }
@@ -291,7 +292,7 @@ public class RestaurantServiceImpl extends ServiceImpl<RestaurantMapper, Restaur
         }
         Map<Long, Integer> dishCountByCat = new HashMap<>();
         List<Dish> dishes = dishMapper.selectList(
-                new QueryWrapper<Dish>().select("id", "restaurant_id", "category_id"));
+                new QueryWrapper<Dish>().select("id", "restaurant_id", "category_id").eq("enabled", 1));
         for (Dish d : dishes) {
             if (d.getCategoryId() == null) {
                 continue;
@@ -361,8 +362,9 @@ public class RestaurantServiceImpl extends ServiceImpl<RestaurantMapper, Restaur
         RestaurantDetailVO vo = new RestaurantDetailVO();
         copyBase(r, vo);
 
+        // 前台菜单只展示上架菜品（dish.enabled = 1）
         List<Dish> dishes = dishMapper.selectList(
-                new QueryWrapper<Dish>().eq("restaurant_id", id).orderByAsc("sort"));
+                new QueryWrapper<Dish>().eq("restaurant_id", id).eq("enabled", 1).orderByAsc("sort"));
         vo.setMenu(dishes.stream().map(d -> {
             DishVO dv = new DishVO();
             dv.setId(d.getId());
@@ -445,7 +447,7 @@ public class RestaurantServiceImpl extends ServiceImpl<RestaurantMapper, Restaur
             return Collections.emptySet();
         }
         List<Dish> dishes = dishMapper.selectList(
-                new QueryWrapper<Dish>().select("DISTINCT restaurant_id").in("category_id", catIds));
+                new QueryWrapper<Dish>().select("DISTINCT restaurant_id").in("category_id", catIds).eq("enabled", 1));
         return dishes.stream()
                 .map(Dish::getRestaurantId)
                 .filter(Objects::nonNull)
@@ -465,9 +467,9 @@ public class RestaurantServiceImpl extends ServiceImpl<RestaurantMapper, Restaur
         return vo;
     }
 
-    /** 每家店人均价：优先取店内菜品均价，无菜品时回退分类基准价 */
+    /** 每家店人均价：优先取店内菜品均价（只算上架菜），无菜品时回退分类基准价 */
     private Map<Long, Integer> avgPriceByRestaurant() {
-        List<Dish> dishes = dishMapper.selectList(null);
+        List<Dish> dishes = dishMapper.selectList(new QueryWrapper<Dish>().eq("enabled", 1));
         Map<Long, BigDecimal> sum = new HashMap<>();
         Map<Long, Integer> count = new HashMap<>();
         for (Dish d : dishes) {
@@ -552,8 +554,8 @@ public class RestaurantServiceImpl extends ServiceImpl<RestaurantMapper, Restaur
             }
         }
 
-        // 2) 菜品名命中（点选后跳转到所属店铺），占满剩余名额
-        List<Dish> dishes = dishMapper.selectList(null);
+        // 2) 菜品名命中（点选后跳转到所属店铺），占满剩余名额；下架菜不参与联想
+        List<Dish> dishes = dishMapper.selectList(new QueryWrapper<Dish>().eq("enabled", 1));
         for (Dish d : dishes) {
             if (out.size() >= limit) {
                 break;

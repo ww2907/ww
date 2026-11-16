@@ -35,6 +35,13 @@ public class Dish {
     /** 排序权重 */
     private Integer sort;
 
+    /**
+     * 上架状态：1=上架（前台菜单/搜索可见）0=下架（后台保留数据、前台不展示）。
+     * 后台「菜品管理」的开关写的就是这一列。该开关此前落在已删除的 admin_dish 表里，
+     * 导致后台改完对前台毫无影响，2026-11-16 统一到本表。
+     */
+    private Integer enabled;
+
     /** 规格 JSON 字符串：[{name,type,options:[{label,price}]}]，可为空 */
     private String specs;
 

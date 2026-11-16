@@ -20,6 +20,7 @@ export const ADMIN_ENDPOINTS = {
   recommend: '/admin/recommend',
   category: '/admin/category',
   dish: '/admin/dish',
+  restaurantOptions: '/admin/restaurant/options',
   stats: '/admin/stats',
   user: '/admin/user',
   order: '/admin/order'
@@ -171,13 +172,32 @@ export async function removeCategory(id) {
   return httpReq('delete', ADMIN_ENDPOINTS.category + '/' + id)
 }
 
-// ============ 4. 菜品（下单点餐数据）============
-export async function listDishes() {
+// ============ 4. 菜品（真实 dish 表，按店铺隔离）============
+/**
+ * 店铺下拉：GET /admin/restaurant/options → [{id,name}]
+ * 后台「菜品管理 / 价格管理」都先选一家店（每家约 5 道菜，一屏放得下），
+ * 这样后台改的就是前台菜单同一张 dish 表，改价/上下架能立刻生效。
+ */
+export async function listRestaurantOptions() {
+  if (ADMIN_USE_MOCK) {
+    await delay(80)
+    const list = (adminData.restaurants || []).map((r) => ({ id: r.id, name: r.name }))
+    // mock 数据里没有店铺维度，给一个占位选项，避免下拉框空着
+    return list.length ? list : [{ id: 0, name: '演示店铺（mock）' }]
+  }
+  return httpReq('get', ADMIN_ENDPOINTS.restaurantOptions)
+}
+
+/** 某店菜品：GET /admin/dish?restaurantId=1（不传则后端默认取第一家店） */
+export async function listDishes(restaurantId) {
   if (ADMIN_USE_MOCK) {
     await delay(150)
-    return clone(adminData.dishes)
+    const list = clone(adminData.dishes)
+    if (!restaurantId) return list
+    const hit = list.filter((d) => d.restaurantId === restaurantId)
+    return hit.length ? hit : list
   }
-  return httpReq('get', ADMIN_ENDPOINTS.dish)
+  return httpReq('get', ADMIN_ENDPOINTS.dish, null, restaurantId ? { restaurantId } : undefined)
 }
 export async function saveDish(dish) {
   if (ADMIN_USE_MOCK) {
