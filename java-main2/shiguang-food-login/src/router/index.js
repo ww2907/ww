@@ -8,7 +8,6 @@ import RestaurantView from '../views/RestaurantView.vue'
 import OrderView from '../views/OrderView.vue'
 import BuyNowView from '../views/BuyNowView.vue'
 import OrdersView from '../views/OrdersView.vue'
-import OrderDetailView from '../views/OrderDetailView.vue'
 import FoodView from '../views/FoodView.vue'
 import ProfileView from '../views/ProfileView.vue'
 import AdminLoginView from '../views/AdminLoginView.vue'
@@ -35,7 +34,6 @@ const routes = [
   { path: '/buy/:id', name: 'buy', component: BuyNowView },
   { path: '/order/:id', name: 'order', component: OrderView },
   { path: '/orders', name: 'orders', component: OrdersView },
-  { path: '/order-detail/:id', name: 'order-detail', component: OrderDetailView },
   { path: '/profile', name: 'profile', component: ProfileView },
 
   // ---------- 后台管理系统 ----------
@@ -67,7 +65,7 @@ const router = createRouter({
 //  - 后台受保护页面未登录 / 账号不在白名单 → 后台登录页
 //  - 非白名单账号访问后台登录页 → 首页（后台只对 www 开放）
 //  - 已登录访问进入页 → 首页
-const PROTECTED = ['home', 'food', 'restaurant', 'buy', 'order', 'orders', 'order-detail', 'profile']
+const PROTECTED = ['home', 'food', 'restaurant', 'buy', 'order', 'orders', 'profile']
 router.beforeEach((to) => {
   if (PROTECTED.includes(to.name) && !isLoggedIn()) {
     return { name: 'login' }
