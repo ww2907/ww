@@ -1,13 +1,14 @@
 # HANDOFF.md · 食光美食（外卖点单）项目交接说明
 
 > 用途：换机器 / 重装系统 / 隔一段时间再回来继续做时，让新会话（或新同学）5 分钟内接上上下文。
-> 最后更新：2026-11-04
+> 最后更新：2026-11-16
+> 姊妹文件：`AI-CONTINUE.md`（给 AI 的命令/契约/坑，**技术细节以它为准**）、`README.md`（门面）。
 
 ---
 
 ## 1. 一句话说明
 
-一个「美食外卖点单」全栈练习项目：Vue3 前端 + Spring Boot 3 后端 + MySQL，前后端都已完成三轮需求（交互补齐 → UX 打磨 → 后端与后台管理落地），当前处于**收尾/可选优化**阶段。
+一个「美食外卖点单」全栈练习项目：Vue3 前端 + Spring Boot 3 后端 + MySQL，已完成六轮需求（交互补齐 → UX 打磨 → 后端与后台管理落地 → 分级分类 → 下单收货地址 → 立即下单），当前处于**收尾/可选优化**阶段。
 
 ## 2. 目录与技术栈
 
@@ -15,7 +16,7 @@
 D:\workSpace\ww\java-main2\
 ├─ shiguang-food-login\        # 前端 Vue3 + Vite5 + vue-router（含 PC 后台管理）
 │  ├─ src\api\                 # 接口层（food / restaurant / order / profile / admin / auth）
-│  ├─ src\store\               # 全局 store（cart / profile / admin，reactive + localStorage）
+│  ├─ src\store\               # 全局 store（cart / buyNow / profile / admin，reactive + localStorage）
 │  ├─ src\components\          # 通用组件（DishPopup / OrderDetailModal / EmptyState / ToastHost …）
 │  ├─ src\views\               # 用户端页面 + views\admin\* 后台页面
 │  └─ vite.config.js           # dev 代理 /api -> http://192.168.68.31:8081（host 也绑定该 IP）
@@ -24,9 +25,15 @@ D:\workSpace\ww\java-main2\
 │  │  ├─ controller\           # Auth / Restaurant / Order / UserProfile / Admin
 │  │  ├─ service\ + service\impl\
 │  │  ├─ entity\ mapper\ vo\ controller\dto\
-│  ├─ sql\2026-11-04_profile_address.sql   # 个人资料 + 收货地址迁移
+│  ├─ sql\                     # 增量迁移（11-04 资料地址 / 11-06 经营字段 / 11-11 分类 / 11-11 地址）
+│  ├─ scripts\                 # 一次性数据迁移脚本（migrate_*.py、gen_incremental.py），平时不用跑
 │  └─ src\main\resources\application-dev.properties  # 端口 8081、MySQL 连接
-└─ shiguang_food.sql           # 全量建库脚本（末尾已追加同一份迁移）
+├─ shiguang_food.sql           # 全量建库脚本（含 DROP TABLE，重跑会清数据）
+├─ shiguang_food.sql.bak_20261111_093451   # 唯一保留的历史备份（其余 2026-11-16 已清理）
+├─ start-all.bat / stop-all.bat            # 一键启停（GBK 编码，别重存 UTF-8）
+├─ README.md                   # 门面：是什么、怎么起
+├─ HANDOFF.md                  # 本文件：做过什么、还剩什么（人读）
+└─ AI-CONTINUE.md              # 接续卡：命令/接口契约/已知坑/待办（AI 读，技术细节以它为准）
 ```
 
 - 后端包名：`com.fenglin.springboottest`
@@ -37,6 +44,8 @@ D:\workSpace\ww\java-main2\
   即**现在默认连真实后端**。想回到纯前端演示，把这两行注释掉或改 true 再重启 `npm run dev`。
 
 ## 3. 启动方式（重要坑）
+
+> 最省事：双击 `start-all.bat`（起）/ `stop-all.bat`（停）。下面是手动方式，完整命令见 `AI-CONTINUE.md` §3。
 
 ### 后端
 `./mvnw` 在本机 Git-Bash 下是坏的（`ClassNotFoundException: plexus.classworlds.launcher.Launcher`），
@@ -71,7 +80,7 @@ mysql -uroot -p123456 --default-character-set=utf8mb4 < shiguang_food.sql
 mysql -uroot -p123456 --default-character-set=utf8mb4 shiguang_food < springBootTest/sql/2026-11-04_profile_address.sql
 ```
 
-## 4. 已完成（三轮需求）
+## 4. 已完成（六轮需求）
 
 ### 第一轮：五类交互/功能
 1. 美食卡片：点击进店铺详情、菜品弹窗、加入购物车（`store/cart.js` 按店铺维度）
@@ -148,6 +157,17 @@ hover 质感、响应式（860/600/520/380 断点 + 安全区）。
   （`dish.price` + 规格加价），校验菜品归属店铺与营业状态；写库与购物车下单共用 `saveOrder()`
 - 原 `/#/order/:id`（购物车 · 结算）保持不变，仅作为购物车结算页使用
 
+### 第七轮：仓库清理（2026-11-16）
+
+不是新功能，是把攒下来的死文件和重复文档一次性收掉（详见 `AI-CONTINUE.md` §6 末节）：
+
+- 删 3 个 SQL 备份（其中两个内容完全相同）+ `_legacy_backup_2026-10-30/`（H2 时代遗物），只留 `bak_20261111_093451`
+- 删 `OrderDetailView.vue` 与 `/order-detail/:id` 路由（早被 `OrderDetailModal` 弹窗替代）、`__seed.html`
+- 迁移脚本从 `springBootTest/` 根目录归档到 `scripts/`
+- 文档从 5 份收敛为 3 份：`AI-启动必读.md`、`沙箱联调手册.md` 已并入 `AI-CONTINUE.md` 后删除；
+  `README.md` 修正了不存在的 `start-backend.bat / start-frontend.bat` 引用
+- 顺手修：`App.vue` 的 `WIDE_SHELL_PAGES` 补上 `buy`（立即下单页此前被当窄壳渲染，还叠了一层品牌头）
+
 ## 5. 关键约定（改代码前务必看）
 
 - **契约优先**：所有 `src/api/*.js` 的 `ENDPOINTS` 就是前后端契约，后端路径不要单方面改。
@@ -160,20 +180,13 @@ hover 质感、响应式（860/600/520/380 断点 + 安全区）。
   新增下单入口时记得带 `addressId`，或确认该账号有地址（后端会自动取默认地址）。
 - **`user` 表新增字段**：`avatar / gender / phone / bio`；地址在 `user_address` 表（`is_default` 唯一默认）。
 
-## 6. 剩余待办（可选，按优先级）
+## 6. 剩余待办
 
-0. **~~前端美食页三级级联筛选~~**（2026-11-11 已完成）：`FoodView.vue` 已改为「业态 tab + 品类 chip」，
-   筛选传 `categoryId`，支持 `/food?categoryId=<id>` 深链；mock 模式降级为两级（无菜品级数据）。
-1. **真实模式浏览器走查**：`.env` 已是真实后端模式，但到目前为止只做了**接口级**验证（curl 全链路通过）＋美食页的 CDP 点击验证，
-   没在浏览器里人工点过。启动前后端后走一遍首页/店铺/购物车/订单/我的/后台，确认字段与样式无错位（重点看：人均价格、距离排序、再来一单、后台用户管理的新列）。
-2. **遗留文件清理**：`src/views/OrderDetailView.vue` 已不被使用（订单详情改成弹窗了），路由表中仍挂着，可删。
-3. **Toast 未统一**：`HomeView`、登录/注册/找回、各 admin 页面仍是各自本地 `showToast`，可统一到 `composables/useToast.js`。
-4. **无用表**：`admin_user`（后台用户管理改读 `user` 表）与 `admin_order`（后台订单管理已改读 `orders` 表）
-   都已废弃，可删。注意 `AdminService` 里仍注入着 `AdminOrderMapper`（保留未用），删表前先去掉这个依赖。
-5. **店铺管理后台未做**：当时按「没有则不用」跳过。若要补，做营业状态 / 公告 / 配送费即可。
-6. **地址表单**：省、市目前是两个文本框，可换成省市区级联选择器。
-7. **头像**：只有 emoji 选择，没有文件上传。
-8. **鉴权**：后端接口目前全开放，token 未校验（练习项目可不管）。
+**唯一清单在 `AI-CONTINUE.md` §8**（两份待办各自维护只会互相过期，2026-11-16 已合并）。
+
+人看的一句话版本：功能已齐，剩下的都是"可选优化"——Toast 统一、删 `admin_user`/`admin_order` 两张废弃表、
+后台店铺管理、地址省市区级联、头像上传、接口鉴权。另外 `start-all.bat` 用的 `mvnw.cmd` 在本机有问题，
+需要实测一次，不行就改成调 `restart_backend.py`。
 
 ## 7. 备份清单（重置系统前务必做）
 
@@ -182,8 +195,11 @@ hover 质感、响应式（860/600/520/380 断点 + 安全区）。
 | 代码 | 整个 `D:\workSpace\ww\java-main2`（或 git commit + push） |
 | 本文件 | `HANDOFF.md`（跟着项目走，别单独放桌面） |
 | 数据库 | `mysqldump -uroot -p123456 --default-character-set=utf8mb4 shiguang_food > shiguang_food_backup.sql` |
-| 前端环境变量 | `shiguang-food-login/.env*`（若有） |
+| 前端环境变量 | `shiguang-food-login/.env`（**未入库**，`.gitignore` 里，清机前单独拷） |
 | 不用备份 | `node_modules`、`target`、`dist`、`.m2` 缓存 |
+
+> 历史 SQL 备份只保留 `shiguang_food.sql.bak_20261111_093451` 一份（其余 2026-11-16 已删，
+> 需要旧版可从 git 历史 `git show <commit>:java-main2/xxx.sql` 取）。
 
 ## 8. 回来继续时，这样开口
 
