@@ -63,6 +63,7 @@ mysql -uroot -p123456 --default-character-set=utf8mb4 shiguang_food < springBoot
 | `restaurant.js` | GET `/api/restaurants/search/suggest?keyword=&limit=8` | 同文件，**声明在 `/{id}` 之前** |
 | `restaurant.js` | GET `/api/restaurants/{id}` → `{menu,reviews,avgRating,reviewCount}` | 同文件 |
 | `order.js` | POST `/api/orders` `{restaurantId,restaurantName,account,items:[{dishId,name,price,qty}]}` | OrderController |
+| `order.js` | POST `/api/orders/direct` `{restaurantId,account,addressId?,items:[{dishId,qty,specText}]}` → 立即下单（不经过购物车，单价由后端按 `dish` 表核价 = 基础价 + 规格加价） | 同文件（2026-11-16 新增） |
 | `order.js` | GET `/api/orders?account=&status=`、GET `/api/orders/{id}`、GET `/api/orders/stats?account=`、POST `/api/orders/{id}/status?status=` | 同文件 |
 | `profile.js` | GET/PUT `/api/users/profile`、CRUD `/api/users/addresses`、POST `/api/users/addresses/{id}/default` | UserProfileController |
 | `admin.js` | `/api/admin/{login,nav,search,recommend,category,dish,stats,user,order}` + `/api/admin/dish/{id}/price`、`/api/admin/dish/price/batch`、`/api/admin/order/{id}/status` | AdminController |
@@ -187,6 +188,26 @@ orders : +receiver_name varchar(20)  NOT NULL DEFAULT ''   -- 收货人（快照
   （每页 10 条、页码窗口 5 个）。数据仍是一次性拉全量（与后台其它列表一致），
   订单量再涨一个量级时把 `keyword/status/page` 下推给 `/admin/order` 即可。
   改状态失败会把下拉框回滚到原值，避免界面与库不一致。
+
+### 2026-11-16 立即下单（点「下单」直接进下单页，不经过购物车）
+
+原状：首页卡片「下单」跳到 `/order/:id`，而该页就是「购物车 · 结算」——购物车为空时只会显示
+「购物车还是空的」，等于把用户丢进购物车，还要先加购一次才能下单。
+
+- **新页面** `/#/buy/:id`（`BuyNowView.vue`，路由名 `buy`，已加入 `PROTECTED`）：
+  一页内完成「选该店菜品 + 收货地址 + 提交订单」，底部固定栏显示本单合计与起送差额。
+- **直购草稿独立于购物车**：`store/buyNow.js`（localStorage 键 `shiguang_buy_now`，按店铺隔离），
+  提交成功后只清该店铺草稿，购物车不受影响；从首页/美食页点「下单」会先 `clearDraft(id)`，
+  保证每次都是新的一单（刷新页面不会丢已选菜品）。
+- **入口**：首页推荐卡片「下单」、美食页卡片「下单」→ `/buy/:id`；
+  店铺页菜品弹窗新增「立即下单」（`DishPopup` 的 `showBuyNow` + `buy` 事件），
+  带着这道菜的规格与数量进本单后跳 `/buy/:id`；弹窗另有 `mode="direct"`，在直购页里加的是「本单」而非购物车。
+- **后端新增 `POST /api/orders/direct`**（`DirectOrderRequest` / `DirectOrderItemDTO`）：
+  明细只收 `dishId + qty + specText`，**不信任前端金额**——单价 = `dish.price` + 规格加价
+  （在 `dish.specs` JSON 里按 label 命中累加，解析失败按 0），并校验菜品存在且 `dish.restaurant_id`
+  等于 `restaurantId`；打烊店铺直接拒绝。落库逻辑抽成 `saveOrder(...)`，与购物车下单共用一套写库代码。
+- 验证：`POST /api/orders/direct` 传「招牌牛肉面 大份/微辣」→ `totalAmount=33.00`（28+5+0）；
+  错店菜品 / 不存在菜品 / 空明细 / 无地址 各自返回对应中文提示；前端 `vite build` 通过。
 
 ## 7. 已知坑
 

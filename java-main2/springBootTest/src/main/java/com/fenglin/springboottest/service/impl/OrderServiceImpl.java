@@ -2,14 +2,20 @@ package com.fenglin.springboottest.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fenglin.springboottest.common.BusinessException;
+import com.fenglin.springboottest.controller.dto.DirectOrderItemDTO;
+import com.fenglin.springboottest.controller.dto.DirectOrderRequest;
 import com.fenglin.springboottest.controller.dto.OrderCreateRequest;
 import com.fenglin.springboottest.controller.dto.OrderItemDTO;
+import com.fenglin.springboottest.entity.Dish;
 import com.fenglin.springboottest.entity.Order;
 import com.fenglin.springboottest.entity.OrderItem;
 import com.fenglin.springboottest.entity.Restaurant;
 import com.fenglin.springboottest.entity.User;
 import com.fenglin.springboottest.entity.UserAddress;
+import com.fenglin.springboottest.mapper.DishMapper;
 import com.fenglin.springboottest.mapper.OrderItemMapper;
 import com.fenglin.springboottest.mapper.OrderMapper;
 import com.fenglin.springboottest.mapper.RestaurantMapper;
@@ -28,30 +34,37 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Random;
 
 /**
  * 订单业务实现：
- *   - 创建订单：校验店铺 + 明细 + **收货地址**，计算金额与件数，关联用户（按账号解析 user_id），
- *     把地址以快照形式写进订单，落库主表与明细表，返回订单详情。
+ *   - 购物车结算：校验店铺 + 明细 + **收货地址**，按前端带入的金额算总额，落库主表与明细表。
+ *   - 立即下单：跳过购物车，按 dishId 反查菜品，**由后端核价**（基础价 + 规格加价）后落库。
  *   - 查询订单：按账号倒序返回订单与明细。
  */
 @Service
 public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements OrderService {
 
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
     private final OrderItemMapper orderItemMapper;
     private final UserMapper userMapper;
     private final RestaurantMapper restaurantMapper;
     private final UserAddressMapper userAddressMapper;
+    private final DishMapper dishMapper;
 
     public OrderServiceImpl(OrderItemMapper orderItemMapper,
                             UserMapper userMapper,
                             RestaurantMapper restaurantMapper,
-                            UserAddressMapper userAddressMapper) {
+                            UserAddressMapper userAddressMapper,
+                            DishMapper dishMapper) {
         this.orderItemMapper = orderItemMapper;
         this.userMapper = userMapper;
         this.restaurantMapper = restaurantMapper;
         this.userAddressMapper = userAddressMapper;
+        this.dishMapper = dishMapper;
     }
 
     @Override
@@ -82,18 +95,13 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
             account = "";
         }
 
-        // 计算订单总额与商品总件数（过滤无效项）
-        BigDecimal total = BigDecimal.ZERO;
-        int itemCount = 0;
+        // 过滤无效项（数量 <= 0 的直接丢弃）
         List<OrderItemDTO> validItems = new ArrayList<>();
         for (OrderItemDTO it : items) {
             int qty = (it.getQty() == null) ? 0 : it.getQty();
             if (qty <= 0) {
                 continue;
             }
-            BigDecimal price = (it.getPrice() == null) ? BigDecimal.ZERO : it.getPrice();
-            total = total.add(price.multiply(BigDecimal.valueOf(qty)));
-            itemCount += qty;
             validItems.add(it);
         }
         if (validItems.isEmpty()) {
@@ -105,14 +113,100 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         // 都拿不到说明这个账号还没维护过地址 → 直接拦下。
         UserAddress address = resolveAddress(req.getAddressId(), account);
 
+        return saveOrder(userId, account, restaurant, req.getRestaurantName(), validItems, address);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public OrderVO createDirectOrder(DirectOrderRequest req) {
+        if (req == null || req.getRestaurantId() == null) {
+            throw new BusinessException("缺少店铺信息，无法下单");
+        }
+        Restaurant restaurant = restaurantMapper.selectById(req.getRestaurantId());
+        if (restaurant == null) {
+            throw new BusinessException(404, "店铺不存在");
+        }
+        if (restaurant.getOpenStatus() != null && restaurant.getOpenStatus() == 0) {
+            throw new BusinessException("店铺已打烊，暂不接单");
+        }
+        List<DirectOrderItemDTO> items = req.getItems();
+        if (items == null || items.isEmpty()) {
+            throw new BusinessException("请先选择菜品，再下单");
+        }
+
+        // 解析下单用户（与购物车下单口径一致）
+        Long userId = null;
+        String account = req.getAccount();
+        if (account != null && !account.trim().isEmpty()) {
+            account = account.trim();
+            User u = userMapper.selectOne(new QueryWrapper<User>().eq("account", account));
+            if (u != null) {
+                userId = u.getId();
+            }
+        } else {
+            account = "";
+        }
+
+        // 核价：单价 = 菜品基础价 + 规格加价（规格按 dish.specs JSON 里匹配到的选项累加）
+        List<OrderItemDTO> validItems = new ArrayList<>();
+        for (DirectOrderItemDTO it : items) {
+            if (it == null || it.getDishId() == null) {
+                continue;
+            }
+            int qty = (it.getQty() == null) ? 0 : it.getQty();
+            if (qty <= 0) {
+                continue;
+            }
+            Dish dish = dishMapper.selectById(it.getDishId());
+            if (dish == null) {
+                throw new BusinessException("菜品不存在或已下架，请重新选择");
+            }
+            if (!Objects.equals(dish.getRestaurantId(), restaurant.getId())) {
+                throw new BusinessException("菜品「" + dish.getName() + "」不属于该店铺");
+            }
+            String specText = (it.getSpecText() == null) ? "" : it.getSpecText().trim();
+            BigDecimal base = (dish.getPrice() == null) ? BigDecimal.ZERO : dish.getPrice();
+            BigDecimal price = base.add(specSurcharge(dish.getSpecs(), specText));
+
+            OrderItemDTO oi = new OrderItemDTO();
+            oi.setDishId(dish.getId());
+            // 明细名称带规格，与购物车下单的展示口径保持一致：菜名（规格）
+            oi.setName(specText.isEmpty() ? dish.getName() : dish.getName() + "（" + specText + "）");
+            oi.setPrice(price);
+            oi.setQty(qty);
+            validItems.add(oi);
+        }
+        if (validItems.isEmpty()) {
+            throw new BusinessException("请先选择菜品，再下单");
+        }
+
+        UserAddress address = resolveAddress(req.getAddressId(), account);
+
+        return saveOrder(userId, account, restaurant, req.getRestaurantName(), validItems, address);
+    }
+
+    /**
+     * 统一的落库入口：计算总额/件数 → 写订单主表（含地址快照）→ 写明细 → 转 VO。
+     * 购物车下单与立即下单共用，保证两种入口写出来的订单结构完全一致。
+     */
+    private OrderVO saveOrder(Long userId, String account, Restaurant restaurant, String restaurantName,
+                              List<OrderItemDTO> items, UserAddress address) {
+        BigDecimal total = BigDecimal.ZERO;
+        int itemCount = 0;
+        for (OrderItemDTO it : items) {
+            BigDecimal price = (it.getPrice() == null) ? BigDecimal.ZERO : it.getPrice();
+            total = total.add(price.multiply(BigDecimal.valueOf(it.getQty())));
+            itemCount += it.getQty();
+        }
+
         // 落库主表
         Order order = new Order();
         order.setOrderNo(genOrderNo());
         order.setUserId(userId);
         order.setAccount(account);
         order.setRestaurantId(restaurant.getId());
-        order.setRestaurantName(req.getRestaurantName() != null && !req.getRestaurantName().trim().isEmpty()
-                ? req.getRestaurantName().trim() : restaurant.getName());
+        order.setRestaurantName(restaurantName != null && !restaurantName.trim().isEmpty()
+                ? restaurantName.trim() : restaurant.getName());
         order.setTotalAmount(total);
         order.setItemCount(itemCount);
         order.setStatus(0); // 待支付
@@ -128,7 +222,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         // 落库明细
         Long orderId = order.getId();
         List<OrderItemVO> itemVos = new ArrayList<>();
-        for (OrderItemDTO it : validItems) {
+        for (OrderItemDTO it : items) {
             BigDecimal price = (it.getPrice() == null) ? BigDecimal.ZERO : it.getPrice();
             int qty = it.getQty();
             BigDecimal subtotal = price.multiply(BigDecimal.valueOf(qty));
@@ -153,6 +247,59 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
 
         return toVO(order, itemVos);
     }
+
+    /**
+     * 规格加价：在 dish.specs（[{name,type,options:[{label,price}]}]）里，
+     * 找出出现在 specText 中的选项，把它们的 price 累加。
+     *
+     * 说明：specText 是前端按「 / 」「、」拼起来的规格文案，这里只按「选项名出现在文案里」匹配，
+     * 匹配不到就按 0 处理 —— 即后端最多按基础价收，绝不会因为前端改价而多收。
+     */
+    private BigDecimal specSurcharge(String specsJson, String specText) {
+        if (specsJson == null || specsJson.trim().isEmpty()
+                || specText == null || specText.trim().isEmpty()) {
+            return BigDecimal.ZERO;
+        }
+        try {
+            List<Map<String, Object>> raw = OBJECT_MAPPER.readValue(
+                    specsJson, new TypeReference<List<Map<String, Object>>>() {});
+            if (raw == null) {
+                return BigDecimal.ZERO;
+            }
+            BigDecimal sum = BigDecimal.ZERO;
+            for (Map<String, Object> group : raw) {
+                Object optsRaw = group.get("options");
+                if (!(optsRaw instanceof List)) {
+                    continue;
+                }
+                for (Object o : (List<?>) optsRaw) {
+                    if (!(o instanceof Map)) {
+                        continue;
+                    }
+                    Map<?, ?> om = (Map<?, ?>) o;
+                    Object label = om.get("label");
+                    Object price = om.get("price");
+                    if (label == null || price == null) {
+                        continue;
+                    }
+                    String text = String.valueOf(label).trim();
+                    if (text.isEmpty() || !specText.contains(text)) {
+                        continue;
+                    }
+                    try {
+                        sum = sum.add(new BigDecimal(String.valueOf(price)));
+                    } catch (NumberFormatException ignore) {
+                        // 价格字段异常时忽略该选项加价
+                    }
+                }
+            }
+            return sum;
+        } catch (Exception e) {
+            // specs JSON 不合法 / 解析失败：不加价，按基础价下单
+            return BigDecimal.ZERO;
+        }
+    }
+
 
     @Override
     public List<OrderVO> listByAccount(String account, Integer status) {

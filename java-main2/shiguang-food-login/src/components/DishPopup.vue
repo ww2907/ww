@@ -1,14 +1,21 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { cart } from '../store/cart.js'
+import { buyNow } from '../store/buyNow.js'
 
 const props = defineProps({
   show: { type: Boolean, default: false },
   dish: { type: Object, default: null },
   restaurantId: { type: [String, Number], default: '' },
-  restaurantName: { type: String, default: '' }
+  restaurantName: { type: String, default: '' },
+  // 'cart' = 加入购物车（店铺页默认）；'direct' = 加入「立即下单」本单（不经过购物车）
+  mode: { type: String, default: 'cart' },
+  // 是否额外显示「立即下单」按钮（店铺页用：选好这道菜直接去下单页）
+  showBuyNow: { type: Boolean, default: false }
 })
-const emit = defineEmits(['close', 'added'])
+const emit = defineEmits(['close', 'added', 'buy'])
+
+const isDirect = computed(() => props.mode === 'direct')
 
 const qty = ref(1)
 // 规格选择状态：{ 规格名: 选中label（single）/ labels数组（multi） }
@@ -64,11 +71,14 @@ const specText = computed(() => {
   return parts.length ? parts.join(' / ') : ''
 })
 
-const inCart = computed(() => {
+// 当前菜品在本单 / 购物车里的已有份数（弹窗底部提示用）
+const inBag = computed(() => {
   if (!props.dish) return 0
   const baseKey = String(props.dish.id != null ? props.dish.id : props.dish.name)
   const fullKey = specText.value ? baseKey + '#' + specText.value : baseKey
-  return cart.qtyOf(props.restaurantId, fullKey)
+  return isDirect.value
+    ? buyNow.qtyOf(props.restaurantId, fullKey)
+    : cart.qtyOf(props.restaurantId, fullKey)
 })
 
 function plus() { qty.value += 1 }
@@ -86,15 +96,24 @@ function toggleMulti(specName, label) {
   selection.value[specName] = next
 }
 
-function addToCart() {
+function addToBag() {
   if (!props.dish) return
-  cart.addItem(props.restaurantId, {
+  const item = {
     ...props.dish,
     restaurantName: props.restaurantName,
     price: unitPrice.value,
     specText: specText.value
-  }, qty.value)
+  }
+  if (isDirect.value) buyNow.addItem(props.restaurantId, item, qty.value)
+  else cart.addItem(props.restaurantId, item, qty.value)
   emit('added', { dish: props.dish, qty: qty.value, specText: specText.value, price: unitPrice.value })
+  emit('close')
+}
+
+// 店铺页的「立即下单」：交给父组件带着这道菜跳去下单页（不进购物车）
+function buyNowOrder() {
+  if (!props.dish) return
+  emit('buy', { dish: props.dish, qty: qty.value, specText: specText.value, price: unitPrice.value })
   emit('close')
 }
 
@@ -139,7 +158,8 @@ function close() {
           </div>
 
           <div class="dp-meta">
-            <span>已加入购物车：<b>{{ inCart }}</b> 份</span>
+            <span v-if="isDirect">已在本单：<b>{{ inBag }}</b> 份</span>
+            <span v-else>已加入购物车：<b>{{ inBag }}</b> 份</span>
           </div>
 
           <div class="dp-actions">
@@ -148,7 +168,15 @@ function close() {
               <span class="dp-qnum">{{ qty }}</span>
               <button class="dp-step" @click="plus">+</button>
             </div>
-            <button class="dp-add" @click="addToCart">加入购物车 · ¥{{ (unitPrice * qty).toFixed(2) }}</button>
+            <div class="dp-btns">
+              <button class="dp-add" @click="addToBag">
+                {{ isDirect ? '加入本单' : '加入购物车' }} · ¥{{ (unitPrice * qty).toFixed(2) }}
+              </button>
+              <!-- 店铺页：选好规格直接进入「立即下单」页，不经过购物车 -->
+              <button v-if="showBuyNow && !isDirect" class="dp-buy" @click="buyNowOrder">
+                立即下单 · ¥{{ (unitPrice * qty).toFixed(2) }}
+              </button>
+            </div>
           </div>
         </div>
       </transition>
@@ -243,6 +271,8 @@ function close() {
 .dp-step:hover { background: rgba(0, 184, 148, 0.12); }
 .dp-qnum { font-size: 16px; font-weight: 800; color: var(--deep); min-width: 20px; text-align: center; }
 
+.dp-btns { flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+
 .dp-add {
   flex: 1; border: none; cursor: pointer; padding: 13px 0; border-radius: 14px;
   background: linear-gradient(135deg, var(--teal), var(--cyan)); color: #fff;
@@ -250,6 +280,15 @@ function close() {
   box-shadow: 0 8px 18px rgba(0, 150, 136, 0.45); transition: transform 0.15s;
 }
 .dp-add:hover { transform: translateY(-1px); }
+
+/* 立即下单：次级按钮，与「加入购物车」明显区分 */
+.dp-buy {
+  border: 1px solid rgba(232, 115, 12, 0.45); cursor: pointer; padding: 11px 0; border-radius: 14px;
+  background: linear-gradient(135deg, #f7a03c, #ef7d18); color: #fff;
+  font-weight: 800; font-size: 14px; font-family: inherit;
+  box-shadow: 0 6px 14px rgba(239, 125, 24, 0.35); transition: transform 0.15s;
+}
+.dp-buy:hover { transform: translateY(-1px); }
 
 .dp-fade-enter-active, .dp-fade-leave-active { transition: opacity 0.25s ease; }
 .dp-fade-enter-from, .dp-fade-leave-to { opacity: 0; }

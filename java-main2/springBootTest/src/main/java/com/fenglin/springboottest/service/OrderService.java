@@ -1,5 +1,6 @@
 package com.fenglin.springboottest.service;
 
+import com.fenglin.springboottest.controller.dto.DirectOrderRequest;
 import com.fenglin.springboottest.controller.dto.OrderCreateRequest;
 import com.fenglin.springboottest.vo.OrderStatsVO;
 import com.fenglin.springboottest.vo.OrderVO;
@@ -8,14 +9,20 @@ import java.util.List;
 
 /**
  * 订单业务：
- *   - 创建订单（下单）
+ *   - 创建订单（购物车结算 / 立即下单）
  *   - 按账号查询我的订单（支持按状态过滤）
  *   - 个人中心统计：订单次数 + 常点食物
  */
 public interface OrderService {
 
-    /** 创建订单，返回订单详情 */
+    /** 创建订单（购物车结算：明细金额由前端带入），返回订单详情 */
     OrderVO createOrder(OrderCreateRequest req);
+
+    /**
+     * 立即下单：跳过购物车，直接提交本店铺选中的菜品。
+     * 明细只带 dishId / qty / specText，单价与总额由后端按 dish 表核价。
+     */
+    OrderVO createDirectOrder(DirectOrderRequest req);
 
     /** 按账号查询订单（最新在前）。status 为 null 时返回全部，否则按状态过滤；account 为空时返回空列表 */
     List<OrderVO> listByAccount(String account, Integer status);

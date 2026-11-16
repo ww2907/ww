@@ -6,6 +6,7 @@ import ForgotView from '../views/ForgotView.vue'
 import HomeView from '../views/HomeView.vue'
 import RestaurantView from '../views/RestaurantView.vue'
 import OrderView from '../views/OrderView.vue'
+import BuyNowView from '../views/BuyNowView.vue'
 import OrdersView from '../views/OrdersView.vue'
 import OrderDetailView from '../views/OrderDetailView.vue'
 import FoodView from '../views/FoodView.vue'
@@ -30,6 +31,8 @@ const routes = [
   { path: '/home', name: 'home', component: HomeView },
   { path: '/food', name: 'food', component: FoodView },
   { path: '/restaurant/:id', name: 'restaurant', component: RestaurantView },
+  // 立即下单：跳过购物车，选菜 + 地址 + 提交在同一页完成
+  { path: '/buy/:id', name: 'buy', component: BuyNowView },
   { path: '/order/:id', name: 'order', component: OrderView },
   { path: '/orders', name: 'orders', component: OrdersView },
   { path: '/order-detail/:id', name: 'order-detail', component: OrderDetailView },
@@ -64,7 +67,7 @@ const router = createRouter({
 //  - 后台受保护页面未登录 / 账号不在白名单 → 后台登录页
 //  - 非白名单账号访问后台登录页 → 首页（后台只对 www 开放）
 //  - 已登录访问进入页 → 首页
-const PROTECTED = ['home', 'food', 'restaurant', 'order', 'orders', 'order-detail', 'profile']
+const PROTECTED = ['home', 'food', 'restaurant', 'buy', 'order', 'orders', 'order-detail', 'profile']
 router.beforeEach((to) => {
   if (PROTECTED.includes(to.name) && !isLoggedIn()) {
     return { name: 'login' }

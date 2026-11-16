@@ -11,6 +11,7 @@ import AppSearch from '../components/layout/AppSearch.vue'
 import AppTabbar from '../components/layout/AppTabbar.vue'
 import CartEntry from '../components/layout/CartEntry.vue'
 import LocationBar from '../components/LocationBar.vue'
+import { buyNow } from '../store/buyNow.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -106,14 +107,18 @@ function goFood() {
   router.push('/food')
 }
 
-// ---------- 下单：跳转到该店铺的点餐页 ----------
+// ---------- 下单：直接进入「立即下单」页 ----------
 // 点进店铺详情
 function openDetail(r) {
   router.push('/restaurant/' + (r.id || r.name))
 }
-// 点击「下单」跳转到点餐页（/order/:id），由点餐页完成选餐与提交订单
+// 点击「下单」直接进下单页（/buy/:id）：选菜 + 地址 + 提交都在这一页完成，
+// 不再跳到「购物车 · 结算」，购物车里的旧商品也不会被带进这一单。
 function onOrder(r) {
-  router.push('/order/' + (r.id || r.name))
+  const id = r.id || r.name
+  // 每次从首页点「下单」都是一份新的本单：先清掉这家店上次没提交的草稿
+  buyNow.clearDraft(id)
+  router.push('/buy/' + id)
 }
 
 // ---------- 轻提示 ----------

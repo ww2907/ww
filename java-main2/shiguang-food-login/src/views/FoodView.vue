@@ -10,6 +10,7 @@ import AppNav from '../components/layout/AppNav.vue'
 import AppSearch from '../components/layout/AppSearch.vue'
 import AppTabbar from '../components/layout/AppTabbar.vue'
 import EmptyState from '../components/EmptyState.vue'
+import { buyNow } from '../store/buyNow.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -176,7 +177,10 @@ function openDetail(r) {
   router.push('/restaurant/' + (r.id || r.name))
 }
 function onOrder(r) {
-  router.push('/restaurant/' + (r.id || r.name))
+  // 卡片「下单」→ 直接进下单页（/buy/:id），不经过购物车；每次都是新的本单
+  const id = r.id || r.name
+  buyNow.clearDraft(id)
+  router.push('/buy/' + id)
 }
 
 // ---------- 导航点击：未开发入口给出提示 ----------
@@ -340,8 +344,8 @@ watch(
             <span class="meta-item">🕒 {{ r.eta }}</span>
           </div>
           <div class="card-foot card-foot-2">
-            <span class="dist dim">👥 进店点餐</span>
-            <button class="order-btn" :disabled="r.openStatus === 0" @click.stop="onOrder(r)">{{ r.openStatus === 0 ? '已打烊' : '去点餐' }}</button>
+            <span class="dist dim">👥 查看店铺</span>
+            <button class="order-btn" :disabled="r.openStatus === 0" @click.stop="onOrder(r)">{{ r.openStatus === 0 ? '已打烊' : '下单' }}</button>
           </div>
         </article>
       </div>

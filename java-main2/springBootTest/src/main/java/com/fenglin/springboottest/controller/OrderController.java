@@ -1,6 +1,7 @@
 package com.fenglin.springboottest.controller;
 
 import com.fenglin.springboottest.common.Result;
+import com.fenglin.springboottest.controller.dto.DirectOrderRequest;
 import com.fenglin.springboottest.controller.dto.OrderCreateRequest;
 import com.fenglin.springboottest.service.OrderService;
 import com.fenglin.springboottest.vo.OrderStatsVO;
@@ -17,7 +18,8 @@ import java.util.List;
 
 /**
  * 订单接口，统一挂在 /api/orders 下，与前端 src/api/order.js 的约定一致：
- *   POST /api/orders                创建订单（下单）
+ *   POST /api/orders                创建订单（购物车结算）
+ *   POST /api/orders/direct         立即下单（跳过购物车，后端核价）
  *   GET  /api/orders?account=&status= 按账号查询我的订单（status 可选：0待支付/1已支付/2已完成/3已取消）
  *   GET  /api/orders/stats?account=   个人中心统计：订单次数 + 常点食物
  */
@@ -31,10 +33,19 @@ public class OrderController {
         this.orderService = orderService;
     }
 
-    /** 下单：POST /api/orders */
+    /** 下单（购物车结算）：POST /api/orders */
     @PostMapping
     public Result<OrderVO> create(@RequestBody OrderCreateRequest req) {
         return Result.success(orderService.createOrder(req));
+    }
+
+    /**
+     * 立即下单（跳过购物车）：POST /api/orders/direct
+     * 前端「立即下单」页直接提交本单菜品，服务端按 dish 表核价后落库。
+     */
+    @PostMapping("/direct")
+    public Result<OrderVO> createDirect(@RequestBody DirectOrderRequest req) {
+        return Result.success(orderService.createDirectOrder(req));
     }
 
     /** 我的订单：GET /api/orders?account=&status= */

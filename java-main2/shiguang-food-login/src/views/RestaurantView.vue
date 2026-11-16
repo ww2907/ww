@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getRestaurantDetail } from '../api/restaurant.js'
 import { cart } from '../store/cart.js'
+import { buyNow } from '../store/buyNow.js'
 import { toast } from '../composables/useToast.js'
 import { useShellNav } from '../composables/useShellNav.js'
 import AppHeader from '../components/layout/AppHeader.vue'
@@ -56,6 +57,19 @@ function openDish(d) {
 }
 function onDishAdded() {
   toast('已加入购物车 🛒', 'success')
+}
+
+// 菜品弹窗「立即下单」：这道菜进「本单」草稿，然后直接去下单页（不经过购物车）
+function onDishBuy(payload) {
+  if (!payload || !payload.dish) return
+  buyNow.addItem(rid.value, {
+    ...payload.dish,
+    restaurantName: store.value ? store.value.name : '',
+    price: payload.price,
+    specText: payload.specText
+  }, payload.qty || 1)
+  cartPanelOpen.value = false
+  router.push('/buy/' + rid.value)
 }
 
 function goOrder() {
@@ -244,8 +258,10 @@ onMounted(async () => {
       :dish="activeDish"
       :restaurant-id="rid"
       :restaurant-name="store ? store.name : ''"
+      show-buy-now
       @close="popupShow = false"
       @added="onDishAdded"
+      @buy="onDishBuy"
     />
   </div>
 </template>

@@ -20,6 +20,8 @@ export const ORDER_API_BASE = import.meta.env.VITE_API_BASE || '/api'
 // 后端路由（统一挂在 /api/orders 下）
 export const ORDER_ENDPOINTS = {
   create: '/orders',
+  // 立即下单：跳过购物车，后端按 dish 表核价
+  direct: '/orders/direct',
   list: '/orders',
   stats: '/orders/stats',
   status: '/orders'
@@ -148,6 +150,45 @@ export async function createOrder({ restaurantId, restaurantName, account, items
     if (ORDER_FALLBACK_MOCK && !/地址/.test(e.message || '')) {
       console.warn('[order] 后端下单接口暂不可用，已回退到本地模拟：', e.message)
       return buildMockOrder({ restaurantId, restaurantName, account, items })
+    }
+    throw e
+  }
+}
+
+/**
+ * 立即下单（跳过购物车）。参数：{ restaurantId, restaurantName, account, items, addressId }
+ *   items: [{ dishId, name, price, qty, specText }]
+ *     - 真实模式下后端只认 dishId / qty / specText，单价由后端按 dish 表核价（基础价 + 规格加价）；
+ *     - name / price 仅用于 mock 模式与本地展示，不参与真实链路的金额计算。
+ * 策略：mock 模式直接返回内存订单；真实模式请求后端 POST /api/orders/direct，
+ *       后端缺失 / 网络异常时回退本地模拟（地址类业务错误不回退）。
+ */
+export async function createDirectOrder({ restaurantId, restaurantName, account, items = [], addressId = null } = {}) {
+  const valid = (items || []).filter((it) => it && it.qty > 0)
+  if (ORDER_USE_MOCK) {
+    await delay(400)
+    return buildMockOrder({ restaurantId, restaurantName, account, items: valid })
+  }
+  try {
+    const payload = {
+      restaurantId,
+      restaurantName,
+      account,
+      items: valid.map((it) => {
+        // dishId 必须是数字主键，后端才能核价；非数字（mock 里的 "1-m1"）不入参
+        const numId = it.dishId != null && it.dishId !== '' && Number.isFinite(Number(it.dishId))
+          ? Number(it.dishId)
+          : null
+        return { dishId: numId, qty: it.qty, specText: it.specText || '' }
+      })
+    }
+    if (addressId != null && addressId !== '') payload.addressId = addressId
+    return await httpPost(ORDER_ENDPOINTS.direct, payload)
+  } catch (e) {
+    // 地址 / 菜品 / 打烊 都是业务规则，不能回退成「假设成功」
+    if (ORDER_FALLBACK_MOCK && !/地址|菜品|打烊/.test(e.message || '')) {
+      console.warn('[order] 后端立即下单接口暂不可用，已回退到本地模拟：', e.message)
+      return buildMockOrder({ restaurantId, restaurantName, account, items: valid })
     }
     throw e
   }
