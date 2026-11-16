@@ -71,20 +71,20 @@ public class AdminController {
         return Result.success();
     }
 
-    // ---------- 4. 分类 ----------
+    // ---------- 4. 分类（真实 category 表：level/path 由后端维护）----------
     @GetMapping("/category")
     public Result<?> listCategory() {
         return Result.success(adminService.listCategories());
     }
 
     @PostMapping("/category")
-    public Result<?> addCategory(@RequestBody AdminCategory cat) {
+    public Result<?> addCategory(@RequestBody Category cat) {
         adminService.saveCategory(cat);
         return Result.success();
     }
 
     @PutMapping("/category")
-    public Result<?> updCategory(@RequestBody AdminCategory cat) {
+    public Result<?> updCategory(@RequestBody Category cat) {
         adminService.saveCategory(cat);
         return Result.success();
     }

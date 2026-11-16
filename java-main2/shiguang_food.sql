@@ -11,7 +11,7 @@
  Target Server Version : 80039 (8.0.39)
  File Encoding         : 65001
 
- Date: 11/11/2026 09:51:56
+ Date: 16/11/2026 11:56:36
 */
 
 SET NAMES utf8mb4;
@@ -162,7 +162,7 @@ CREATE TABLE `dish`  (
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_rest`(`restaurant_id` ASC) USING BTREE,
   INDEX `idx_dish_category`(`category_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 351 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '菜品表（店内美食）' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 353 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '菜品表（店内美食）' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of dish
@@ -533,7 +533,7 @@ CREATE TABLE `order_item`  (
   `created_at` datetime NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_order`(`order_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 71 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '订单明细表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 75 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '订单明细表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of order_item
@@ -593,6 +593,8 @@ INSERT INTO `order_item` VALUES (64, 41, 14, '焦糖布丁（正常）', 20.00, 
 INSERT INTO `order_item` VALUES (65, 41, 15, '芋泥啵啵杯（正常）', 24.00, 1, 24.00, '2026-11-09 11:21:05');
 INSERT INTO `order_item` VALUES (66, 42, 11, '现烤舒芙蕾（正常 / 加水果）', 37.00, 1, 37.00, '2026-11-11 09:29:34');
 INSERT INTO `order_item` VALUES (67, 42, 13, '莓果千层（正常）', 30.00, 1, 30.00, '2026-11-11 09:29:34');
+INSERT INTO `order_item` VALUES (71, 43, 11, '现烤舒芙蕾（无糖 / 加水果）', 37.00, 1, 37.00, '2026-11-16 10:37:05');
+INSERT INTO `order_item` VALUES (74, 46, 189, '芋见大福团子（正常）', 16.00, 2, 32.00, '2026-11-16 11:03:59');
 
 -- ----------------------------
 -- Table structure for orders
@@ -617,7 +619,7 @@ CREATE TABLE `orders`  (
   UNIQUE INDEX `uk_order_no`(`order_no` ASC) USING BTREE,
   INDEX `idx_account`(`account` ASC) USING BTREE,
   INDEX `idx_rest`(`restaurant_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 43 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '订单主表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 47 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '订单主表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of orders
@@ -650,7 +652,9 @@ INSERT INTO `orders` VALUES (25, 'SG20261101022', 13, 'user006', 2, '麦奇轻�
 INSERT INTO `orders` VALUES (26, '17937573875403050', 1, 'demo', 1, '巷子口牛肉面', 56.00, 2, 1, '2026-11-04 09:56:27', '2026-11-11 09:34:32', '演示用户', '13800000000', '广东省 深圳市 科技园南路 8 号 3 栋 501');
 INSERT INTO `orders` VALUES (27, '17937574461047919', 1, 'demo', 1, '巷子口牛肉面', 28.00, 1, 0, '2026-11-04 09:57:26', '2026-11-11 09:34:32', '演示用户', '13800000000', '广东省 深圳市 科技园南路 8 号 3 栋 501');
 INSERT INTO `orders` VALUES (41, '17941944651139942', 2, 'www', 3, '糖潮甜品铺', 44.00, 2, 3, '2026-11-09 11:21:05', '2026-11-09 11:21:08', '', '', '');
-INSERT INTO `orders` VALUES (42, '17943605744754076', 2, 'www', 3, '糖潮甜品铺', 67.00, 2, 0, '2026-11-11 09:29:34', '2026-11-11 09:29:34', '', '', '');
+INSERT INTO `orders` VALUES (42, '17943605744754076', 2, 'www', 3, '糖潮甜品铺', 67.00, 2, 3, '2026-11-11 09:29:34', '2026-11-16 10:37:18', '', '', '');
+INSERT INTO `orders` VALUES (43, '17947966255342507', 2, 'www', 3, '糖潮甜品铺', 37.00, 1, 1, '2026-11-16 10:37:06', '2026-11-16 10:37:10', 'www', '12345678901', 'jxs www 00');
+INSERT INTO `orders` VALUES (46, '17947982398008404', 2, 'www', 38, '芋见甜品', 32.00, 2, 0, '2026-11-16 11:04:00', '2026-11-16 11:03:59', 'www', '12345678901', 'jxs www 00');
 
 -- ----------------------------
 -- Table structure for restaurant
@@ -1141,7 +1145,7 @@ CREATE TABLE `user`  (
   `updated_at` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `uk_account`(`account` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 18 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '用户表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 19 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '用户表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of user
@@ -1161,6 +1165,7 @@ INSERT INTO `user` VALUES (14, 'user010', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdj
 INSERT INTO `user` VALUES (15, 'user011', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdjwJZgpO60ObfiAvvvbslm9ey', '果果', '', '', '', '', 0, 1, '2026-10-31 17:20:51', '2026-10-31 17:20:51');
 INSERT INTO `user` VALUES (16, 'user012', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdjwJZgpO60ObfiAvvvbslm9ey', '阿橙', '', '', '', '', 0, 1, '2026-10-31 11:34:42', '2026-10-31 11:34:42');
 INSERT INTO `user` VALUES (17, 'Z123', '$2a$10$oiH4qgqx1vv1LNc2OVUbqezzik6u8QEV3LjTjeVa/D4G8XsJzteRy', '嘤嘤嘤', '', '', '', '', 0, 1, '2026-11-11 09:34:40', '2026-11-11 09:34:40');
+INSERT INTO `user` VALUES (18, 'Zxc', '$2a$10$QDzRZFvDf5aXeLoxMOfGvesw8oiOXblnFQG2We6jg8LRi/wFMj9ym', 'xx', '', '', '', '', 0, 1, '2026-11-16 11:30:11', '2026-11-16 11:30:11');
 
 -- ----------------------------
 -- Table structure for user_address
@@ -1188,3 +1193,18 @@ CREATE TABLE `user_address`  (
 INSERT INTO `user_address` VALUES (1, 'demo', '演示用户', '13800000000', '家', '广东省', '深圳市', '科技园南路 8 号 3 栋 501', 0, '2026-11-04 09:52:48', '2026-11-06 15:58:34');
 INSERT INTO `user_address` VALUES (7, 'www', 'www', '12345678901', '家', 'jxs', 'www', '00', 0, '2026-11-11 09:40:46', '2026-11-11 09:40:46');
 
+-- ----------------------------
+-- Table structure for admin_dish
+-- ----------------------------
+DROP TABLE IF EXISTS `admin_dish`;
+CREATE TABLE `admin_dish`  (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `name` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
+  `price` decimal(10, 2) NULL DEFAULT NULL,
+  `emoji` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
+  `category_id` bigint NULL DEFAULT NULL,
+  `description` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
+  `sort` int NULL DEFAULT NULL,
+  `enabled` tinyint(1) NULL DEFAULT NULL,
+  PRIMARY KEY (`id`) USING BTREE
+);

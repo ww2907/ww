@@ -35,7 +35,6 @@ public class AdminService implements CommandLineRunner {
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
     private final AdminConfigMapper configMapper;
-    private final AdminCategoryMapper categoryMapper;
     private final DishMapper dishMapper;
     private final CategoryMapper bizCategoryMapper;
     private final RestaurantMapper restaurantMapper;
@@ -47,13 +46,12 @@ public class AdminService implements CommandLineRunner {
     private final UserProfileService profileService;
 
     @Autowired
-    public AdminService(AdminConfigMapper configMapper, AdminCategoryMapper categoryMapper,
+    public AdminService(AdminConfigMapper configMapper,
                         DishMapper dishMapper, CategoryMapper bizCategoryMapper, RestaurantMapper restaurantMapper,
                         AdminAccountMapper accountMapper,
                         OrderMapper bizOrderMapper, OrderItemMapper orderItemMapper, UserMapper regUserMapper,
                         UserAddressMapper addressMapper, UserProfileService profileService) {
         this.configMapper = configMapper;
-        this.categoryMapper = categoryMapper;
         this.dishMapper = dishMapper;
         this.bizCategoryMapper = bizCategoryMapper;
         this.restaurantMapper = restaurantMapper;
@@ -203,18 +201,191 @@ public class AdminService implements CommandLineRunner {
         writeJson("recommend", m);
     }
 
-    // ============ 4. 分类 ============
-    public List<AdminCategory> listCategories() {
-        return categoryMapper.selectList(null);
+    // ============ 4. 分类（真实 category 表：后台编辑即时影响前台搜索）============
+    /**
+     * 分类列表（扁平，含 level / path / icon / enabled）。
+     * 2026-11-16 之前读写的是 admin_category 镜像表，而前台分类树与搜索读 category，
+     * 后台改名/新增分类对顾客端完全无效；现在两边同一张表。
+     */
+    public List<Category> listCategories() {
+        return bizCategoryMapper.selectList(new QueryWrapper<Category>()
+                .orderByAsc("level").orderByAsc("parent_id").orderByAsc("sort_order").orderByAsc("id"));
     }
 
-    public void saveCategory(AdminCategory cat) {
-        if (cat.getId() == null) categoryMapper.insert(cat);
-        else categoryMapper.updateById(cat);
+    /**
+     * 新增 / 编辑分类。
+     * level 与 path（物化路径 /1/2/8/）由后端维护，不接受前端传值——
+     * 分级搜索靠 path LIKE 取子树，一旦写错整棵子树的筛选就全歪。
+     */
+    public void saveCategory(Category cat) {
+        if (cat == null) {
+            throw new BusinessException("缺少分类信息");
+        }
+        String name = cat.getName() == null ? "" : cat.getName().trim();
+        if (name.isEmpty()) {
+            throw new BusinessException("分类名称不能为空");
+        }
+        if (name.length() > 32) {
+            throw new BusinessException("分类名称不能超过 32 个字");
+        }
+        Long parentId = (cat.getParentId() == null || cat.getParentId() < 0) ? 0L : cat.getParentId();
+        if (cat.getId() == null) {
+            insertCategory(name, parentId, cat);
+        } else {
+            updateCategory(cat.getId(), name, parentId, cat);
+        }
     }
 
+    private void insertCategory(String name, Long parentId, Category form) {
+        Category parent = parentId == 0 ? null : bizCategoryMapper.selectById(parentId);
+        if (parentId != 0 && parent == null) {
+            throw new BusinessException(404, "父分类不存在");
+        }
+        if (parent != null && parent.getLevel() != null && parent.getLevel() >= 3) {
+            throw new BusinessException("最多支持三级分类，不能在三级分类下再建子分类");
+        }
+        Category c = new Category();
+        c.setName(uniqueCategoryName(parentId, name, null));
+        c.setParentId(parentId);
+        c.setSortOrder(form.getSortOrder() == null ? 0 : form.getSortOrder());
+        c.setIcon(form.getIcon() == null ? "" : form.getIcon());
+        c.setEnabled(1);
+        c.setLevel(parent == null ? 1 : parent.getLevel() + 1);
+        c.setPath("/");   // 占位，自增 id 拿到后再写真实路径
+        bizCategoryMapper.insert(c);
+        c.setPath(categoryPath(parent, c.getId()));
+        bizCategoryMapper.updateById(c);
+    }
+
+    private void updateCategory(Long id, String name, Long parentId, Category form) {
+        Category exist = bizCategoryMapper.selectById(id);
+        if (exist == null) {
+            throw new BusinessException(404, "分类不存在");
+        }
+        if (id.equals(parentId)) {
+            throw new BusinessException("不能把分类挂到自己下面");
+        }
+        Category parent = parentId == 0 ? null : bizCategoryMapper.selectById(parentId);
+        if (parentId != 0 && parent == null) {
+            throw new BusinessException(404, "父分类不存在");
+        }
+        String oldPath = exist.getPath() == null ? "" : exist.getPath();
+        // 不能挂到自己的子孙下面（否则父子成环、path 自包含）
+        if (parent != null && !oldPath.isEmpty() && parent.getPath() != null
+                && parent.getPath().startsWith(oldPath)) {
+            throw new BusinessException("不能把分类挂到它自己的子分类下面");
+        }
+        int oldLevel = exist.getLevel() == null ? 1 : exist.getLevel();
+        int newLevel = parent == null ? 1 : (parent.getLevel() == null ? 1 : parent.getLevel()) + 1;
+        // 移动时整棵子树都会跟着降/升层，最深的那个子孙也不能超过三级
+        int childDepth = maxChildDepth(oldPath, oldLevel);
+        if (newLevel + childDepth > 3) {
+            throw new BusinessException("移动后子分类会超过三级，请先整理它的子分类");
+        }
+
+        String newPath = categoryPath(parent, id);
+        exist.setName(uniqueCategoryName(parentId, name, id));
+        exist.setParentId(parentId);
+        exist.setLevel(newLevel);
+        exist.setPath(newPath);
+        if (form.getSortOrder() != null) {
+            exist.setSortOrder(form.getSortOrder());
+        }
+        if (form.getIcon() != null) {
+            exist.setIcon(form.getIcon());
+        }
+        if (form.getEnabled() != null) {
+            exist.setEnabled(form.getEnabled() == 0 ? 0 : 1);
+        }
+        bizCategoryMapper.updateById(exist);
+
+        // 换了父节点：子孙的 path 前缀与 level 要一起挪
+        if (!oldPath.isEmpty() && !newPath.equals(oldPath)) {
+            List<Category> descendants = bizCategoryMapper.selectList(
+                    new QueryWrapper<Category>().likeRight("path", oldPath).ne("id", id));
+            int delta = newLevel - oldLevel;
+            for (Category d : descendants) {
+                String p = d.getPath() == null ? "" : d.getPath();
+                if (!p.startsWith(oldPath)) {
+                    continue;
+                }
+                d.setPath(newPath + p.substring(oldPath.length()));
+                if (d.getLevel() != null) {
+                    d.setLevel(d.getLevel() + delta);
+                }
+                bizCategoryMapper.updateById(d);
+            }
+        }
+    }
+
+    /**
+     * 删除分类：子分类 / 菜品 / 店铺还挂着就不让删。
+     * 以前是无条件 deleteById，删掉一个二级分类会让子树和菜品变成孤儿，前台筛选直接空掉。
+     */
     public void removeCategory(Long id) {
-        categoryMapper.deleteById(id);
+        if (id == null) {
+            throw new BusinessException("缺少分类 id");
+        }
+        Category c = bizCategoryMapper.selectById(id);
+        if (c == null) {
+            throw new BusinessException(404, "分类不存在");
+        }
+        long children = bizCategoryMapper.selectCount(new QueryWrapper<Category>().eq("parent_id", id));
+        if (children > 0) {
+            throw new BusinessException("该分类下还有 " + children + " 个子分类，请先删除子分类");
+        }
+        long dishes = dishMapper.selectCount(new QueryWrapper<Dish>().eq("category_id", id));
+        if (dishes > 0) {
+            throw new BusinessException("该分类下还有 " + dishes + " 道菜品，请先把菜品移到别的分类");
+        }
+        long stores = restaurantMapper.selectCount(new QueryWrapper<Restaurant>().eq("category_id", id));
+        if (stores > 0) {
+            throw new BusinessException("该分类下还有 " + stores + " 家店铺，不能删除");
+        }
+        bizCategoryMapper.deleteById(id);
+    }
+
+    /** 物化路径：父路径 + 自身 id + '/'；顶级为 /id/ */
+    private String categoryPath(Category parent, Long id) {
+        String base = (parent == null || parent.getPath() == null) ? "/" : parent.getPath();
+        return base + id + "/";
+    }
+
+    /** 同层级下重名会自动加序号（category 表有 uk_cat_parent_name 唯一键，重名会直接报 SQL 错） */
+    private String uniqueCategoryName(Long parentId, String name, Long excludeId) {
+        String candidate = name;
+        int n = 2;
+        while (true) {
+            QueryWrapper<Category> qw = new QueryWrapper<Category>()
+                    .eq("parent_id", parentId).eq("name", candidate);
+            if (excludeId != null) {
+                qw.ne("id", excludeId);
+            }
+            if (bizCategoryMapper.selectCount(qw) == 0) {
+                return candidate;
+            }
+            String base = name.length() > 28 ? name.substring(0, 28) : name;
+            candidate = base + " " + n;
+            if (++n > 99) {
+                throw new BusinessException("同名分类太多了，换个名字吧");
+            }
+        }
+    }
+
+    /** 子树最深比自身低几级（自身=0，只有子=1，有孙=2） */
+    private int maxChildDepth(String selfPath, int selfLevel) {
+        if (selfPath == null || selfPath.isEmpty()) {
+            return 0;
+        }
+        List<Category> descendants = bizCategoryMapper.selectList(
+                new QueryWrapper<Category>().select("id", "level").likeRight("path", selfPath));
+        int max = selfLevel;
+        for (Category d : descendants) {
+            if (d.getLevel() != null && d.getLevel() > max) {
+                max = d.getLevel();
+            }
+        }
+        return max - selfLevel;
     }
 
     // ============ 5. 菜品（真实 dish 表，按店铺隔离）============
