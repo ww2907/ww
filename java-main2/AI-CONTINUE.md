@@ -171,7 +171,7 @@ ALTER TABLE `restaurant`
 ALTER TABLE `dish` ADD `specs` text NULL COMMENT '规格 JSON' AFTER `sort`;
 -- 增量迁移文件：springBootTest/sql/2026-11-06_business_fields.sql（含 70 店 + 350 菜 UPDATE）
 ```
-`admin_user` 表已废弃（后台用户管理改读 `user` 表），可删。
+`admin_user` 表已于 2026-11-16 删除（后台用户管理一直读 `user` 表；`AdminUser` 类保留，它是 VO 不是实体）。
 
 > `shiguang_food.sql` 是全量文件（含 DROP TABLE），经营字段/规格已写入其 CREATE TABLE 与 INSERT。
 > 生成脚本：`springBootTest/scripts/migrate_specs.py`（改写全量 SQL）、`scripts/gen_incremental.py`（生成增量 SQL）。
@@ -242,6 +242,27 @@ orders : +receiver_name varchar(20)  NOT NULL DEFAULT ''   -- 收货人（快照
 - 验证：传「招牌牛肉面 大份/微辣」→ `totalAmount=33.00`（28+5+0）；错店菜品/不存在菜品/空明细/无地址
   各返回对应中文提示；无头 Chrome 走通「首页下单 → 选规格 → 提交 → 落库 32.00」及购物车回归链路。
 
+### 2026-11-16 删废弃表 + 补全表注释
+
+现在库里有 **12 张表**，每张都带 `COMMENT`（客户端侧边可见作用）：
+
+```sql
+-- 删（代码零读写的三张历史表，删前 mysqldump 备份过）
+DROP TABLE `admin_order`;   -- 后台订单管理 2026-11-11 已改读 orders，只剩注入未删
+DROP TABLE `admin_user`;    -- 后台用户管理改读 user，表早就不再引用
+DROP TABLE `verify_code`;   -- 旧数字验证码方案遗留，现用图片验证码，零读写
+
+-- 补注释（原来 COMMENT 为空的三张）
+ALTER TABLE `admin_account` COMMENT = '后台管理员账号（BCrypt 密码，仅白名单账号可登录）';
+ALTER TABLE `admin_config`  COMMENT = '后台首页配置（导航 / 搜索 / 推荐，JSON 文本）';
+ALTER TABLE `admin_dish`    COMMENT = '后台菜品表（后台菜品管理与统计读写，前台菜单读 dish 表）';
+```
+
+- 代码同步：删 `entity/AdminOrder.java`、`mapper/AdminOrderMapper.java`，`AdminService` 去掉 `AdminOrderMapper` 注入。
+- `shiguang_food.sql` 已同步（去掉三张表整块，补三条 COMMENT），临时库导入实测 12 张表 / 注释逐条一致。
+- 建库脚本重建后表清单：admin_account, admin_category, admin_config, admin_dish, category, dish,
+  order_item, orders, restaurant, review, user, user_address。
+
 ### 2026-11-16 仓库清理（一次性，勿重复劳动）
 
 - 删：`shiguang_food.sql.bak_20261106`、`.bak_20261111_090001`、`.bak_20261111_090047`
@@ -268,7 +289,7 @@ orders : +receiver_name varchar(20)  NOT NULL DEFAULT ''   -- 收货人（快照
 | 注册一直失败 | 90% 是库没建：跑 `shiguang_food.sql`。注意 user 表账号字段叫 **`account`** 不是 username |
 | 前端页面有数据但后端日志无请求 | `.env` 缺失或 `VITE_USE_MOCK` 非 `false` → 走 MOCK 在浏览器内存里空转，登录必"账号或密码错误"。判据：访问 `/src/api/auth.js` 看内联 `import.meta.env.VITE_USE_MOCK` 是否 `"false"`；改完**必须重启 Vite** |
 | 改了后端源码但新路由 404/500（如 `category-tree` 被当 id） | `target/classes` 是旧的，必须重新 `compile` + 重启后端，别怀疑数据库 |
-| 后台用户列表只有 4 行假数据 | 跑的是旧代码/旧 jar，`admin_user` 已不再使用 |
+| 后台用户列表只有 4 行假数据 | 跑的是旧代码/旧 jar。`admin_user` 表已于 2026-11-16 删除，用户列表固定读 `user` 表；仍有 4 行说明后端没重启 |
 | 页面白屏、只剩背景 emoji、`#app` 为空 | 某模块**求值阶段**就抛错（不是接口问题），见下方「白屏排查」 |
 | 接口测试全部 `10061 目标计算机积极拒绝` | 后端进程已被沙箱回收，用 `restart_backend.py` 且在**同一条命令**内跑测试 |
 | Python 请求 127.0.0.1 返回 502 / curl 报 `os error 11001` | 系统代理拦截：Python 用 `ProxyHandler({})`，curl 加 `--noproxy '*'` |
@@ -303,8 +324,11 @@ orders : +receiver_name varchar(20)  NOT NULL DEFAULT ''   -- 收货人（快照
 - [x] 2026-11-16 验证 `start-all.bat`：`mvnw.cmd` 可用（Maven 3.9.9/JDK21，`-o compile` 通过），
       脚本第 18/20 行已清 `SERVER__PORT`/`SERVER__ADDRESS`，建库逻辑（`CREATE DATABASE IF NOT EXISTS` +
       有表才导入）正确。**注意：`shiguang_food.sql` 本身不含建库语句，靠脚本这一句建库**
+- [x] 2026-11-16 删数据库废弃表 `admin_user`、`admin_order`、`verify_code`（已去掉 `AdminOrderMapper` 注入），
+      并给所有表补 `COMMENT`；`shiguang_food.sql` 同步、临时库导入验证
 - [ ] `HomeView` / auth / admin 页的本地 `showToast` 统一到 `composables/useToast.js`
-- [ ] 删数据库废弃表 `admin_user`、`admin_order`（先去掉 `AdminService` 里对 `AdminOrderMapper` 的注入）
+- [ ] 可选：`admin_dish` 只有 10 行演示数据，而后台菜品管理/仪表盘统计都读它 —— 与前台 `dish`(350) 不一致，
+      要么改成读 `dish`，要么把 `admin_dish` 补齐
 - [ ] 可选：后台「店铺管理」（营业状态/公告/配送费）——前端展示已支持，后台编辑入口未做
 - [ ] 可选：地址表单换省市区级联
 - [ ] 可选：头像改文件上传

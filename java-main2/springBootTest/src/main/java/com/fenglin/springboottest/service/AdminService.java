@@ -36,7 +36,6 @@ public class AdminService implements CommandLineRunner {
     private final AdminConfigMapper configMapper;
     private final AdminCategoryMapper categoryMapper;
     private final AdminDishMapper dishMapper;
-    private final AdminOrderMapper orderMapper;
     private final AdminAccountMapper accountMapper;
     private final OrderMapper bizOrderMapper;
     private final OrderItemMapper orderItemMapper;
@@ -46,14 +45,12 @@ public class AdminService implements CommandLineRunner {
 
     @Autowired
     public AdminService(AdminConfigMapper configMapper, AdminCategoryMapper categoryMapper,
-                        AdminDishMapper dishMapper,
-                        AdminOrderMapper orderMapper, AdminAccountMapper accountMapper,
+                        AdminDishMapper dishMapper, AdminAccountMapper accountMapper,
                         OrderMapper bizOrderMapper, OrderItemMapper orderItemMapper, UserMapper regUserMapper,
                         UserAddressMapper addressMapper, UserProfileService profileService) {
         this.configMapper = configMapper;
         this.categoryMapper = categoryMapper;
         this.dishMapper = dishMapper;
-        this.orderMapper = orderMapper;
         this.accountMapper = accountMapper;
         this.bizOrderMapper = bizOrderMapper;
         this.orderItemMapper = orderItemMapper;
@@ -496,7 +493,8 @@ public class AdminService implements CommandLineRunner {
 
     // ============ 7. 订单 ============
     // 说明：早期后台订单管理读的是 admin_order 表（4 条演示数据），与真实下单产生的 orders
-    // 完全脱节。2026-11-11 起统一改为读真实订单，并顺带展示下单时的收货地址快照。
+    // 完全脱节。2026-11-11 起统一改为读真实订单，并顺带展示下单时的收货地址快照；
+    // 2026-11-16 确认 admin_order 表已无任何读写，连同实体/Mapper 一起删除。
     public List<Map<String, Object>> listOrders() {
         List<Order> orders = bizOrderMapper.selectList(new QueryWrapper<Order>().orderByDesc("id"));
         List<Map<String, Object>> rows = new ArrayList<>();

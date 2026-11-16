@@ -171,6 +171,16 @@ hover 质感、响应式（860/600/520/380 断点 + 安全区）。
   `README.md` 修正了不存在的 `start-backend.bat / start-frontend.bat` 引用
 - 顺手修：`App.vue` 的 `WIDE_SHELL_PAGES` 补上 `buy`（立即下单页此前被当窄壳渲染，还叠了一层品牌头）
 
+### 第八轮：删废弃表 + 表注释（2026-11-16）
+
+数据层收尾，让「库里每一张表都能一眼看出干什么的」：
+
+- 删 3 张零读写的历史表：`admin_order`（后台订单管理 11-11 已改读 `orders`，只剩一个没人用的 Mapper 注入）、
+  `admin_user`（后台用户管理早改读 `user`）、`verify_code`（旧数字验证码方案遗留）。删前用 `mysqldump` 备份过
+- 代码同步：删 `AdminOrder.java` / `AdminOrderMapper.java`，`AdminService` 去掉对应注入
+- 12 张存活表全部带 `COMMENT`：补上原本为空的 `admin_account` / `admin_config` / `admin_dish`
+- `shiguang_food.sql` 同步（去掉三张表整块 + 补注释），临时库导入 12 张表、注释逐条比对一致
+
 ## 5. 关键约定（改代码前务必看）
 
 - **契约优先**：所有 `src/api/*.js` 的 `ENDPOINTS` 就是前后端契约，后端路径不要单方面改。
@@ -187,7 +197,7 @@ hover 质感、响应式（860/600/520/380 断点 + 安全区）。
 
 **唯一清单在 `AI-CONTINUE.md` §8**（两份待办各自维护只会互相过期，2026-11-16 已合并）。
 
-人看的一句话版本：功能已齐，剩下的都是"可选优化"——Toast 统一、删 `admin_user`/`admin_order` 两张废弃表、
+人看的一句话版本：功能已齐，剩下的都是"可选优化"——Toast 统一、`admin_dish` 与前台 `dish` 数据对齐、
 后台店铺管理、地址省市区级联、头像上传、接口鉴权。另外 `start-all.bat` 用的 `mvnw.cmd` 在本机有问题，
 需要实测一次，不行就改成调 `restart_backend.py`。
 

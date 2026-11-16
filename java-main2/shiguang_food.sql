@@ -25,7 +25,7 @@ CREATE TABLE `admin_account`  (
   `account` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
   `password` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
   PRIMARY KEY (`account`) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '后台管理员账号（BCrypt 密码，仅白名单账号可登录）' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of admin_account
@@ -85,7 +85,7 @@ CREATE TABLE `admin_config`  (
   `config_key` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
   `config_value` varchar(4000) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
   PRIMARY KEY (`config_key`) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '后台首页配置（导航 / 搜索 / 推荐，JSON 文本）' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of admin_config
@@ -108,7 +108,7 @@ CREATE TABLE `admin_dish`  (
   `sort` int NULL DEFAULT NULL,
   `enabled` tinyint(1) NULL DEFAULT NULL,
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 13 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 13 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '后台菜品表（后台菜品管理与统计读写，前台菜单读 dish 表）' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of admin_dish
@@ -123,51 +123,6 @@ INSERT INTO `admin_dish` VALUES (7, '生椰拿铁', 22.00, '🥥', 18, '椰香�
 INSERT INTO `admin_dish` VALUES (8, '麻辣牛油锅', 58.00, '🍲', 23, '牛油锅底，越煮越香。', 1, 1);
 INSERT INTO `admin_dish` VALUES (9, '鸡胸蔬菜沙拉', 26.00, '🥗', 20, '高蛋白低脂。', 1, 1);
 INSERT INTO `admin_dish` VALUES (10, '藜麦时蔬碗', 30.00, '🍚', 21, '饱腹无负担。', 2, 1);
-
--- ----------------------------
--- Table structure for admin_order
--- ----------------------------
-DROP TABLE IF EXISTS `admin_order`;
-CREATE TABLE `admin_order`  (
-  `id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `account` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
-  `restaurant` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
-  `items` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
-  `amount` decimal(10, 2) NULL DEFAULT NULL,
-  `status` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
-  `created_at` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
-  PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = DYNAMIC;
-
--- ----------------------------
--- Records of admin_order
--- ----------------------------
-INSERT INTO `admin_order` VALUES ('OD20261025018', 'demo', '拾光咖啡', '生椰拿铁 x2', 44.00, '已取消', '2026-10-25 18:44:20');
-INSERT INTO `admin_order` VALUES ('OD20261026001', 'demo', '巷子口牛肉面', '招牌牛肉面 x1, 冰镇酸梅汤 x1', 36.00, '已支付', '2026-10-26 11:02:11');
-INSERT INTO `admin_order` VALUES ('OD20261026002', 'xiaoming', '麦奇轻食沙拉', '鸡胸蔬菜沙拉 x1', 26.00, '已完成', '2026-10-26 11:20:45');
-INSERT INTO `admin_order` VALUES ('OD20261026003', 'lili', '老成都火锅', '麻辣牛油锅 x1, 鲜切黄喉 x1', 100.00, '待支付', '2026-10-26 11:35:09');
-
--- ----------------------------
--- Table structure for admin_user
--- ----------------------------
-DROP TABLE IF EXISTS `admin_user`;
-CREATE TABLE `admin_user`  (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `account` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
-  `nickname` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
-  `account_type` int NULL DEFAULT NULL,
-  `status` int NULL DEFAULT NULL,
-  `created_at` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
-  PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 5 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = DYNAMIC;
-
--- ----------------------------
--- Records of admin_user
--- ----------------------------
-INSERT INTO `admin_user` VALUES (1, 'demo', '演示用户', 0, 1, '2026-10-23 16:31:59');
-INSERT INTO `admin_user` VALUES (2, 'xiaoming', '小明', 0, 1, '2026-10-24 09:12:00');
-INSERT INTO `admin_user` VALUES (3, 'lili', '丽丽', 0, 1, '2026-10-24 10:30:00');
-INSERT INTO `admin_user` VALUES (4, 'blocked_user', '已封禁用户', 0, 0, '2026-10-25 08:05:00');
 
 -- ----------------------------
 -- Table structure for category
@@ -1262,24 +1217,3 @@ CREATE TABLE `user_address`  (
 INSERT INTO `user_address` VALUES (1, 'demo', '演示用户', '13800000000', '家', '广东省', '深圳市', '科技园南路 8 号 3 栋 501', 0, '2026-11-04 09:52:48', '2026-11-06 15:58:34');
 INSERT INTO `user_address` VALUES (7, 'www', 'www', '12345678901', '家', 'jxs', 'www', '00', 0, '2026-11-11 09:40:46', '2026-11-11 09:40:46');
 
--- ----------------------------
--- Table structure for verify_code
--- ----------------------------
-DROP TABLE IF EXISTS `verify_code`;
-CREATE TABLE `verify_code`  (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
-  `account` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '账号',
-  `code` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '验证码',
-  `scene` tinyint NOT NULL DEFAULT 1 COMMENT '场景：1=注册 2=找回密码',
-  `expire_at` datetime NOT NULL COMMENT '过期时间',
-  `used` tinyint NOT NULL DEFAULT 0 COMMENT '是否已使用：0=否 1=是',
-  `created_at` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  PRIMARY KEY (`id`) USING BTREE,
-  INDEX `idx_account_scene`(`account` ASC, `scene` ASC) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '验证码表（旧数字验证码方案遗留，现使用图片验证码，不读写本表）' ROW_FORMAT = DYNAMIC;
-
--- ----------------------------
--- Records of verify_code
--- ----------------------------
-
-SET FOREIGN_KEY_CHECKS = 1;
