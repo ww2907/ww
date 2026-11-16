@@ -66,8 +66,11 @@ $mvn = (Get-ChildItem "$env:USERPROFILE\.m2\wrapper\dists\apache-maven-*\*\bin\m
 # 3) 前端（PowerShell 禁止 npm.ps1，要写 npm.cmd；cmd/bat 不受影响）
 cd "D:/workSpace/ww/java-main2/shiguang-food-login" && npm install && npm run dev   # 构建用 npm run build
 
-# 4) 数据库（全量导入会清数据，含 DROP TABLE，先问用户）
-mysql -uroot -p123456 --default-character-set=utf8mb4 < java-main2/shiguang_food.sql
+# 4) 数据库（全量导入会清数据：15 张表都带 DROP TABLE，先问用户）
+#    shiguang_food.sql **不含 CREATE DATABASE / USE**，必须先建库并在命令行指定库名，
+#    否则 mysql 直接报 "No database selected"
+mysql -uroot -p123456 -e "CREATE DATABASE IF NOT EXISTS shiguang_food DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
+mysql -uroot -p123456 --default-character-set=utf8mb4 shiguang_food < java-main2/shiguang_food.sql
 ```
 
 ## 4. 接口契约（前端调用 → 后端实现，均已实测）
@@ -255,12 +258,13 @@ orders : +receiver_name varchar(20)  NOT NULL DEFAULT ''   -- 收货人（快照
 
 | 现象 | 原因 / 解法 |
 |---|---|
-| `ClassNotFoundException: plexus.classworlds.launcher.Launcher` | `./mvnw` 的 bash 版坏，用 §3 第 1 条的 classworlds 方式；本机**没有独立 `mvn` 命令** |
+| `ClassNotFoundException: plexus.classworlds.launcher.Launcher` | **只有 Git Bash 的 `./mvnw` 坏**；`mvnw.cmd` 是好的（2026-11-16 实测：Maven 3.9.9 + Zulu JDK21，`-o compile` 通过），`start-all.bat` 用的就是它。在 bash 里编译仍用 §3 第 1 条的 classworlds 方式 |
 | `-Dmaven.multiModuleProjectDirectory system property is not set` | 启动命令里缺这个 `-D`，补上 |
 | 编译报缺 `mybatis-plus-spring-boot3-starter` / `mysql-connector-j` | `~/.m2` 被重置 + 加了 `-o` 离线标志，去掉 `-o` 走镜像 |
 | 启动端口不是 8081，或 `Port already in use` | 环境变量劫持：IDE 注入 `SERVER__PORT`/`SERVER__ADDRESS`，Spring 松散绑定覆盖配置。启动前 `Remove-Item Env:SERVER__PORT, Env:SERVER__ADDRESS` |
 | `mvnw`/`npm` 报 UnauthorizedAccess（.ps1 被策略禁止） | PowerShell 里显式写 `mvn.cmd` / `npm.cmd`，或改用 cmd/bat |
 | `Invalid default value for 'tag'` | 导入 SQL 未指定字符集，加 `--default-character-set=utf8mb4`（脚本已含 `SET NAMES utf8mb4`） |
+| 导入 SQL 报 `No database selected` / 表建到别的库 | `shiguang_food.sql` 里没有 `CREATE DATABASE` 和 `USE`，必须 `mysql ... shiguang_food < xxx.sql`（见 §3 第 4 条） |
 | 注册一直失败 | 90% 是库没建：跑 `shiguang_food.sql`。注意 user 表账号字段叫 **`account`** 不是 username |
 | 前端页面有数据但后端日志无请求 | `.env` 缺失或 `VITE_USE_MOCK` 非 `false` → 走 MOCK 在浏览器内存里空转，登录必"账号或密码错误"。判据：访问 `/src/api/auth.js` 看内联 `import.meta.env.VITE_USE_MOCK` 是否 `"false"`；改完**必须重启 Vite** |
 | 改了后端源码但新路由 404/500（如 `category-tree` 被当 id） | `target/classes` 是旧的，必须重新 `compile` + 重启后端，别怀疑数据库 |
@@ -296,10 +300,11 @@ orders : +receiver_name varchar(20)  NOT NULL DEFAULT ''   -- 收货人（快照
 - [x] 2026-11-16 真实浏览器端到端走查：首页下单 → 选规格 → 提交落库；店铺弹窗立即下单；购物车回归
 - [x] 2026-11-16 删 `OrderDetailView.vue` 与 `/order-detail/:id` 路由
 - [x] 2026-11-16 仓库清理：SQL 备份留一份、legacy 备份目录、迁移脚本归档 `scripts/`、文档合并为三份
+- [x] 2026-11-16 验证 `start-all.bat`：`mvnw.cmd` 可用（Maven 3.9.9/JDK21，`-o compile` 通过），
+      脚本第 18/20 行已清 `SERVER__PORT`/`SERVER__ADDRESS`，建库逻辑（`CREATE DATABASE IF NOT EXISTS` +
+      有表才导入）正确。**注意：`shiguang_food.sql` 本身不含建库语句，靠脚本这一句建库**
 - [ ] `HomeView` / auth / admin 页的本地 `showToast` 统一到 `composables/useToast.js`
 - [ ] 删数据库废弃表 `admin_user`、`admin_order`（先去掉 `AdminService` 里对 `AdminOrderMapper` 的注入）
-- [ ] 验证 `start-all.bat` 能否真的跑通（它用 `mvnw.cmd spring-boot:run`，而 mvnw 在本机有问题，
-      不行就改成调 `restart_backend.py`）
 - [ ] 可选：后台「店铺管理」（营业状态/公告/配送费）——前端展示已支持，后台编辑入口未做
 - [ ] 可选：地址表单换省市区级联
 - [ ] 可选：头像改文件上传

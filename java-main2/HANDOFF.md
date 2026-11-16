@@ -48,8 +48,9 @@ D:\workSpace\ww\java-main2\
 > 最省事：双击 `start-all.bat`（起）/ `stop-all.bat`（停）。下面是手动方式，完整命令见 `AI-CONTINUE.md` §3。
 
 ### 后端
-`./mvnw` 在本机 Git-Bash 下是坏的（`ClassNotFoundException: plexus.classworlds.launcher.Launcher`），
-直接用缓存的 Maven 发行版启动：
+`./mvnw`（bash 脚本）在本机 Git-Bash 下是坏的（`ClassNotFoundException: plexus.classworlds.launcher.Launcher`）；
+`mvnw.cmd` 反而是好的（2026-11-16 实测 Maven 3.9.9 + Zulu JDK21，`-o compile` 通过），`start-all.bat` 用的就是它。
+在 Bash 里需要编译时，直接用缓存的 Maven 发行版启动：
 
 ```bash
 M="C:/Users/Administrator/.m2/wrapper/dists/apache-maven-3.9.16-bin/5grr65jo27hi51sujmtcldfovl/apache-maven-3.9.16"
@@ -74,8 +75,10 @@ npm run build    # 构建校验（已通过，158 modules）
 
 ### 数据库
 ```bash
-# 全新导入（注意必须是 utf8mb4，否则中文默认值报 Invalid default value）
-mysql -uroot -p123456 --default-character-set=utf8mb4 < shiguang_food.sql
+# 注意：shiguang_food.sql 只有表结构+数据，**没有 CREATE DATABASE / USE**，必须先建库并指定库名
+mysql -uroot -p123456 -e "CREATE DATABASE IF NOT EXISTS shiguang_food DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
+# 全新导入（必须是 utf8mb4，否则中文默认值报 Invalid default value；15 张表都带 DROP，会清数据）
+mysql -uroot -p123456 --default-character-set=utf8mb4 shiguang_food < shiguang_food.sql
 # 已有库只补迁移
 mysql -uroot -p123456 --default-character-set=utf8mb4 shiguang_food < springBootTest/sql/2026-11-04_profile_address.sql
 ```
