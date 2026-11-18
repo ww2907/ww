@@ -19,8 +19,8 @@ import DishPopup from '../components/DishPopup.vue'
 //   - 首页推荐卡片 / 美食页「下单」→ /buy/:id
 //   - 店铺页菜品弹窗「立即下单」→ 带着这道菜进本页
 // 特点：
-//   - 选菜走 store/buyNow.js 的「本单草稿」，与购物车完全隔离
-//   - 提交走 POST /api/orders/direct，金额由后端按菜品表核价
+//   - 选菜默认走 store/buyNow.js 的「本单草稿」；弹窗里也可「加入购物车」（store/cart.js）
+//   - 提交走 POST /api/orders/direct，金额由后端按菜品表核价；购物车菜品不受影响
 // ============================================================
 
 const route = useRoute()
@@ -101,6 +101,9 @@ function openDish(d) {
 }
 function onAdded() {
   toast('已加入本单 🧾', 'success')
+}
+function onAddedToCart() {
+  toast('已加入购物车 🛒', 'success')
 }
 
 // ---------- 提交 ----------
@@ -248,7 +251,7 @@ onMounted(async () => {
         </div>
 
         <div v-if="!items.length" class="tip">
-          还没有选菜 —— 在下面「选择菜品」里点「＋」，选好规格直接提交，全程不经过购物车。
+          还没有选菜 —— 在下面「选择菜品」里点「＋」，选好规格后可选择「加入本单」直接提交，或「加入购物车」稍后一起结算。
         </div>
 
         <ul v-else class="menu">
@@ -319,15 +322,17 @@ onMounted(async () => {
     <!-- 地址新增 / 管理弹窗 -->
     <AddressManageModal :show="addrModal" @close="addrModal = false" />
 
-    <!-- 菜品规格弹窗：direct 模式 → 加入的就是「本单」，不进购物车 -->
+    <!-- 菜品规格弹窗：direct 模式默认加入「本单」；也可「加入购物车」，两个选项并存 -->
     <DishPopup
       :show="popupShow"
       :dish="activeDish"
       :restaurant-id="rid"
       :restaurant-name="store ? store.name : ''"
       mode="direct"
+      show-add-to-cart
       @close="popupShow = false"
       @added="onAdded"
+      @cart-added="onAddedToCart"
     />
   </div>
 </template>

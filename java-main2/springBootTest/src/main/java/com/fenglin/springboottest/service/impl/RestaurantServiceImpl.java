@@ -84,10 +84,12 @@ public class RestaurantServiceImpl extends ServiceImpl<RestaurantMapper, Restaur
                                         String sort, String order) {
         QueryWrapper<Restaurant> qw = new QueryWrapper<>();
 
-        // 关键字：匹配店名 / 简介 / 标签
+        // 关键字：匹配店名 / 简介 / 标签，外加「菜品名命中」反查到的店铺
         if (keyword != null && !keyword.trim().isEmpty()) {
             String k = keyword.trim();
-            qw.and(w -> w.like("name", k).or().like("description", k).or().like("tags", k));
+            Set<Long> dishHitIds = restaurantIdsByDishName(k);
+            qw.and(w -> w.like("name", k).or().like("description", k).or().like("tags", k)
+                    .or(!dishHitIds.isEmpty(), d -> d.in("id", dishHitIds)));
         }
 
         // 分级分类搜索：categoryId 命中整棵子树；为空表示不限分类
@@ -150,8 +152,9 @@ public class RestaurantServiceImpl extends ServiceImpl<RestaurantMapper, Restaur
                 .map(Restaurant::getId)
                 .collect(Collectors.toSet());
 
-        // 关键字：匹配店名 / 简介 / 标签
+        // 关键字：匹配店名 / 简介 / 标签，外加「菜品名命中」反查到的店铺
         String k = (keyword == null) ? null : keyword.trim();
+        Set<Long> dishHitIds = (k == null || k.isEmpty()) ? Collections.emptySet() : restaurantIdsByDishName(k);
 
         // 分级分类：按 id 解析整棵子树；同时取出「有该子树品类菜品的店铺 id 集合」
         List<Long> catIds = resolveSubtreeIds(categoryId, categoryName);
@@ -163,7 +166,7 @@ public class RestaurantServiceImpl extends ServiceImpl<RestaurantMapper, Restaur
         Map<Long, Integer> priceMap = avgPriceByRestaurant();
         List<RestaurantVO> list = all.stream()
                 .filter(r -> !recommendedIds.contains(r.getId()))
-                .filter(r -> matchKeyword(r, k))
+                .filter(r -> matchKeyword(r, k) || dishHitIds.contains(r.getId()))
                 .filter(r -> catIdsSet == null
                         || (legacyByName && categoryName.trim().equals(r.getCat()))
                         || catIdsSet.contains(r.getCategoryId())
@@ -439,6 +442,20 @@ public class RestaurantServiceImpl extends ServiceImpl<RestaurantMapper, Restaur
             ids = Collections.singletonList(root.getId());
         }
         return ids;
+    }
+
+    /** 拥有「名称命中关键字」在售菜品的店铺 id 集合 —— 搜索关键词按菜品名反查店铺 */
+    private Set<Long> restaurantIdsByDishName(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return Collections.emptySet();
+        }
+        List<Dish> dishes = dishMapper.selectList(
+                new QueryWrapper<Dish>().select("DISTINCT restaurant_id")
+                        .like("name", keyword.trim()).eq("enabled", 1));
+        return dishes.stream()
+                .map(Dish::getRestaurantId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
     }
 
     /** 拥有指定分类（含子树）菜品的店铺 id 集合 —— 三级品类搜索靠它反查店铺 */

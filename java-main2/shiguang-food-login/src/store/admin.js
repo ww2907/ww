@@ -35,7 +35,8 @@ const DEFAULT_NAV_TOP = [
   { id: 'home', label: '首页', icon: '🏠', sort: 1, enabled: true },
   { id: 'food', label: '美食', icon: '🍽️', sort: 2, enabled: true },
   { id: 'order', label: '订单', icon: '🧾', sort: 3, enabled: true },
-  { id: 'mine', label: '我的', icon: '👤', sort: 4, enabled: true }
+  { id: 'mine', label: '我的', icon: '👤', sort: 4, enabled: true },
+  { id: 'cart', label: '购物车', icon: '🛒', sort: 5, enabled: true }
 ]
 const DEFAULT_NAV_BOTTOM = [
   { id: 'home', label: '首页', icon: '🏠', sort: 1, enabled: true },

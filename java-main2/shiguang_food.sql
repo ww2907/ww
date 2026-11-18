@@ -11,7 +11,7 @@
  Target Server Version : 80039 (8.0.39)
  File Encoding         : 65001
 
- Date: 16/11/2026 11:56:36
+ Date: 18/11/2026 09:54:30
 */
 
 SET NAMES utf8mb4;
@@ -33,51 +33,6 @@ CREATE TABLE `admin_account`  (
 INSERT INTO `admin_account` VALUES ('www', '$2a$10$VgURhD5pSY/BOx3nw2cbNOQtaw0Yu3JoVg2HgzleQpPaxFALOjU8y');
 
 -- ----------------------------
--- Table structure for admin_category
--- ----------------------------
-DROP TABLE IF EXISTS `admin_category`;
-CREATE TABLE `admin_category`  (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
-  `parent_id` bigint NULL DEFAULT NULL,
-  `sort_order` int NULL DEFAULT NULL,
-  `level` tinyint NOT NULL DEFAULT 1 COMMENT '层级：1~3，与前台 category 一致',
-  `path` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '物化路径，与前台 category 一致',
-  `icon` varchar(8) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT '' COMMENT '分类图标',
-  PRIMARY KEY (`id`) USING BTREE,
-  INDEX `idx_admin_cat_parent`(`parent_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 26 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '后台分类表（与前台 category 同口径）' ROW_FORMAT = DYNAMIC;
-
--- ----------------------------
--- Records of admin_category
--- ----------------------------
-INSERT INTO `admin_category` VALUES (1, '美食', 0, 0, 1, '/1/', '🍽️');
-INSERT INTO `admin_category` VALUES (2, '面食', 1, 1, 2, '/1/2/', '🍜');
-INSERT INTO `admin_category` VALUES (3, '快餐', 1, 2, 2, '/1/3/', '🍔');
-INSERT INTO `admin_category` VALUES (4, '甜点', 1, 3, 2, '/1/4/', '🍰');
-INSERT INTO `admin_category` VALUES (5, '饮品', 1, 4, 2, '/1/5/', '🥤');
-INSERT INTO `admin_category` VALUES (6, '轻食', 1, 5, 2, '/1/6/', '🥗');
-INSERT INTO `admin_category` VALUES (7, '火锅', 1, 6, 2, '/1/7/', '🍲');
-INSERT INTO `admin_category` VALUES (8, '汤面', 2, 1, 3, '/1/2/8/', '🍜');
-INSERT INTO `admin_category` VALUES (9, '拌面', 2, 2, 3, '/1/2/9/', '🥢');
-INSERT INTO `admin_category` VALUES (10, '馄饨抄手', 2, 3, 3, '/1/2/10/', '🥟');
-INSERT INTO `admin_category` VALUES (11, '粥粉小食', 2, 4, 3, '/1/2/11/', '🥣');
-INSERT INTO `admin_category` VALUES (12, '汉堡披萨', 3, 1, 3, '/1/3/12/', '🍔');
-INSERT INTO `admin_category` VALUES (13, '炸鸡烤翅', 3, 2, 3, '/1/3/13/', '🍗');
-INSERT INTO `admin_category` VALUES (14, '卷饭塔可', 3, 3, 3, '/1/3/14/', '🌯');
-INSERT INTO `admin_category` VALUES (15, '薯条小食', 3, 4, 3, '/1/3/15/', '🍟');
-INSERT INTO `admin_category` VALUES (16, '蛋糕千层', 4, 1, 3, '/1/4/16/', '🍰');
-INSERT INTO `admin_category` VALUES (17, '布丁芋泥', 4, 2, 3, '/1/4/17/', '🍮');
-INSERT INTO `admin_category` VALUES (18, '咖啡', 5, 1, 3, '/1/5/18/', '☕');
-INSERT INTO `admin_category` VALUES (19, '奶茶果茶', 5, 2, 3, '/1/5/19/', '🧋');
-INSERT INTO `admin_category` VALUES (20, '沙拉', 6, 1, 3, '/1/6/20/', '🥗');
-INSERT INTO `admin_category` VALUES (21, '碗卷三明治', 6, 2, 3, '/1/6/21/', '🥙');
-INSERT INTO `admin_category` VALUES (22, '浓汤饮品', 6, 3, 3, '/1/6/22/', '🥣');
-INSERT INTO `admin_category` VALUES (23, '锅底', 7, 1, 3, '/1/7/23/', '🍲');
-INSERT INTO `admin_category` VALUES (24, '涮菜', 7, 2, 3, '/1/7/24/', '🥩');
-INSERT INTO `admin_category` VALUES (25, '火锅小食', 7, 3, 3, '/1/7/25/', '🍡');
-
--- ----------------------------
 -- Table structure for admin_config
 -- ----------------------------
 DROP TABLE IF EXISTS `admin_config`;
@@ -90,9 +45,686 @@ CREATE TABLE `admin_config`  (
 -- ----------------------------
 -- Records of admin_config
 -- ----------------------------
-INSERT INTO `admin_config` VALUES ('nav', '{\"top\":[{\"id\":\"home\",\"label\":\"首页\",\"icon\":\"🏠\",\"sort\":1,\"enabled\":true},{\"id\":\"food\",\"label\":\"美食\",\"icon\":\"🍽️\",\"sort\":2,\"enabled\":true},{\"id\":\"order\",\"label\":\"订单\",\"icon\":\"🧾\",\"sort\":3,\"enabled\":true},{\"id\":\"mine\",\"label\":\"我的\",\"icon\":\"👤\",\"sort\":4,\"enabled\":true}],\"bottom\":[{\"id\":\"home\",\"label\":\"首页\",\"icon\":\"🏠\",\"sort\":1,\"enabled\":true},{\"id\":\"food\",\"label\":\"美食\",\"icon\":\"🍽️\",\"sort\":2,\"enabled\":true},{\"id\":\"order\",\"label\":\"订单\",\"icon\":\"🧾\",\"sort\":3,\"enabled\":true},{\"id\":\"mine\",\"label\":\"我的\",\"icon\":\"👤\",\"sort\":4,\"enabled\":true}]}');
-INSERT INTO `admin_config` VALUES ('recommend', '{\"ids\":[]}');
+INSERT INTO `admin_config` VALUES ('nav', '{\"top\":[{\"id\":\"home\",\"label\":\"首页\",\"icon\":\"🏠\",\"sort\":1,\"enabled\":true},{\"id\":\"food\",\"label\":\"美食\",\"icon\":\"🍽️\",\"sort\":2,\"enabled\":true},{\"id\":\"order\",\"label\":\"订单\",\"icon\":\"🧾\",\"sort\":3,\"enabled\":true},{\"id\":\"mine\",\"label\":\"我的\",\"icon\":\"👤\",\"sort\":4,\"enabled\":true},{\"id\":\"cart\",\"label\":\"购物车\",\"icon\":\"🛒\",\"sort\":5,\"enabled\":true}],\"bottom\":[{\"id\":\"home\",\"label\":\"首页\",\"icon\":\"🏠\",\"sort\":1,\"enabled\":true},{\"id\":\"food\",\"label\":\"美食\",\"icon\":\"🍽️\",\"sort\":2,\"enabled\":true},{\"id\":\"order\",\"label\":\"订单\",\"icon\":\"🧾\",\"sort\":3,\"enabled\":true},{\"id\":\"mine\",\"label\":\"我的\",\"icon\":\"👤\",\"sort\":4,\"enabled\":true}]}');
+INSERT INTO `admin_config` VALUES ('recommend', '{\"ids\":[3,12,17,21,25,32,38,42,47,51,55,62]}');
 INSERT INTO `admin_config` VALUES ('search', '{\"placeholder\":\"搜美食、搜好店，回车进入美食页…\",\"hotwords\":[\"牛肉面\",\"火锅\",\"轻食\",\"奶茶\",\"沙拉\",\"炸鸡\"]}');
+
+-- ----------------------------
+-- Table structure for admin_dashboard_stat
+-- ----------------------------
+DROP TABLE IF EXISTS `admin_dashboard_stat`;
+CREATE TABLE `admin_dashboard_stat`  (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `stat_group` varchar(24) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '指标组 overview/category_dist/price_dist/order_trend/top_dishes',
+  `stat_key` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '指标键',
+  `stat_label` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT '指标名称',
+  `stat_value` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT '指标值',
+  `stat_extra` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT '补充值(金额/价格合计等)',
+  `stat_date` date NULL DEFAULT NULL COMMENT '日期(订单趋势用)',
+  `synced_at` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '同步时间',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 51 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '后台数字管理-经营指标快照(非实时数据源,重跑sync脚本刷新)' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of admin_dashboard_stat
+-- ----------------------------
+INSERT INTO `admin_dashboard_stat` VALUES (1, 'overview', 'orderTotal', '累计订单数', '35', '', NULL, '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (2, 'overview', 'gmv', '累计营业额', '2025.00', '', NULL, '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (3, 'overview', 'userTotal', '注册用户数', '15', '', NULL, '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (4, 'overview', 'dishTotal', '菜品总数', '350', '', NULL, '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (5, 'overview', 'dishOnSale', '在售菜品数', '350', '', NULL, '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (6, 'overview', 'categoryTotal', '分类数', '25', '', NULL, '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (7, 'overview', 'todayOrder', '今日订单数', '4', '', NULL, '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (8, 'overview', 'todayGmv', '今日营业额', '0.00', '', NULL, '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (9, 'category_dist', '19', '奶茶果茶', '50', '1060.00', NULL, '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (10, 'category_dist', '16', '蛋糕千层', '39', '1022.00', NULL, '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (11, 'category_dist', '24', '涮菜', '37', '1170.00', NULL, '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (12, 'category_dist', '8', '汤面', '26', '599.00', NULL, '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (13, 'category_dist', '21', '碗卷三明治', '26', '632.00', NULL, '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (14, 'category_dist', '9', '拌面', '21', '436.00', NULL, '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (15, 'category_dist', '12', '汉堡披萨', '18', '474.00', NULL, '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (16, 'category_dist', '13', '炸鸡烤翅', '17', '409.00', NULL, '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (17, 'category_dist', '17', '布丁芋泥', '16', '328.00', NULL, '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (18, 'category_dist', '20', '沙拉', '15', '384.00', NULL, '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (19, 'category_dist', '18', '咖啡', '15', '330.00', NULL, '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (20, 'category_dist', '22', '浓汤饮品', '14', '224.00', NULL, '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (21, 'category_dist', '15', '薯条小食', '14', '194.00', NULL, '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (22, 'category_dist', '25', '火锅小食', '12', '264.00', NULL, '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (23, 'category_dist', '14', '卷饭塔可', '11', '237.00', NULL, '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (24, 'category_dist', '10', '馄饨抄手', '8', '133.00', NULL, '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (25, 'category_dist', '23', '锅底', '6', '348.00', NULL, '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (26, 'category_dist', '11', '粥粉小食', '5', '60.00', NULL, '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (27, 'price_dist', '0-15', '0-15 元', '21', '', NULL, '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (28, 'price_dist', '15-25', '15-25 元', '208', '', NULL, '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (29, 'price_dist', '25-35', '25-35 元', '94', '', NULL, '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (30, 'price_dist', '35-50', '35-50 元', '21', '', NULL, '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (31, 'price_dist', '50+', '50+ 元', '6', '', NULL, '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (32, 'order_trend', '2026-11-05', '2026-11-05', '0', '0.00', '2026-11-05', '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (33, 'order_trend', '2026-11-06', '2026-11-06', '0', '0.00', '2026-11-06', '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (34, 'order_trend', '2026-11-07', '2026-11-07', '0', '0.00', '2026-11-07', '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (35, 'order_trend', '2026-11-08', '2026-11-08', '0', '0.00', '2026-11-08', '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (36, 'order_trend', '2026-11-09', '2026-11-09', '1', '44.00', '2026-11-09', '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (37, 'order_trend', '2026-11-10', '2026-11-10', '0', '0.00', '2026-11-10', '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (38, 'order_trend', '2026-11-11', '2026-11-11', '1', '67.00', '2026-11-11', '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (39, 'order_trend', '2026-11-12', '2026-11-12', '0', '0.00', '2026-11-12', '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (40, 'order_trend', '2026-11-13', '2026-11-13', '0', '0.00', '2026-11-13', '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (41, 'order_trend', '2026-11-14', '2026-11-14', '0', '0.00', '2026-11-14', '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (42, 'order_trend', '2026-11-15', '2026-11-15', '0', '0.00', '2026-11-15', '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (43, 'order_trend', '2026-11-16', '2026-11-16', '2', '69.00', '2026-11-16', '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (44, 'order_trend', '2026-11-17', '2026-11-17', '0', '0.00', '2026-11-17', '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (45, 'order_trend', '2026-11-18', '2026-11-18', '4', '226.00', '2026-11-18', '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (46, 'top_dishes', '藜麦时蔬碗', '藜麦时蔬碗', '15', '450.00', NULL, '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (47, 'top_dishes', '深烘手冲单品', '深烘手冲单品', '14', '392.00', NULL, '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (48, 'top_dishes', '红油抄手', '红油抄手', '10', '220.00', NULL, '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (49, 'top_dishes', '韩式雪花炸鸡', '韩式雪花炸鸡', '10', '360.00', NULL, '2026-11-18 09:35:04');
+INSERT INTO `admin_dashboard_stat` VALUES (50, 'top_dishes', '招牌牛肉面', '招牌牛肉面', '9', '252.00', NULL, '2026-11-18 09:35:04');
+
+-- ----------------------------
+-- Table structure for admin_dish
+-- ----------------------------
+DROP TABLE IF EXISTS `admin_dish`;
+CREATE TABLE `admin_dish`  (
+  `id` bigint NOT NULL COMMENT '菜品id(源自dish)',
+  `restaurant_id` bigint NOT NULL COMMENT '所属店铺id',
+  `restaurant_name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT '所属店铺名称',
+  `name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '菜品名称',
+  `price` decimal(8, 2) NOT NULL COMMENT '价格',
+  `emoji` varchar(8) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT '图标 emoji',
+  `category_id` bigint NULL DEFAULT NULL COMMENT '三级分类id',
+  `category_name` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT '分类名称',
+  `description` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT '描述',
+  `sort` int NULL DEFAULT 0 COMMENT '排序',
+  `enabled` tinyint NULL DEFAULT 1 COMMENT '上架状态',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '后台菜品管理-数据快照(非实时数据源,后台实时CRUD走dish表)' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of admin_dish
+-- ----------------------------
+INSERT INTO `admin_dish` VALUES (1, 1, '巷子口牛肉面', '招牌牛肉面', 21.00, '🍜', 8, '汤面', '牛骨熬汤 8 小时，手工现拉，一勺辣油封神。', 1, 1);
+INSERT INTO `admin_dish` VALUES (2, 1, '巷子口牛肉面', '红油抄手', 15.00, '🥟', 10, '馄饨抄手', '皮薄馅大，麻辣鲜香直冲天灵盖。', 2, 1);
+INSERT INTO `admin_dish` VALUES (3, 1, '巷子口牛肉面', '酸辣肥肠面', 19.00, '🍜', 8, '汤面', '肥肠处理干净无异味，酸辣开胃。', 3, 1);
+INSERT INTO `admin_dish` VALUES (4, 1, '巷子口牛肉面', '卤香豆干', 3.00, '🍢', 11, '粥粉小食', '老卤慢浸，越嚼越香的下饭小菜。', 4, 1);
+INSERT INTO `admin_dish` VALUES (5, 1, '巷子口牛肉面', '冰镇酸梅汤', 1.00, '🥤', 11, '粥粉小食', '古法熬煮，解辣神器。', 5, 1);
+INSERT INTO `admin_dish` VALUES (6, 2, '麦奇轻食沙拉', '鸡胸蔬菜沙拉', 26.00, '🥗', 20, '沙拉', '高蛋白低脂，油醋汁现拌。', 1, 1);
+INSERT INTO `admin_dish` VALUES (7, 2, '麦奇轻食沙拉', '牛油果鸡蛋三明治', 24.00, '🥪', 21, '碗卷三明治', '全麦面包夹现切牛油果，给得慷慨。', 2, 1);
+INSERT INTO `admin_dish` VALUES (8, 2, '麦奇轻食沙拉', '藜麦时蔬碗', 30.00, '🍚', 21, '碗卷三明治', '藜麦配当季时蔬，饱腹无负担。', 3, 1);
+INSERT INTO `admin_dish` VALUES (9, 2, '麦奇轻食沙拉', '烤时蔬卷', 22.00, '🥙', 21, '碗卷三明治', '彩椒西葫芦现烤，清爽不油腻。', 4, 1);
+INSERT INTO `admin_dish` VALUES (10, 2, '麦奇轻食沙拉', '鲜榨羽衣甘蓝汁', 16.00, '🥤', 22, '浓汤饮品', '当季果蔬冷压，微苦回甘。', 5, 1);
+INSERT INTO `admin_dish` VALUES (11, 3, '糖潮甜品铺', '现烤舒芙蕾', 32.00, '🍮', 16, '蛋糕千层', '出炉即食，端上来还在抖，入口即化。', 1, 1);
+INSERT INTO `admin_dish` VALUES (12, 3, '糖潮甜品铺', '海盐提拉米苏', 28.00, '🍰', 16, '蛋糕千层', '马斯卡彭配海盐，酒香恰到好处不齁。', 2, 1);
+INSERT INTO `admin_dish` VALUES (13, 3, '糖潮甜品铺', '莓果千层', 30.00, '🍓', 16, '蛋糕千层', '层层奶油夹鲜莓，酸得清醒。', 3, 1);
+INSERT INTO `admin_dish` VALUES (14, 3, '糖潮甜品铺', '焦糖布丁', 20.00, '🍮', 17, '布丁芋泥', '丝滑布丁淋焦糖脆壳。', 4, 1);
+INSERT INTO `admin_dish` VALUES (15, 3, '糖潮甜品铺', '芋泥啵啵杯', 24.00, '🧋', 17, '布丁芋泥', '手捣芋泥配 Q 弹啵啵，料足。', 5, 1);
+INSERT INTO `admin_dish` VALUES (16, 4, '拾光咖啡', '深烘手冲单品', 28.00, '☕', 18, '咖啡', '埃塞俄比亚豆，风味干净带果酸。', 1, 1);
+INSERT INTO `admin_dish` VALUES (17, 4, '拾光咖啡', '生椰拿铁', 22.00, '🥥', 18, '咖啡', '椰香浓郁顺滑，每天续命。', 2, 1);
+INSERT INTO `admin_dish` VALUES (18, 4, '拾光咖啡', '桂花乌龙拿铁', 26.00, '🍵', 18, '咖啡', '桂花清香配乌龙尾韵，悠长。', 3, 1);
+INSERT INTO `admin_dish` VALUES (19, 4, '拾光咖啡', '气泡美式', 20.00, '🥤', 18, '咖啡', '清爽气泡配醇厚咖啡。', 4, 1);
+INSERT INTO `admin_dish` VALUES (20, 4, '拾光咖啡', '脏脏可可', 24.00, '🍫', 18, '咖啡', '可可碎配奶盖，罪恶但满足。', 5, 1);
+INSERT INTO `admin_dish` VALUES (21, 5, '老成都火锅', '麻辣牛油锅', 58.00, '🍲', 23, '锅底', '牛油锅底，越煮越香。', 1, 1);
+INSERT INTO `admin_dish` VALUES (22, 5, '老成都火锅', '鲜切黄喉', 42.00, '🥩', 24, '涮菜', '脆嫩弹牙，七上八下。', 2, 1);
+INSERT INTO `admin_dish` VALUES (23, 5, '老成都火锅', '手打虾滑', 32.00, '🦐', 24, '涮菜', '现打虾滑，弹到弹牙。', 3, 1);
+INSERT INTO `admin_dish` VALUES (24, 5, '老成都火锅', '现炸酥肉', 28.00, '🍗', 25, '火锅小食', '外酥里嫩，直接吃或下锅都香。', 4, 1);
+INSERT INTO `admin_dish` VALUES (25, 5, '老成都火锅', '红糖糍粑', 16.00, '🍡', 25, '火锅小食', '现炸糍粑裹黄豆粉，软糯。', 5, 1);
+INSERT INTO `admin_dish` VALUES (26, 6, '脆脆炸鸡铺', '韩式雪花炸鸡', 36.00, '🍗', 13, '炸鸡烤翅', '外皮酥到掉渣，裹韩式甜辣酱。', 1, 1);
+INSERT INTO `admin_dish` VALUES (27, 6, '脆脆炸鸡铺', '安格斯牛肉堡', 28.00, '🍔', 12, '汉堡披萨', '现煎牛肉饼多汁，一口爆汁。', 2, 1);
+INSERT INTO `admin_dish` VALUES (28, 6, '脆脆炸鸡铺', '黄金薯条', 12.00, '🍟', 15, '薯条小食', '现炸金黄，外脆内软。', 3, 1);
+INSERT INTO `admin_dish` VALUES (29, 6, '脆脆炸鸡铺', '芝士薯泥', 14.00, '🧀', 15, '薯条小食', '拉丝芝士，绵密。', 4, 1);
+INSERT INTO `admin_dish` VALUES (30, 6, '脆脆炸鸡铺', '蜂蜜芥末鸡块', 20.00, '🍗', 13, '炸鸡烤翅', '蘸酱解腻，一口一个。', 5, 1);
+INSERT INTO `admin_dish` VALUES (31, 7, '阿婆云吞面', '鲜虾云吞面', 24.00, '🍜', 8, '汤面', '手工云吞，整只鲜虾弹牙。', 1, 1);
+INSERT INTO `admin_dish` VALUES (32, 7, '阿婆云吞面', '老北京炸酱面', 20.00, '🍜', 9, '拌面', '老味道还原，咸香浓郁。', 2, 1);
+INSERT INTO `admin_dish` VALUES (33, 7, '阿婆云吞面', '鲜虾仁肠粉', 18.00, '🍥', 11, '粥粉小食', '米皮滑嫩，酱油鲜甜。', 3, 1);
+INSERT INTO `admin_dish` VALUES (34, 7, '阿婆云吞面', '艇仔粥', 16.00, '🥣', 11, '粥粉小食', '料足绵滑，暖到心里。', 4, 1);
+INSERT INTO `admin_dish` VALUES (35, 7, '阿婆云吞面', '萝卜牛杂', 22.00, '🍲', 11, '粥粉小食', '慢炖入味，软烂鲜香。', 5, 1);
+INSERT INTO `admin_dish` VALUES (36, 8, '莓日茶研', '草莓啵啵鲜奶茶', 22.00, '🧋', 19, '奶茶果茶', '当季鲜草莓现打，料足。', 1, 1);
+INSERT INTO `admin_dish` VALUES (37, 8, '莓日茶研', '多肉葡萄', 24.00, '🍇', 19, '奶茶果茶', '整颗去皮葡萄，清爽不涩。', 2, 1);
+INSERT INTO `admin_dish` VALUES (38, 8, '莓日茶研', '茉莉奶绿', 18.00, '🍵', 19, '奶茶果茶', '茉莉清香配奶绿。', 3, 1);
+INSERT INTO `admin_dish` VALUES (39, 8, '莓日茶研', '杨枝甘露', 26.00, '🥭', 19, '奶茶果茶', '芒果西柚椰浆，港式地道。', 4, 1);
+INSERT INTO `admin_dish` VALUES (40, 8, '莓日茶研', '柠檬冷萃', 20.00, '🍋', 19, '奶茶果茶', '冷萃茶配鲜柠檬，夏天续命水。', 5, 1);
+INSERT INTO `admin_dish` VALUES (41, 9, '老街口面馆', '老街口招牌牛肉面', 28.00, '🍜', 8, '汤面', '牛骨熬汤数小时，手工现拉，一勺辣油封神。', 1, 1);
+INSERT INTO `admin_dish` VALUES (42, 9, '老街口面馆', '老街口番茄鸡蛋面', 22.00, '🍜', 8, '汤面', '现炒番茄熬出沙，蛋花滑嫩，酸甜开胃。', 2, 1);
+INSERT INTO `admin_dish` VALUES (43, 9, '老街口面馆', '老街口红油拌面', 20.00, '🍜', 9, '拌面', '芝麻酱配辣油，拌匀每一根面。', 3, 1);
+INSERT INTO `admin_dish` VALUES (44, 9, '老街口面馆', '老街口酸菜肉丝面', 24.00, '🍜', 8, '汤面', '酸菜爽口，肉丝滑嫩，汤底鲜香。', 4, 1);
+INSERT INTO `admin_dish` VALUES (45, 9, '老街口面馆', '老街口葱油拌面', 18.00, '🍜', 9, '拌面', '小葱熬油，香气扑鼻，简单却上瘾。', 5, 1);
+INSERT INTO `admin_dish` VALUES (46, 10, '小满面馆', '小满红烧排骨面', 30.00, '🍜', 8, '汤面', '排骨炖到脱骨，汤浓肉香。', 1, 1);
+INSERT INTO `admin_dish` VALUES (47, 10, '小满面馆', '小满三鲜馄饨', 16.00, '🥟', 10, '馄饨抄手', '皮薄馅大，整只鲜虾弹牙。', 2, 1);
+INSERT INTO `admin_dish` VALUES (48, 10, '小满面馆', '小满炸酱面', 20.00, '🍜', 9, '拌面', '老北京风味，咸香浓郁。', 3, 1);
+INSERT INTO `admin_dish` VALUES (49, 10, '小满面馆', '小满担担面', 22.00, '🍜', 9, '拌面', '麻麻辣辣，芽菜肉臊铺满碗。', 4, 1);
+INSERT INTO `admin_dish` VALUES (50, 10, '小满面馆', '小满阳春面', 14.00, '🍜', 8, '汤面', '清汤挂面，猪油葱花，朴素暖心。', 5, 1);
+INSERT INTO `admin_dish` VALUES (51, 11, '见一面面馆', '见一面油泼面', 24.00, '🍜', 9, '拌面', '滚油一泼，辣香四起。', 1, 1);
+INSERT INTO `admin_dish` VALUES (52, 11, '见一面面馆', '见一面雪菜肉丝面', 21.00, '🍜', 8, '汤面', '雪菜提鲜，肉丝爽滑。', 2, 1);
+INSERT INTO `admin_dish` VALUES (53, 11, '见一面面馆', '见一面小笼汤包', 18.00, '🥟', 10, '馄饨抄手', '皮薄汁多，轻轻一咬爆汤。', 3, 1);
+INSERT INTO `admin_dish` VALUES (54, 11, '见一面面馆', '见一面招牌牛肉面', 28.00, '🍜', 8, '汤面', '牛骨熬汤数小时，手工现拉，一勺辣油封神。', 4, 1);
+INSERT INTO `admin_dish` VALUES (55, 11, '见一面面馆', '见一面番茄鸡蛋面', 22.00, '🍜', 8, '汤面', '现炒番茄熬出沙，蛋花滑嫩，酸甜开胃。', 5, 1);
+INSERT INTO `admin_dish` VALUES (56, 12, '煮意面馆', '煮意红油拌面', 20.00, '🍜', 9, '拌面', '芝麻酱配辣油，拌匀每一根面。', 1, 1);
+INSERT INTO `admin_dish` VALUES (57, 12, '煮意面馆', '煮意酸菜肉丝面', 24.00, '🍜', 8, '汤面', '酸菜爽口，肉丝滑嫩，汤底鲜香。', 2, 1);
+INSERT INTO `admin_dish` VALUES (58, 12, '煮意面馆', '煮意葱油拌面', 18.00, '🍜', 9, '拌面', '小葱熬油，香气扑鼻，简单却上瘾。', 3, 1);
+INSERT INTO `admin_dish` VALUES (59, 12, '煮意面馆', '煮意红烧排骨面', 30.00, '🍜', 8, '汤面', '排骨炖到脱骨，汤浓肉香。', 4, 1);
+INSERT INTO `admin_dish` VALUES (60, 12, '煮意面馆', '煮意三鲜馄饨', 16.00, '🥟', 10, '馄饨抄手', '皮薄馅大，整只鲜虾弹牙。', 5, 1);
+INSERT INTO `admin_dish` VALUES (61, 13, '汤先生面馆', '汤先生炸酱面', 20.00, '🍜', 9, '拌面', '老北京风味，咸香浓郁。', 1, 1);
+INSERT INTO `admin_dish` VALUES (62, 13, '汤先生面馆', '汤先生担担面', 22.00, '🍜', 9, '拌面', '麻麻辣辣，芽菜肉臊铺满碗。', 2, 1);
+INSERT INTO `admin_dish` VALUES (63, 13, '汤先生面馆', '汤先生阳春面', 14.00, '🍜', 8, '汤面', '清汤挂面，猪油葱花，朴素暖心。', 3, 1);
+INSERT INTO `admin_dish` VALUES (64, 13, '汤先生面馆', '汤先生油泼面', 24.00, '🍜', 9, '拌面', '滚油一泼，辣香四起。', 4, 1);
+INSERT INTO `admin_dish` VALUES (65, 13, '汤先生面馆', '汤先生雪菜肉丝面', 21.00, '🍜', 8, '汤面', '雪菜提鲜，肉丝爽滑。', 5, 1);
+INSERT INTO `admin_dish` VALUES (66, 14, '暖食面馆', '暖食小笼汤包', 18.00, '🥟', 10, '馄饨抄手', '皮薄汁多，轻轻一咬爆汤。', 1, 1);
+INSERT INTO `admin_dish` VALUES (67, 14, '暖食面馆', '暖食招牌牛肉面', 28.00, '🍜', 8, '汤面', '牛骨熬汤数小时，手工现拉，一勺辣油封神。', 2, 1);
+INSERT INTO `admin_dish` VALUES (68, 14, '暖食面馆', '暖食番茄鸡蛋面', 22.00, '🍜', 8, '汤面', '现炒番茄熬出沙，蛋花滑嫩，酸甜开胃。', 3, 1);
+INSERT INTO `admin_dish` VALUES (69, 14, '暖食面馆', '暖食红油拌面', 20.00, '🍜', 9, '拌面', '芝麻酱配辣油，拌匀每一根面。', 4, 1);
+INSERT INTO `admin_dish` VALUES (70, 14, '暖食面馆', '暖食酸菜肉丝面', 24.00, '🍜', 8, '汤面', '酸菜爽口，肉丝滑嫩，汤底鲜香。', 5, 1);
+INSERT INTO `admin_dish` VALUES (71, 15, '晨光面馆', '晨光葱油拌面', 18.00, '🍜', 9, '拌面', '小葱熬油，香气扑鼻，简单却上瘾。', 1, 1);
+INSERT INTO `admin_dish` VALUES (72, 15, '晨光面馆', '晨光红烧排骨面', 30.00, '🍜', 8, '汤面', '排骨炖到脱骨，汤浓肉香。', 2, 1);
+INSERT INTO `admin_dish` VALUES (73, 15, '晨光面馆', '晨光三鲜馄饨', 16.00, '🥟', 10, '馄饨抄手', '皮薄馅大，整只鲜虾弹牙。', 3, 1);
+INSERT INTO `admin_dish` VALUES (74, 15, '晨光面馆', '晨光炸酱面', 20.00, '🍜', 9, '拌面', '老北京风味，咸香浓郁。', 4, 1);
+INSERT INTO `admin_dish` VALUES (75, 15, '晨光面馆', '晨光担担面', 22.00, '🍜', 9, '拌面', '麻麻辣辣，芽菜肉臊铺满碗。', 5, 1);
+INSERT INTO `admin_dish` VALUES (76, 16, '巷尾面馆', '巷尾阳春面', 14.00, '🍜', 8, '汤面', '清汤挂面，猪油葱花，朴素暖心。', 1, 1);
+INSERT INTO `admin_dish` VALUES (77, 16, '巷尾面馆', '巷尾油泼面', 24.00, '🍜', 9, '拌面', '滚油一泼，辣香四起。', 2, 1);
+INSERT INTO `admin_dish` VALUES (78, 16, '巷尾面馆', '巷尾雪菜肉丝面', 21.00, '🍜', 8, '汤面', '雪菜提鲜，肉丝爽滑。', 3, 1);
+INSERT INTO `admin_dish` VALUES (79, 16, '巷尾面馆', '巷尾小笼汤包', 18.00, '🥟', 10, '馄饨抄手', '皮薄汁多，轻轻一咬爆汤。', 4, 1);
+INSERT INTO `admin_dish` VALUES (80, 16, '巷尾面馆', '巷尾招牌牛肉面', 28.00, '🍜', 8, '汤面', '牛骨熬汤数小时，手工现拉，一勺辣油封神。', 5, 1);
+INSERT INTO `admin_dish` VALUES (81, 17, '面香居面馆', '面香居番茄鸡蛋面', 22.00, '🍜', 8, '汤面', '现炒番茄熬出沙，蛋花滑嫩，酸甜开胃。', 1, 1);
+INSERT INTO `admin_dish` VALUES (82, 17, '面香居面馆', '面香居红油拌面', 20.00, '🍜', 9, '拌面', '芝麻酱配辣油，拌匀每一根面。', 2, 1);
+INSERT INTO `admin_dish` VALUES (83, 17, '面香居面馆', '面香居酸菜肉丝面', 24.00, '🍜', 8, '汤面', '酸菜爽口，肉丝滑嫩，汤底鲜香。', 3, 1);
+INSERT INTO `admin_dish` VALUES (84, 17, '面香居面馆', '面香居葱油拌面', 18.00, '🍜', 9, '拌面', '小葱熬油，香气扑鼻，简单却上瘾。', 4, 1);
+INSERT INTO `admin_dish` VALUES (85, 17, '面香居面馆', '面香居红烧排骨面', 30.00, '🍜', 8, '汤面', '排骨炖到脱骨，汤浓肉香。', 5, 1);
+INSERT INTO `admin_dish` VALUES (86, 18, '北方味面馆', '北方味三鲜馄饨', 16.00, '🥟', 10, '馄饨抄手', '皮薄馅大，整只鲜虾弹牙。', 1, 1);
+INSERT INTO `admin_dish` VALUES (87, 18, '北方味面馆', '北方味炸酱面', 20.00, '🍜', 9, '拌面', '老北京风味，咸香浓郁。', 2, 1);
+INSERT INTO `admin_dish` VALUES (88, 18, '北方味面馆', '北方味担担面', 22.00, '🍜', 9, '拌面', '麻麻辣辣，芽菜肉臊铺满碗。', 3, 1);
+INSERT INTO `admin_dish` VALUES (89, 18, '北方味面馆', '北方味阳春面', 14.00, '🍜', 8, '汤面', '清汤挂面，猪油葱花，朴素暖心。', 4, 1);
+INSERT INTO `admin_dish` VALUES (90, 18, '北方味面馆', '北方味油泼面', 24.00, '🍜', 9, '拌面', '滚油一泼，辣香四起。', 5, 1);
+INSERT INTO `admin_dish` VALUES (91, 19, '饱饱快餐', '饱饱韩式雪花炸鸡', 36.00, '🍗', 13, '炸鸡烤翅', '外皮酥到掉渣，裹韩式甜辣酱。', 1, 1);
+INSERT INTO `admin_dish` VALUES (92, 19, '饱饱快餐', '饱饱安格斯牛肉堡', 28.00, '🍔', 12, '汉堡披萨', '现煎牛肉饼多汁，一口爆汁。', 2, 1);
+INSERT INTO `admin_dish` VALUES (93, 19, '饱饱快餐', '饱饱黄金薯条', 12.00, '🍟', 15, '薯条小食', '现炸金黄，外脆内软。', 3, 1);
+INSERT INTO `admin_dish` VALUES (94, 19, '饱饱快餐', '饱饱芝士薯泥', 14.00, '🧀', 15, '薯条小食', '拉丝芝士，绵密。', 4, 1);
+INSERT INTO `admin_dish` VALUES (95, 19, '饱饱快餐', '饱饱蜂蜜芥末鸡块', 20.00, '🍗', 13, '炸鸡烤翅', '蘸酱解腻，一口一个。', 5, 1);
+INSERT INTO `admin_dish` VALUES (96, 20, '大口快餐', '大口夏威夷披萨', 32.00, '🍕', 12, '汉堡披萨', '菠萝配培根，咸甜交织。', 1, 1);
+INSERT INTO `admin_dish` VALUES (97, 20, '大口快餐', '大口鸡肉卷', 26.00, '🥙', 14, '卷饭塔可', '现烤饼皮裹嫩鸡，清爽不腻。', 2, 1);
+INSERT INTO `admin_dish` VALUES (98, 20, '大口快餐', '大口香辣鸡翅', 18.00, '🍗', 13, '炸鸡烤翅', '外皮焦香，咬开汁水四溢。', 3, 1);
+INSERT INTO `admin_dish` VALUES (99, 20, '大口快餐', '大口照烧鸡腿饭', 22.00, '🍚', 14, '卷饭塔可', '鸡腿煎香淋照烧，配米饭绝了。', 4, 1);
+INSERT INTO `admin_dish` VALUES (100, 20, '大口快餐', '大口冰镇可乐', 16.00, '🥤', 15, '薯条小食', '气足冰爽，炸鸡最佳拍档。', 5, 1);
+INSERT INTO `admin_dish` VALUES (101, 21, '急急快餐', '急急双层芝士堡', 24.00, '🍔', 12, '汉堡披萨', '两片牛肉饼夹芝士，罪恶满足。', 1, 1);
+INSERT INTO `admin_dish` VALUES (102, 21, '急急快餐', '急急墨西哥塔可', 15.00, '🌮', 14, '卷饭塔可', '脆壳裹牛肉丁，酸辣开胃。', 2, 1);
+INSERT INTO `admin_dish` VALUES (103, 21, '急急快餐', '急急盐酥鸡', 19.00, '🍗', 13, '炸鸡烤翅', '九层塔加持，越嚼越香。', 3, 1);
+INSERT INTO `admin_dish` VALUES (104, 21, '急急快餐', '急急韩式雪花炸鸡', 36.00, '🍗', 13, '炸鸡烤翅', '外皮酥到掉渣，裹韩式甜辣酱。', 4, 1);
+INSERT INTO `admin_dish` VALUES (105, 21, '急急快餐', '急急安格斯牛肉堡', 28.00, '🍔', 12, '汉堡披萨', '现煎牛肉饼多汁，一口爆汁。', 5, 1);
+INSERT INTO `admin_dish` VALUES (106, 22, '饱嗝快餐', '饱嗝黄金薯条', 12.00, '🍟', 15, '薯条小食', '现炸金黄，外脆内软。', 1, 1);
+INSERT INTO `admin_dish` VALUES (107, 22, '饱嗝快餐', '饱嗝芝士薯泥', 14.00, '🧀', 15, '薯条小食', '拉丝芝士，绵密。', 2, 1);
+INSERT INTO `admin_dish` VALUES (108, 22, '饱嗝快餐', '饱嗝蜂蜜芥末鸡块', 20.00, '🍗', 13, '炸鸡烤翅', '蘸酱解腻，一口一个。', 3, 1);
+INSERT INTO `admin_dish` VALUES (109, 22, '饱嗝快餐', '饱嗝夏威夷披萨', 32.00, '🍕', 12, '汉堡披萨', '菠萝配培根，咸甜交织。', 4, 1);
+INSERT INTO `admin_dish` VALUES (110, 22, '饱嗝快餐', '饱嗝鸡肉卷', 26.00, '🥙', 14, '卷饭塔可', '现烤饼皮裹嫩鸡，清爽不腻。', 5, 1);
+INSERT INTO `admin_dish` VALUES (111, 23, '快乐快餐', '快乐香辣鸡翅', 18.00, '🍗', 13, '炸鸡烤翅', '外皮焦香，咬开汁水四溢。', 1, 1);
+INSERT INTO `admin_dish` VALUES (112, 23, '快乐快餐', '快乐照烧鸡腿饭', 22.00, '🍚', 14, '卷饭塔可', '鸡腿煎香淋照烧，配米饭绝了。', 2, 1);
+INSERT INTO `admin_dish` VALUES (113, 23, '快乐快餐', '快乐冰镇可乐', 16.00, '🥤', 15, '薯条小食', '气足冰爽，炸鸡最佳拍档。', 3, 1);
+INSERT INTO `admin_dish` VALUES (114, 23, '快乐快餐', '快乐双层芝士堡', 24.00, '🍔', 12, '汉堡披萨', '两片牛肉饼夹芝士，罪恶满足。', 4, 1);
+INSERT INTO `admin_dish` VALUES (115, 23, '快乐快餐', '快乐墨西哥塔可', 15.00, '🌮', 14, '卷饭塔可', '脆壳裹牛肉丁，酸辣开胃。', 5, 1);
+INSERT INTO `admin_dish` VALUES (116, 24, '薯叔快餐', '薯叔盐酥鸡', 19.00, '🍗', 13, '炸鸡烤翅', '九层塔加持，越嚼越香。', 1, 1);
+INSERT INTO `admin_dish` VALUES (117, 24, '薯叔快餐', '薯叔韩式雪花炸鸡', 36.00, '🍗', 13, '炸鸡烤翅', '外皮酥到掉渣，裹韩式甜辣酱。', 2, 1);
+INSERT INTO `admin_dish` VALUES (118, 24, '薯叔快餐', '薯叔安格斯牛肉堡', 28.00, '🍔', 12, '汉堡披萨', '现煎牛肉饼多汁，一口爆汁。', 3, 1);
+INSERT INTO `admin_dish` VALUES (119, 24, '薯叔快餐', '薯叔黄金薯条', 12.00, '🍟', 15, '薯条小食', '现炸金黄，外脆内软。', 4, 1);
+INSERT INTO `admin_dish` VALUES (120, 24, '薯叔快餐', '薯叔芝士薯泥', 14.00, '🧀', 15, '薯条小食', '拉丝芝士，绵密。', 5, 1);
+INSERT INTO `admin_dish` VALUES (121, 25, '炸物快餐', '炸物蜂蜜芥末鸡块', 20.00, '🍗', 13, '炸鸡烤翅', '蘸酱解腻，一口一个。', 1, 1);
+INSERT INTO `admin_dish` VALUES (122, 25, '炸物快餐', '炸物夏威夷披萨', 32.00, '🍕', 12, '汉堡披萨', '菠萝配培根，咸甜交织。', 2, 1);
+INSERT INTO `admin_dish` VALUES (123, 25, '炸物快餐', '炸物鸡肉卷', 26.00, '🥙', 14, '卷饭塔可', '现烤饼皮裹嫩鸡，清爽不腻。', 3, 1);
+INSERT INTO `admin_dish` VALUES (124, 25, '炸物快餐', '炸物香辣鸡翅', 18.00, '🍗', 13, '炸鸡烤翅', '外皮焦香，咬开汁水四溢。', 4, 1);
+INSERT INTO `admin_dish` VALUES (125, 25, '炸物快餐', '炸物照烧鸡腿饭', 22.00, '🍚', 14, '卷饭塔可', '鸡腿煎香淋照烧，配米饭绝了。', 5, 1);
+INSERT INTO `admin_dish` VALUES (126, 26, '饱了快餐', '饱了冰镇可乐', 16.00, '🥤', 15, '薯条小食', '气足冰爽，炸鸡最佳拍档。', 1, 1);
+INSERT INTO `admin_dish` VALUES (127, 26, '饱了快餐', '饱了双层芝士堡', 24.00, '🍔', 12, '汉堡披萨', '两片牛肉饼夹芝士，罪恶满足。', 2, 1);
+INSERT INTO `admin_dish` VALUES (128, 26, '饱了快餐', '饱了墨西哥塔可', 15.00, '🌮', 14, '卷饭塔可', '脆壳裹牛肉丁，酸辣开胃。', 3, 1);
+INSERT INTO `admin_dish` VALUES (129, 26, '饱了快餐', '饱了盐酥鸡', 19.00, '🍗', 13, '炸鸡烤翅', '九层塔加持，越嚼越香。', 4, 1);
+INSERT INTO `admin_dish` VALUES (130, 26, '饱了快餐', '饱了韩式雪花炸鸡', 36.00, '🍗', 13, '炸鸡烤翅', '外皮酥到掉渣，裹韩式甜辣酱。', 5, 1);
+INSERT INTO `admin_dish` VALUES (131, 27, '嗨吃快餐', '嗨吃安格斯牛肉堡', 28.00, '🍔', 12, '汉堡披萨', '现煎牛肉饼多汁，一口爆汁。', 1, 1);
+INSERT INTO `admin_dish` VALUES (132, 27, '嗨吃快餐', '嗨吃黄金薯条', 12.00, '🍟', 15, '薯条小食', '现炸金黄，外脆内软。', 2, 1);
+INSERT INTO `admin_dish` VALUES (133, 27, '嗨吃快餐', '嗨吃芝士薯泥', 14.00, '🧀', 15, '薯条小食', '拉丝芝士，绵密。', 3, 1);
+INSERT INTO `admin_dish` VALUES (134, 27, '嗨吃快餐', '嗨吃蜂蜜芥末鸡块', 20.00, '🍗', 13, '炸鸡烤翅', '蘸酱解腻，一口一个。', 4, 1);
+INSERT INTO `admin_dish` VALUES (135, 27, '嗨吃快餐', '嗨吃夏威夷披萨', 32.00, '🍕', 12, '汉堡披萨', '菠萝配培根，咸甜交织。', 5, 1);
+INSERT INTO `admin_dish` VALUES (136, 28, '速达快餐', '速达鸡肉卷', 26.00, '🥙', 14, '卷饭塔可', '现烤饼皮裹嫩鸡，清爽不腻。', 1, 1);
+INSERT INTO `admin_dish` VALUES (137, 28, '速达快餐', '速达香辣鸡翅', 18.00, '🍗', 13, '炸鸡烤翅', '外皮焦香，咬开汁水四溢。', 2, 1);
+INSERT INTO `admin_dish` VALUES (138, 28, '速达快餐', '速达照烧鸡腿饭', 22.00, '🍚', 14, '卷饭塔可', '鸡腿煎香淋照烧，配米饭绝了。', 3, 1);
+INSERT INTO `admin_dish` VALUES (139, 28, '速达快餐', '速达冰镇可乐', 16.00, '🥤', 15, '薯条小食', '气足冰爽，炸鸡最佳拍档。', 4, 1);
+INSERT INTO `admin_dish` VALUES (140, 28, '速达快餐', '速达双层芝士堡', 24.00, '🍔', 12, '汉堡披萨', '两片牛肉饼夹芝士，罪恶满足。', 5, 1);
+INSERT INTO `admin_dish` VALUES (141, 29, '汉堡侠快餐', '汉堡侠墨西哥塔可', 15.00, '🌮', 12, '汉堡披萨', '脆壳裹牛肉丁，酸辣开胃。', 1, 1);
+INSERT INTO `admin_dish` VALUES (142, 29, '汉堡侠快餐', '汉堡侠盐酥鸡', 19.00, '🍗', 12, '汉堡披萨', '九层塔加持，越嚼越香。', 2, 1);
+INSERT INTO `admin_dish` VALUES (143, 29, '汉堡侠快餐', '汉堡侠韩式雪花炸鸡', 36.00, '🍗', 12, '汉堡披萨', '外皮酥到掉渣，裹韩式甜辣酱。', 3, 1);
+INSERT INTO `admin_dish` VALUES (144, 29, '汉堡侠快餐', '汉堡侠安格斯牛肉堡', 28.00, '🍔', 12, '汉堡披萨', '现煎牛肉饼多汁，一口爆汁。', 4, 1);
+INSERT INTO `admin_dish` VALUES (145, 29, '汉堡侠快餐', '汉堡侠黄金薯条', 12.00, '🍟', 12, '汉堡披萨', '现炸金黄，外脆内软。', 5, 1);
+INSERT INTO `admin_dish` VALUES (146, 30, '甜心甜品', '甜心现烤舒芙蕾', 32.00, '🍮', 16, '蛋糕千层', '出炉即食，端上来还在抖，入口即化。', 1, 1);
+INSERT INTO `admin_dish` VALUES (147, 30, '甜心甜品', '甜心海盐提拉米苏', 28.00, '🍰', 16, '蛋糕千层', '马斯卡彭配海盐，酒香恰到好处不齁。', 2, 1);
+INSERT INTO `admin_dish` VALUES (148, 30, '甜心甜品', '甜心莓果千层', 30.00, '🍓', 16, '蛋糕千层', '层层奶油夹鲜莓，酸得清醒。', 3, 1);
+INSERT INTO `admin_dish` VALUES (149, 30, '甜心甜品', '甜心焦糖布丁', 20.00, '🍮', 17, '布丁芋泥', '丝滑布丁淋焦糖脆壳。', 4, 1);
+INSERT INTO `admin_dish` VALUES (150, 30, '甜心甜品', '甜心芋泥啵啵杯', 24.00, '🧋', 17, '布丁芋泥', '手捣芋泥配 Q 弹啵啵，料足。', 5, 1);
+INSERT INTO `admin_dish` VALUES (151, 31, '奶油甜品', '奶油香草纸杯蛋糕', 26.00, '🧁', 16, '蛋糕千层', '绵软蛋糕配香草奶油，童年的味道。', 1, 1);
+INSERT INTO `admin_dish` VALUES (152, 31, '奶油甜品', '奶油爆浆甜甜圈', 22.00, '🍩', 16, '蛋糕千层', '咬开流心，甜度刚刚好。', 2, 1);
+INSERT INTO `admin_dish` VALUES (153, 31, '奶油甜品', '奶油黄油曲奇', 18.00, '🍪', 16, '蛋糕千层', '现烤酥香，奶味十足。', 3, 1);
+INSERT INTO `admin_dish` VALUES (154, 31, '奶油甜品', '奶油巧克力熔岩', 28.00, '🍫', 16, '蛋糕千层', '切开爆浆，热吃最佳。', 4, 1);
+INSERT INTO `admin_dish` VALUES (155, 31, '奶油甜品', '奶油苹果派', 20.00, '🥧', 16, '蛋糕千层', '肉桂苹果馅，外皮酥脆。', 5, 1);
+INSERT INTO `admin_dish` VALUES (156, 32, '莓好甜品', '莓好大福团子', 16.00, '🍡', 17, '布丁芋泥', '软糯麻薯裹豆沙，一口一个。', 1, 1);
+INSERT INTO `admin_dish` VALUES (157, 32, '莓好甜品', '莓好现烤舒芙蕾', 32.00, '🍮', 16, '蛋糕千层', '出炉即食，端上来还在抖，入口即化。', 2, 1);
+INSERT INTO `admin_dish` VALUES (158, 32, '莓好甜品', '莓好海盐提拉米苏', 28.00, '🍰', 16, '蛋糕千层', '马斯卡彭配海盐，酒香恰到好处不齁。', 3, 1);
+INSERT INTO `admin_dish` VALUES (159, 32, '莓好甜品', '莓好莓果千层', 30.00, '🍓', 16, '蛋糕千层', '层层奶油夹鲜莓，酸得清醒。', 4, 1);
+INSERT INTO `admin_dish` VALUES (160, 32, '莓好甜品', '莓好焦糖布丁', 20.00, '🍮', 17, '布丁芋泥', '丝滑布丁淋焦糖脆壳。', 5, 1);
+INSERT INTO `admin_dish` VALUES (161, 33, '半糖甜品', '半糖芋泥啵啵杯', 24.00, '🧋', 17, '布丁芋泥', '手捣芋泥配 Q 弹啵啵，料足。', 1, 1);
+INSERT INTO `admin_dish` VALUES (162, 33, '半糖甜品', '半糖香草纸杯蛋糕', 26.00, '🧁', 16, '蛋糕千层', '绵软蛋糕配香草奶油，童年的味道。', 2, 1);
+INSERT INTO `admin_dish` VALUES (163, 33, '半糖甜品', '半糖爆浆甜甜圈', 22.00, '🍩', 16, '蛋糕千层', '咬开流心，甜度刚刚好。', 3, 1);
+INSERT INTO `admin_dish` VALUES (164, 33, '半糖甜品', '半糖黄油曲奇', 18.00, '🍪', 16, '蛋糕千层', '现烤酥香，奶味十足。', 4, 1);
+INSERT INTO `admin_dish` VALUES (165, 33, '半糖甜品', '半糖巧克力熔岩', 28.00, '🍫', 16, '蛋糕千层', '切开爆浆，热吃最佳。', 5, 1);
+INSERT INTO `admin_dish` VALUES (166, 34, '糯糯甜品', '糯糯苹果派', 20.00, '🥧', 16, '蛋糕千层', '肉桂苹果馅，外皮酥脆。', 1, 1);
+INSERT INTO `admin_dish` VALUES (167, 34, '糯糯甜品', '糯糯大福团子', 16.00, '🍡', 17, '布丁芋泥', '软糯麻薯裹豆沙，一口一个。', 2, 1);
+INSERT INTO `admin_dish` VALUES (168, 34, '糯糯甜品', '糯糯现烤舒芙蕾', 32.00, '🍮', 16, '蛋糕千层', '出炉即食，端上来还在抖，入口即化。', 3, 1);
+INSERT INTO `admin_dish` VALUES (169, 34, '糯糯甜品', '糯糯海盐提拉米苏', 28.00, '🍰', 16, '蛋糕千层', '马斯卡彭配海盐，酒香恰到好处不齁。', 4, 1);
+INSERT INTO `admin_dish` VALUES (170, 34, '糯糯甜品', '糯糯莓果千层', 30.00, '🍓', 16, '蛋糕千层', '层层奶油夹鲜莓，酸得清醒。', 5, 1);
+INSERT INTO `admin_dish` VALUES (171, 35, '焙焙甜品', '焙焙焦糖布丁', 20.00, '🍮', 17, '布丁芋泥', '丝滑布丁淋焦糖脆壳。', 1, 1);
+INSERT INTO `admin_dish` VALUES (172, 35, '焙焙甜品', '焙焙芋泥啵啵杯', 24.00, '🧋', 17, '布丁芋泥', '手捣芋泥配 Q 弹啵啵，料足。', 2, 1);
+INSERT INTO `admin_dish` VALUES (173, 35, '焙焙甜品', '焙焙香草纸杯蛋糕', 26.00, '🧁', 16, '蛋糕千层', '绵软蛋糕配香草奶油，童年的味道。', 3, 1);
+INSERT INTO `admin_dish` VALUES (174, 35, '焙焙甜品', '焙焙爆浆甜甜圈', 22.00, '🍩', 16, '蛋糕千层', '咬开流心，甜度刚刚好。', 4, 1);
+INSERT INTO `admin_dish` VALUES (175, 35, '焙焙甜品', '焙焙黄油曲奇', 18.00, '🍪', 16, '蛋糕千层', '现烤酥香，奶味十足。', 5, 1);
+INSERT INTO `admin_dish` VALUES (176, 36, '小甜甜品', '小甜巧克力熔岩', 28.00, '🍫', 16, '蛋糕千层', '切开爆浆，热吃最佳。', 1, 1);
+INSERT INTO `admin_dish` VALUES (177, 36, '小甜甜品', '小甜苹果派', 20.00, '🥧', 16, '蛋糕千层', '肉桂苹果馅，外皮酥脆。', 2, 1);
+INSERT INTO `admin_dish` VALUES (178, 36, '小甜甜品', '小甜大福团子', 16.00, '🍡', 17, '布丁芋泥', '软糯麻薯裹豆沙，一口一个。', 3, 1);
+INSERT INTO `admin_dish` VALUES (179, 36, '小甜甜品', '小甜现烤舒芙蕾', 32.00, '🍮', 16, '蛋糕千层', '出炉即食，端上来还在抖，入口即化。', 4, 1);
+INSERT INTO `admin_dish` VALUES (180, 36, '小甜甜品', '小甜海盐提拉米苏', 28.00, '🍰', 16, '蛋糕千层', '马斯卡彭配海盐，酒香恰到好处不齁。', 5, 1);
+INSERT INTO `admin_dish` VALUES (181, 37, '糖罐甜品', '糖罐莓果千层', 30.00, '🍓', 16, '蛋糕千层', '层层奶油夹鲜莓，酸得清醒。', 1, 1);
+INSERT INTO `admin_dish` VALUES (182, 37, '糖罐甜品', '糖罐焦糖布丁', 20.00, '🍮', 17, '布丁芋泥', '丝滑布丁淋焦糖脆壳。', 2, 1);
+INSERT INTO `admin_dish` VALUES (183, 37, '糖罐甜品', '糖罐芋泥啵啵杯', 24.00, '🧋', 17, '布丁芋泥', '手捣芋泥配 Q 弹啵啵，料足。', 3, 1);
+INSERT INTO `admin_dish` VALUES (184, 37, '糖罐甜品', '糖罐香草纸杯蛋糕', 26.00, '🧁', 16, '蛋糕千层', '绵软蛋糕配香草奶油，童年的味道。', 4, 1);
+INSERT INTO `admin_dish` VALUES (185, 37, '糖罐甜品', '糖罐爆浆甜甜圈', 22.00, '🍩', 16, '蛋糕千层', '咬开流心，甜度刚刚好。', 5, 1);
+INSERT INTO `admin_dish` VALUES (186, 38, '芋见甜品', '芋见黄油曲奇', 18.00, '🍪', 16, '蛋糕千层', '现烤酥香，奶味十足。', 1, 1);
+INSERT INTO `admin_dish` VALUES (187, 38, '芋见甜品', '芋见巧克力熔岩', 28.00, '🍫', 16, '蛋糕千层', '切开爆浆，热吃最佳。', 2, 1);
+INSERT INTO `admin_dish` VALUES (188, 38, '芋见甜品', '芋见苹果派', 20.00, '🥧', 16, '蛋糕千层', '肉桂苹果馅，外皮酥脆。', 3, 1);
+INSERT INTO `admin_dish` VALUES (189, 38, '芋见甜品', '芋见大福团子', 16.00, '🍡', 17, '布丁芋泥', '软糯麻薯裹豆沙，一口一个。', 4, 1);
+INSERT INTO `admin_dish` VALUES (190, 38, '芋见甜品', '芋见现烤舒芙蕾', 32.00, '🍮', 16, '蛋糕千层', '出炉即食，端上来还在抖，入口即化。', 5, 1);
+INSERT INTO `admin_dish` VALUES (191, 39, '暖糖甜品', '暖糖海盐提拉米苏', 28.00, '🍰', 16, '蛋糕千层', '马斯卡彭配海盐，酒香恰到好处不齁。', 1, 1);
+INSERT INTO `admin_dish` VALUES (192, 39, '暖糖甜品', '暖糖莓果千层', 30.00, '🍓', 16, '蛋糕千层', '层层奶油夹鲜莓，酸得清醒。', 2, 1);
+INSERT INTO `admin_dish` VALUES (193, 39, '暖糖甜品', '暖糖焦糖布丁', 20.00, '🍮', 17, '布丁芋泥', '丝滑布丁淋焦糖脆壳。', 3, 1);
+INSERT INTO `admin_dish` VALUES (194, 39, '暖糖甜品', '暖糖芋泥啵啵杯', 24.00, '🧋', 17, '布丁芋泥', '手捣芋泥配 Q 弹啵啵，料足。', 4, 1);
+INSERT INTO `admin_dish` VALUES (195, 39, '暖糖甜品', '暖糖香草纸杯蛋糕', 26.00, '🧁', 16, '蛋糕千层', '绵软蛋糕配香草奶油，童年的味道。', 5, 1);
+INSERT INTO `admin_dish` VALUES (196, 40, '半杯茶饮', '半杯珍珠奶茶', 22.00, '🧋', 19, '奶茶果茶', 'Q 弹珍珠配醇香奶茶，经典不败。', 1, 1);
+INSERT INTO `admin_dish` VALUES (197, 40, '半杯茶饮', '半杯生椰拿铁', 22.00, '🥥', 18, '咖啡', '椰香浓郁顺滑，每天续命。', 2, 1);
+INSERT INTO `admin_dish` VALUES (198, 40, '半杯茶饮', '半杯气泡美式', 20.00, '🥤', 18, '咖啡', '清爽气泡配醇厚咖啡。', 3, 1);
+INSERT INTO `admin_dish` VALUES (199, 40, '半杯茶饮', '半杯茉莉奶绿', 18.00, '🍵', 19, '奶茶果茶', '茉莉清香配奶绿。', 4, 1);
+INSERT INTO `admin_dish` VALUES (200, 40, '半杯茶饮', '半杯杨枝甘露', 26.00, '🥭', 19, '奶茶果茶', '芒果西柚椰浆，港式地道。', 5, 1);
+INSERT INTO `admin_dish` VALUES (201, 41, '柠夏茶饮', '柠夏多肉葡萄', 24.00, '🍇', 19, '奶茶果茶', '整颗去皮葡萄，清爽不涩。', 1, 1);
+INSERT INTO `admin_dish` VALUES (202, 41, '柠夏茶饮', '柠夏柠檬冷萃', 20.00, '🍋', 19, '奶茶果茶', '冷萃茶配鲜柠檬，夏天续命水。', 2, 1);
+INSERT INTO `admin_dish` VALUES (203, 41, '柠夏茶饮', '柠夏鲜榨橙汁', 16.00, '🥤', 19, '奶茶果茶', '整颗鲜橙现榨，维 C 满满。', 3, 1);
+INSERT INTO `admin_dish` VALUES (204, 41, '柠夏茶饮', '柠夏桂花乌龙', 24.00, '🍵', 19, '奶茶果茶', '桂花清香配乌龙尾韵，悠长。', 4, 1);
+INSERT INTO `admin_dish` VALUES (205, 41, '柠夏茶饮', '柠夏椰子水', 18.00, '🥥', 19, '奶茶果茶', '天然清甜，解渴神器。', 5, 1);
+INSERT INTO `admin_dish` VALUES (206, 42, '椰岛茶饮', '椰岛黑糖波波', 22.00, '🧋', 19, '奶茶果茶', '黑糖挂壁，奶香浓郁。', 1, 1);
+INSERT INTO `admin_dish` VALUES (207, 42, '椰岛茶饮', '椰岛白桃乌龙', 20.00, '🍑', 19, '奶茶果茶', '白桃清甜配乌龙，温柔好喝。', 2, 1);
+INSERT INTO `admin_dish` VALUES (208, 42, '椰岛茶饮', '椰岛珍珠奶茶', 22.00, '🧋', 19, '奶茶果茶', 'Q 弹珍珠配醇香奶茶，经典不败。', 3, 1);
+INSERT INTO `admin_dish` VALUES (209, 42, '椰岛茶饮', '椰岛生椰拿铁', 22.00, '🥥', 18, '咖啡', '椰香浓郁顺滑，每天续命。', 4, 1);
+INSERT INTO `admin_dish` VALUES (210, 42, '椰岛茶饮', '椰岛气泡美式', 20.00, '🥤', 18, '咖啡', '清爽气泡配醇厚咖啡。', 5, 1);
+INSERT INTO `admin_dish` VALUES (211, 43, '煮茶茶饮', '煮茶茉莉奶绿', 18.00, '🍵', 19, '奶茶果茶', '茉莉清香配奶绿。', 1, 1);
+INSERT INTO `admin_dish` VALUES (212, 43, '煮茶茶饮', '煮茶杨枝甘露', 26.00, '🥭', 19, '奶茶果茶', '芒果西柚椰浆，港式地道。', 2, 1);
+INSERT INTO `admin_dish` VALUES (213, 43, '煮茶茶饮', '煮茶多肉葡萄', 24.00, '🍇', 19, '奶茶果茶', '整颗去皮葡萄，清爽不涩。', 3, 1);
+INSERT INTO `admin_dish` VALUES (214, 43, '煮茶茶饮', '煮茶柠檬冷萃', 20.00, '🍋', 19, '奶茶果茶', '冷萃茶配鲜柠檬，夏天续命水。', 4, 1);
+INSERT INTO `admin_dish` VALUES (215, 43, '煮茶茶饮', '煮茶鲜榨橙汁', 16.00, '🥤', 19, '奶茶果茶', '整颗鲜橙现榨，维 C 满满。', 5, 1);
+INSERT INTO `admin_dish` VALUES (216, 44, '鲜果茶饮', '鲜果桂花乌龙', 24.00, '🍵', 19, '奶茶果茶', '桂花清香配乌龙尾韵，悠长。', 1, 1);
+INSERT INTO `admin_dish` VALUES (217, 44, '鲜果茶饮', '鲜果椰子水', 18.00, '🥥', 19, '奶茶果茶', '天然清甜，解渴神器。', 2, 1);
+INSERT INTO `admin_dish` VALUES (218, 44, '鲜果茶饮', '鲜果黑糖波波', 22.00, '🧋', 19, '奶茶果茶', '黑糖挂壁，奶香浓郁。', 3, 1);
+INSERT INTO `admin_dish` VALUES (219, 44, '鲜果茶饮', '鲜果白桃乌龙', 20.00, '🍑', 19, '奶茶果茶', '白桃清甜配乌龙，温柔好喝。', 4, 1);
+INSERT INTO `admin_dish` VALUES (220, 44, '鲜果茶饮', '鲜果珍珠奶茶', 22.00, '🧋', 19, '奶茶果茶', 'Q 弹珍珠配醇香奶茶，经典不败。', 5, 1);
+INSERT INTO `admin_dish` VALUES (221, 45, '慢茶茶饮', '慢茶生椰拿铁', 22.00, '🥥', 18, '咖啡', '椰香浓郁顺滑，每天续命。', 1, 1);
+INSERT INTO `admin_dish` VALUES (222, 45, '慢茶茶饮', '慢茶气泡美式', 20.00, '🥤', 18, '咖啡', '清爽气泡配醇厚咖啡。', 2, 1);
+INSERT INTO `admin_dish` VALUES (223, 45, '慢茶茶饮', '慢茶茉莉奶绿', 18.00, '🍵', 19, '奶茶果茶', '茉莉清香配奶绿。', 3, 1);
+INSERT INTO `admin_dish` VALUES (224, 45, '慢茶茶饮', '慢茶杨枝甘露', 26.00, '🥭', 19, '奶茶果茶', '芒果西柚椰浆，港式地道。', 4, 1);
+INSERT INTO `admin_dish` VALUES (225, 45, '慢茶茶饮', '慢茶多肉葡萄', 24.00, '🍇', 19, '奶茶果茶', '整颗去皮葡萄，清爽不涩。', 5, 1);
+INSERT INTO `admin_dish` VALUES (226, 46, '青柚茶饮', '青柚柠檬冷萃', 20.00, '🍋', 19, '奶茶果茶', '冷萃茶配鲜柠檬，夏天续命水。', 1, 1);
+INSERT INTO `admin_dish` VALUES (227, 46, '青柚茶饮', '青柚鲜榨橙汁', 16.00, '🥤', 19, '奶茶果茶', '整颗鲜橙现榨，维 C 满满。', 2, 1);
+INSERT INTO `admin_dish` VALUES (228, 46, '青柚茶饮', '青柚桂花乌龙', 24.00, '🍵', 19, '奶茶果茶', '桂花清香配乌龙尾韵，悠长。', 3, 1);
+INSERT INTO `admin_dish` VALUES (229, 46, '青柚茶饮', '青柚椰子水', 18.00, '🥥', 19, '奶茶果茶', '天然清甜，解渴神器。', 4, 1);
+INSERT INTO `admin_dish` VALUES (230, 46, '青柚茶饮', '青柚黑糖波波', 22.00, '🧋', 19, '奶茶果茶', '黑糖挂壁，奶香浓郁。', 5, 1);
+INSERT INTO `admin_dish` VALUES (231, 47, '茶叔茶饮', '茶叔白桃乌龙', 20.00, '🍑', 19, '奶茶果茶', '白桃清甜配乌龙，温柔好喝。', 1, 1);
+INSERT INTO `admin_dish` VALUES (232, 47, '茶叔茶饮', '茶叔珍珠奶茶', 22.00, '🧋', 19, '奶茶果茶', 'Q 弹珍珠配醇香奶茶，经典不败。', 2, 1);
+INSERT INTO `admin_dish` VALUES (233, 47, '茶叔茶饮', '茶叔生椰拿铁', 22.00, '🥥', 18, '咖啡', '椰香浓郁顺滑，每天续命。', 3, 1);
+INSERT INTO `admin_dish` VALUES (234, 47, '茶叔茶饮', '茶叔气泡美式', 20.00, '🥤', 18, '咖啡', '清爽气泡配醇厚咖啡。', 4, 1);
+INSERT INTO `admin_dish` VALUES (235, 47, '茶叔茶饮', '茶叔茉莉奶绿', 18.00, '🍵', 19, '奶茶果茶', '茉莉清香配奶绿。', 5, 1);
+INSERT INTO `admin_dish` VALUES (236, 48, '一杯茶饮', '一杯杨枝甘露', 26.00, '🥭', 19, '奶茶果茶', '芒果西柚椰浆，港式地道。', 1, 1);
+INSERT INTO `admin_dish` VALUES (237, 48, '一杯茶饮', '一杯多肉葡萄', 24.00, '🍇', 19, '奶茶果茶', '整颗去皮葡萄，清爽不涩。', 2, 1);
+INSERT INTO `admin_dish` VALUES (238, 48, '一杯茶饮', '一杯柠檬冷萃', 20.00, '🍋', 19, '奶茶果茶', '冷萃茶配鲜柠檬，夏天续命水。', 3, 1);
+INSERT INTO `admin_dish` VALUES (239, 48, '一杯茶饮', '一杯鲜榨橙汁', 16.00, '🥤', 19, '奶茶果茶', '整颗鲜橙现榨，维 C 满满。', 4, 1);
+INSERT INTO `admin_dish` VALUES (240, 48, '一杯茶饮', '一杯桂花乌龙', 24.00, '🍵', 19, '奶茶果茶', '桂花清香配乌龙尾韵，悠长。', 5, 1);
+INSERT INTO `admin_dish` VALUES (241, 49, '柚见茶饮', '柚见椰子水', 18.00, '🥥', 19, '奶茶果茶', '天然清甜，解渴神器。', 1, 1);
+INSERT INTO `admin_dish` VALUES (242, 49, '柚见茶饮', '柚见黑糖波波', 22.00, '🧋', 19, '奶茶果茶', '黑糖挂壁，奶香浓郁。', 2, 1);
+INSERT INTO `admin_dish` VALUES (243, 49, '柚见茶饮', '柚见白桃乌龙', 20.00, '🍑', 19, '奶茶果茶', '白桃清甜配乌龙，温柔好喝。', 3, 1);
+INSERT INTO `admin_dish` VALUES (244, 49, '柚见茶饮', '柚见珍珠奶茶', 22.00, '🧋', 19, '奶茶果茶', 'Q 弹珍珠配醇香奶茶，经典不败。', 4, 1);
+INSERT INTO `admin_dish` VALUES (245, 49, '柚见茶饮', '柚见生椰拿铁', 22.00, '🥥', 18, '咖啡', '椰香浓郁顺滑，每天续命。', 5, 1);
+INSERT INTO `admin_dish` VALUES (246, 50, '甘露茶饮', '甘露气泡美式', 20.00, '🥤', 18, '咖啡', '清爽气泡配醇厚咖啡。', 1, 1);
+INSERT INTO `admin_dish` VALUES (247, 50, '甘露茶饮', '甘露茉莉奶绿', 18.00, '🍵', 19, '奶茶果茶', '茉莉清香配奶绿。', 2, 1);
+INSERT INTO `admin_dish` VALUES (248, 50, '甘露茶饮', '甘露杨枝甘露', 26.00, '🥭', 19, '奶茶果茶', '芒果西柚椰浆，港式地道。', 3, 1);
+INSERT INTO `admin_dish` VALUES (249, 50, '甘露茶饮', '甘露多肉葡萄', 24.00, '🍇', 19, '奶茶果茶', '整颗去皮葡萄，清爽不涩。', 4, 1);
+INSERT INTO `admin_dish` VALUES (250, 50, '甘露茶饮', '甘露柠檬冷萃', 20.00, '🍋', 19, '奶茶果茶', '冷萃茶配鲜柠檬，夏天续命水。', 5, 1);
+INSERT INTO `admin_dish` VALUES (251, 51, '绿野轻食', '绿野鸡胸蔬菜沙拉', 26.00, '🥗', 20, '沙拉', '高蛋白低脂，油醋汁现拌。', 1, 1);
+INSERT INTO `admin_dish` VALUES (252, 51, '绿野轻食', '绿野牛油果鸡蛋三明治', 24.00, '🥪', 21, '碗卷三明治', '全麦面包夹现切牛油果，给得慷慨。', 2, 1);
+INSERT INTO `admin_dish` VALUES (253, 51, '绿野轻食', '绿野藜麦时蔬碗', 30.00, '🍚', 21, '碗卷三明治', '藜麦配当季时蔬，饱腹无负担。', 3, 1);
+INSERT INTO `admin_dish` VALUES (254, 51, '绿野轻食', '绿野烤时蔬卷', 22.00, '🥙', 21, '碗卷三明治', '彩椒西葫芦现烤，清爽不油腻。', 4, 1);
+INSERT INTO `admin_dish` VALUES (255, 51, '绿野轻食', '绿野鲜榨羽衣甘蓝汁', 16.00, '🥤', 22, '浓汤饮品', '当季果蔬冷压，微苦回甘。', 5, 1);
+INSERT INTO `admin_dish` VALUES (256, 52, '轻氧轻食', '轻氧三文鱼牛油果沙拉', 28.00, '🥗', 20, '沙拉', '深海鱼配牛油果，优质脂肪。', 1, 1);
+INSERT INTO `admin_dish` VALUES (257, 52, '轻氧轻食', '轻氧全麦照烧卷', 20.00, '🥪', 21, '碗卷三明治', '照烧鸡配全麦，低负担也满足。', 2, 1);
+INSERT INTO `admin_dish` VALUES (258, 52, '轻氧轻食', '轻氧南瓜浓汤', 18.00, '🥣', 22, '浓汤饮品', '现熬南瓜，丝滑暖胃。', 3, 1);
+INSERT INTO `admin_dish` VALUES (259, 52, '轻氧轻食', '轻氧鹰嘴豆沙拉', 22.00, '🥗', 20, '沙拉', '饱腹高纤，越嚼越香。', 4, 1);
+INSERT INTO `admin_dish` VALUES (260, 52, '轻氧轻食', '轻氧希腊酸奶杯', 14.00, '🥛', 22, '浓汤饮品', '浓稠酸奶配坚果莓果。', 5, 1);
+INSERT INTO `admin_dish` VALUES (261, 53, '纤纤轻食', '纤纤能量碗', 24.00, '🍱', 21, '碗卷三明治', '碳水蛋白蔬菜一锅端，均衡。', 1, 1);
+INSERT INTO `admin_dish` VALUES (262, 53, '纤纤轻食', '纤纤鸡胸蔬菜沙拉', 26.00, '🥗', 20, '沙拉', '高蛋白低脂，油醋汁现拌。', 2, 1);
+INSERT INTO `admin_dish` VALUES (263, 53, '纤纤轻食', '纤纤牛油果鸡蛋三明治', 24.00, '🥪', 21, '碗卷三明治', '全麦面包夹现切牛油果，给得慷慨。', 3, 1);
+INSERT INTO `admin_dish` VALUES (264, 53, '纤纤轻食', '纤纤藜麦时蔬碗', 30.00, '🍚', 21, '碗卷三明治', '藜麦配当季时蔬，饱腹无负担。', 4, 1);
+INSERT INTO `admin_dish` VALUES (265, 53, '纤纤轻食', '纤纤烤时蔬卷', 22.00, '🥙', 21, '碗卷三明治', '彩椒西葫芦现烤，清爽不油腻。', 5, 1);
+INSERT INTO `admin_dish` VALUES (266, 54, '每日轻食', '每日鲜榨羽衣甘蓝汁', 16.00, '🥤', 22, '浓汤饮品', '当季果蔬冷压，微苦回甘。', 1, 1);
+INSERT INTO `admin_dish` VALUES (267, 54, '每日轻食', '每日三文鱼牛油果沙拉', 28.00, '🥗', 20, '沙拉', '深海鱼配牛油果，优质脂肪。', 2, 1);
+INSERT INTO `admin_dish` VALUES (268, 54, '每日轻食', '每日全麦照烧卷', 20.00, '🥪', 21, '碗卷三明治', '照烧鸡配全麦，低负担也满足。', 3, 1);
+INSERT INTO `admin_dish` VALUES (269, 54, '每日轻食', '每日南瓜浓汤', 18.00, '🥣', 22, '浓汤饮品', '现熬南瓜，丝滑暖胃。', 4, 1);
+INSERT INTO `admin_dish` VALUES (270, 54, '每日轻食', '每日鹰嘴豆沙拉', 22.00, '🥗', 20, '沙拉', '饱腹高纤，越嚼越香。', 5, 1);
+INSERT INTO `admin_dish` VALUES (271, 55, '鲜野轻食', '鲜野希腊酸奶杯', 14.00, '🥛', 22, '浓汤饮品', '浓稠酸奶配坚果莓果。', 1, 1);
+INSERT INTO `admin_dish` VALUES (272, 55, '鲜野轻食', '鲜野能量碗', 24.00, '🍱', 21, '碗卷三明治', '碳水蛋白蔬菜一锅端，均衡。', 2, 1);
+INSERT INTO `admin_dish` VALUES (273, 55, '鲜野轻食', '鲜野鸡胸蔬菜沙拉', 26.00, '🥗', 20, '沙拉', '高蛋白低脂，油醋汁现拌。', 3, 1);
+INSERT INTO `admin_dish` VALUES (274, 55, '鲜野轻食', '鲜野牛油果鸡蛋三明治', 24.00, '🥪', 21, '碗卷三明治', '全麦面包夹现切牛油果，给得慷慨。', 4, 1);
+INSERT INTO `admin_dish` VALUES (275, 55, '鲜野轻食', '鲜野藜麦时蔬碗', 30.00, '🍚', 21, '碗卷三明治', '藜麦配当季时蔬，饱腹无负担。', 5, 1);
+INSERT INTO `admin_dish` VALUES (276, 56, '素拾轻食', '素拾烤时蔬卷', 22.00, '🥙', 21, '碗卷三明治', '彩椒西葫芦现烤，清爽不油腻。', 1, 1);
+INSERT INTO `admin_dish` VALUES (277, 56, '素拾轻食', '素拾鲜榨羽衣甘蓝汁', 16.00, '🥤', 22, '浓汤饮品', '当季果蔬冷压，微苦回甘。', 2, 1);
+INSERT INTO `admin_dish` VALUES (278, 56, '素拾轻食', '素拾三文鱼牛油果沙拉', 28.00, '🥗', 20, '沙拉', '深海鱼配牛油果，优质脂肪。', 3, 1);
+INSERT INTO `admin_dish` VALUES (279, 56, '素拾轻食', '素拾全麦照烧卷', 20.00, '🥪', 21, '碗卷三明治', '照烧鸡配全麦，低负担也满足。', 4, 1);
+INSERT INTO `admin_dish` VALUES (280, 56, '素拾轻食', '素拾南瓜浓汤', 18.00, '🥣', 22, '浓汤饮品', '现熬南瓜，丝滑暖胃。', 5, 1);
+INSERT INTO `admin_dish` VALUES (281, 57, '轻拌轻食', '轻拌鹰嘴豆沙拉', 22.00, '🥗', 20, '沙拉', '饱腹高纤，越嚼越香。', 1, 1);
+INSERT INTO `admin_dish` VALUES (282, 57, '轻拌轻食', '轻拌希腊酸奶杯', 14.00, '🥛', 22, '浓汤饮品', '浓稠酸奶配坚果莓果。', 2, 1);
+INSERT INTO `admin_dish` VALUES (283, 57, '轻拌轻食', '轻拌能量碗', 24.00, '🍱', 21, '碗卷三明治', '碳水蛋白蔬菜一锅端，均衡。', 3, 1);
+INSERT INTO `admin_dish` VALUES (284, 57, '轻拌轻食', '轻拌鸡胸蔬菜沙拉', 26.00, '🥗', 20, '沙拉', '高蛋白低脂，油醋汁现拌。', 4, 1);
+INSERT INTO `admin_dish` VALUES (285, 57, '轻拌轻食', '轻拌牛油果鸡蛋三明治', 24.00, '🥪', 21, '碗卷三明治', '全麦面包夹现切牛油果，给得慷慨。', 5, 1);
+INSERT INTO `admin_dish` VALUES (286, 58, '藜麦轻食', '藜麦藜麦时蔬碗', 30.00, '🍚', 21, '碗卷三明治', '藜麦配当季时蔬，饱腹无负担。', 1, 1);
+INSERT INTO `admin_dish` VALUES (287, 58, '藜麦轻食', '藜麦烤时蔬卷', 22.00, '🥙', 21, '碗卷三明治', '彩椒西葫芦现烤，清爽不油腻。', 2, 1);
+INSERT INTO `admin_dish` VALUES (288, 58, '藜麦轻食', '藜麦鲜榨羽衣甘蓝汁', 16.00, '🥤', 22, '浓汤饮品', '当季果蔬冷压，微苦回甘。', 3, 1);
+INSERT INTO `admin_dish` VALUES (289, 58, '藜麦轻食', '藜麦三文鱼牛油果沙拉', 28.00, '🥗', 20, '沙拉', '深海鱼配牛油果，优质脂肪。', 4, 1);
+INSERT INTO `admin_dish` VALUES (290, 58, '藜麦轻食', '藜麦全麦照烧卷', 20.00, '🥪', 21, '碗卷三明治', '照烧鸡配全麦，低负担也满足。', 5, 1);
+INSERT INTO `admin_dish` VALUES (291, 59, '元气轻食', '元气南瓜浓汤', 18.00, '🥣', 22, '浓汤饮品', '现熬南瓜，丝滑暖胃。', 1, 1);
+INSERT INTO `admin_dish` VALUES (292, 59, '元气轻食', '元气鹰嘴豆沙拉', 22.00, '🥗', 20, '沙拉', '饱腹高纤，越嚼越香。', 2, 1);
+INSERT INTO `admin_dish` VALUES (293, 59, '元气轻食', '元气希腊酸奶杯', 14.00, '🥛', 22, '浓汤饮品', '浓稠酸奶配坚果莓果。', 3, 1);
+INSERT INTO `admin_dish` VALUES (294, 59, '元气轻食', '元气能量碗', 24.00, '🍱', 21, '碗卷三明治', '碳水蛋白蔬菜一锅端，均衡。', 4, 1);
+INSERT INTO `admin_dish` VALUES (295, 59, '元气轻食', '元气鸡胸蔬菜沙拉', 26.00, '🥗', 20, '沙拉', '高蛋白低脂，油醋汁现拌。', 5, 1);
+INSERT INTO `admin_dish` VALUES (296, 60, '青蔬轻食', '青蔬牛油果鸡蛋三明治', 24.00, '🥪', 21, '碗卷三明治', '全麦面包夹现切牛油果，给得慷慨。', 1, 1);
+INSERT INTO `admin_dish` VALUES (297, 60, '青蔬轻食', '青蔬藜麦时蔬碗', 30.00, '🍚', 21, '碗卷三明治', '藜麦配当季时蔬，饱腹无负担。', 2, 1);
+INSERT INTO `admin_dish` VALUES (298, 60, '青蔬轻食', '青蔬烤时蔬卷', 22.00, '🥙', 21, '碗卷三明治', '彩椒西葫芦现烤，清爽不油腻。', 3, 1);
+INSERT INTO `admin_dish` VALUES (299, 60, '青蔬轻食', '青蔬鲜榨羽衣甘蓝汁', 16.00, '🥤', 22, '浓汤饮品', '当季果蔬冷压，微苦回甘。', 4, 1);
+INSERT INTO `admin_dish` VALUES (300, 60, '青蔬轻食', '青蔬三文鱼牛油果沙拉', 28.00, '🥗', 20, '沙拉', '深海鱼配牛油果，优质脂肪。', 5, 1);
+INSERT INTO `admin_dish` VALUES (301, 61, '巴蜀火锅', '巴蜀麻辣牛油锅', 58.00, '🍲', 23, '锅底', '牛油锅底，越煮越香。', 1, 1);
+INSERT INTO `admin_dish` VALUES (302, 61, '巴蜀火锅', '巴蜀鲜切黄喉', 42.00, '🥩', 24, '涮菜', '脆嫩弹牙，七上八下。', 2, 1);
+INSERT INTO `admin_dish` VALUES (303, 61, '巴蜀火锅', '巴蜀手打虾滑', 32.00, '🦐', 24, '涮菜', '现打虾滑，弹到弹牙。', 3, 1);
+INSERT INTO `admin_dish` VALUES (304, 61, '巴蜀火锅', '巴蜀现炸酥肉', 28.00, '🍗', 25, '火锅小食', '外酥里嫩，直接吃或下锅都香。', 4, 1);
+INSERT INTO `admin_dish` VALUES (305, 61, '巴蜀火锅', '巴蜀红糖糍粑', 16.00, '🍡', 25, '火锅小食', '现炸糍粑裹黄豆粉，软糯。', 5, 1);
+INSERT INTO `admin_dish` VALUES (306, 62, '椒麻火锅', '椒麻鲜切牛肉', 38.00, '🥩', 24, '涮菜', '当天现切，涮几秒就嫩。', 1, 1);
+INSERT INTO `admin_dish` VALUES (307, 62, '椒麻火锅', '椒麻鸭肠', 30.00, '🍲', 24, '涮菜', '脆爽弹牙，涮烫即食。', 2, 1);
+INSERT INTO `admin_dish` VALUES (308, 62, '椒麻火锅', '椒麻蔬菜拼盘', 26.00, '🥬', 24, '涮菜', '当季时蔬，解腻清口。', 3, 1);
+INSERT INTO `admin_dish` VALUES (309, 62, '椒麻火锅', '椒麻手工豆皮', 22.00, '🍢', 24, '涮菜', '吸饱汤汁，一口爆汁。', 4, 1);
+INSERT INTO `admin_dish` VALUES (310, 62, '椒麻火锅', '椒麻鱼丸拼盘', 36.00, '🐟', 24, '涮菜', '手打鱼丸，弹嫩鲜香。', 5, 1);
+INSERT INTO `admin_dish` VALUES (311, 63, '渝味火锅', '渝味宽粉', 20.00, '🍡', 24, '涮菜', '软糯入味，嗦一口满足。', 1, 1);
+INSERT INTO `admin_dish` VALUES (312, 63, '渝味火锅', '渝味麻辣牛油锅', 58.00, '🍲', 23, '锅底', '牛油锅底，越煮越香。', 2, 1);
+INSERT INTO `admin_dish` VALUES (313, 63, '渝味火锅', '渝味鲜切黄喉', 42.00, '🥩', 24, '涮菜', '脆嫩弹牙，七上八下。', 3, 1);
+INSERT INTO `admin_dish` VALUES (314, 63, '渝味火锅', '渝味手打虾滑', 32.00, '🦐', 24, '涮菜', '现打虾滑，弹到弹牙。', 4, 1);
+INSERT INTO `admin_dish` VALUES (315, 63, '渝味火锅', '渝味现炸酥肉', 28.00, '🍗', 25, '火锅小食', '外酥里嫩，直接吃或下锅都香。', 5, 1);
+INSERT INTO `admin_dish` VALUES (316, 64, '锅气火锅', '锅气红糖糍粑', 16.00, '🍡', 25, '火锅小食', '现炸糍粑裹黄豆粉，软糯。', 1, 1);
+INSERT INTO `admin_dish` VALUES (317, 64, '锅气火锅', '锅气鲜切牛肉', 38.00, '🥩', 24, '涮菜', '当天现切，涮几秒就嫩。', 2, 1);
+INSERT INTO `admin_dish` VALUES (318, 64, '锅气火锅', '锅气鸭肠', 30.00, '🍲', 24, '涮菜', '脆爽弹牙，涮烫即食。', 3, 1);
+INSERT INTO `admin_dish` VALUES (319, 64, '锅气火锅', '锅气蔬菜拼盘', 26.00, '🥬', 24, '涮菜', '当季时蔬，解腻清口。', 4, 1);
+INSERT INTO `admin_dish` VALUES (320, 64, '锅气火锅', '锅气手工豆皮', 22.00, '🍢', 24, '涮菜', '吸饱汤汁，一口爆汁。', 5, 1);
+INSERT INTO `admin_dish` VALUES (321, 65, '辣府火锅', '辣府鱼丸拼盘', 36.00, '🐟', 24, '涮菜', '手打鱼丸，弹嫩鲜香。', 1, 1);
+INSERT INTO `admin_dish` VALUES (322, 65, '辣府火锅', '辣府宽粉', 20.00, '🍡', 24, '涮菜', '软糯入味，嗦一口满足。', 2, 1);
+INSERT INTO `admin_dish` VALUES (323, 65, '辣府火锅', '辣府麻辣牛油锅', 58.00, '🍲', 23, '锅底', '牛油锅底，越煮越香。', 3, 1);
+INSERT INTO `admin_dish` VALUES (324, 65, '辣府火锅', '辣府鲜切黄喉', 42.00, '🥩', 24, '涮菜', '脆嫩弹牙，七上八下。', 4, 1);
+INSERT INTO `admin_dish` VALUES (325, 65, '辣府火锅', '辣府手打虾滑', 32.00, '🦐', 24, '涮菜', '现打虾滑，弹到弹牙。', 5, 1);
+INSERT INTO `admin_dish` VALUES (326, 66, '红汤火锅', '红汤现炸酥肉', 28.00, '🍗', 25, '火锅小食', '外酥里嫩，直接吃或下锅都香。', 1, 1);
+INSERT INTO `admin_dish` VALUES (327, 66, '红汤火锅', '红汤红糖糍粑', 16.00, '🍡', 25, '火锅小食', '现炸糍粑裹黄豆粉，软糯。', 2, 1);
+INSERT INTO `admin_dish` VALUES (328, 66, '红汤火锅', '红汤鲜切牛肉', 38.00, '🥩', 24, '涮菜', '当天现切，涮几秒就嫩。', 3, 1);
+INSERT INTO `admin_dish` VALUES (329, 66, '红汤火锅', '红汤鸭肠', 30.00, '🍲', 24, '涮菜', '脆爽弹牙，涮烫即食。', 4, 1);
+INSERT INTO `admin_dish` VALUES (330, 66, '红汤火锅', '红汤蔬菜拼盘', 26.00, '🥬', 24, '涮菜', '当季时蔬，解腻清口。', 5, 1);
+INSERT INTO `admin_dish` VALUES (331, 67, '沸腾火锅', '沸腾手工豆皮', 22.00, '🍢', 24, '涮菜', '吸饱汤汁，一口爆汁。', 1, 1);
+INSERT INTO `admin_dish` VALUES (332, 67, '沸腾火锅', '沸腾鱼丸拼盘', 36.00, '🐟', 24, '涮菜', '手打鱼丸，弹嫩鲜香。', 2, 1);
+INSERT INTO `admin_dish` VALUES (333, 67, '沸腾火锅', '沸腾宽粉', 20.00, '🍡', 24, '涮菜', '软糯入味，嗦一口满足。', 3, 1);
+INSERT INTO `admin_dish` VALUES (334, 67, '沸腾火锅', '沸腾麻辣牛油锅', 58.00, '🍲', 23, '锅底', '牛油锅底，越煮越香。', 4, 1);
+INSERT INTO `admin_dish` VALUES (335, 67, '沸腾火锅', '沸腾鲜切黄喉', 42.00, '🥩', 24, '涮菜', '脆嫩弹牙，七上八下。', 5, 1);
+INSERT INTO `admin_dish` VALUES (336, 68, '渝记火锅', '渝记手打虾滑', 32.00, '🦐', 24, '涮菜', '现打虾滑，弹到弹牙。', 1, 1);
+INSERT INTO `admin_dish` VALUES (337, 68, '渝记火锅', '渝记现炸酥肉', 28.00, '🍗', 25, '火锅小食', '外酥里嫩，直接吃或下锅都香。', 2, 1);
+INSERT INTO `admin_dish` VALUES (338, 68, '渝记火锅', '渝记红糖糍粑', 16.00, '🍡', 25, '火锅小食', '现炸糍粑裹黄豆粉，软糯。', 3, 1);
+INSERT INTO `admin_dish` VALUES (339, 68, '渝记火锅', '渝记鲜切牛肉', 38.00, '🥩', 24, '涮菜', '当天现切，涮几秒就嫩。', 4, 1);
+INSERT INTO `admin_dish` VALUES (340, 68, '渝记火锅', '渝记鸭肠', 30.00, '🍲', 24, '涮菜', '脆爽弹牙，涮烫即食。', 5, 1);
+INSERT INTO `admin_dish` VALUES (341, 69, '椒香火锅', '椒香蔬菜拼盘', 26.00, '🥬', 24, '涮菜', '当季时蔬，解腻清口。', 1, 1);
+INSERT INTO `admin_dish` VALUES (342, 69, '椒香火锅', '椒香手工豆皮', 22.00, '🍢', 24, '涮菜', '吸饱汤汁，一口爆汁。', 2, 1);
+INSERT INTO `admin_dish` VALUES (343, 69, '椒香火锅', '椒香鱼丸拼盘', 36.00, '🐟', 24, '涮菜', '手打鱼丸，弹嫩鲜香。', 3, 1);
+INSERT INTO `admin_dish` VALUES (344, 69, '椒香火锅', '椒香宽粉', 20.00, '🍡', 24, '涮菜', '软糯入味，嗦一口满足。', 4, 1);
+INSERT INTO `admin_dish` VALUES (345, 69, '椒香火锅', '椒香麻辣牛油锅', 58.00, '🍲', 23, '锅底', '牛油锅底，越煮越香。', 5, 1);
+INSERT INTO `admin_dish` VALUES (346, 70, '蜀大火锅', '蜀大鲜切黄喉', 42.00, '🥩', 24, '涮菜', '脆嫩弹牙，七上八下。', 1, 1);
+INSERT INTO `admin_dish` VALUES (347, 70, '蜀大火锅', '蜀大手打虾滑', 32.00, '🦐', 24, '涮菜', '现打虾滑，弹到弹牙。', 2, 1);
+INSERT INTO `admin_dish` VALUES (348, 70, '蜀大火锅', '蜀大现炸酥肉', 28.00, '🍗', 25, '火锅小食', '外酥里嫩，直接吃或下锅都香。', 3, 1);
+INSERT INTO `admin_dish` VALUES (349, 70, '蜀大火锅', '蜀大红糖糍粑', 16.00, '🍡', 25, '火锅小食', '现炸糍粑裹黄豆粉，软糯。', 4, 1);
+INSERT INTO `admin_dish` VALUES (350, 70, '蜀大火锅', '蜀大鲜切牛肉', 38.00, '🥩', 24, '涮菜', '当天现切，涮几秒就嫩。', 5, 1);
+
+-- ----------------------------
+-- Table structure for admin_nav
+-- ----------------------------
+DROP TABLE IF EXISTS `admin_nav`;
+CREATE TABLE `admin_nav`  (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `area` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '区域 top-顶部 / bottom-底部',
+  `item_key` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '菜单标识 home/food/order/mine',
+  `label` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '菜单名称',
+  `icon` varchar(8) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT '图标 emoji',
+  `sort` int NULL DEFAULT 0 COMMENT '排序',
+  `enabled` tinyint NULL DEFAULT 1 COMMENT '是否显示 1-是 0-否',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 10 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '后台导航管理-数据快照(非实时数据源,重跑sync脚本刷新)' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of admin_nav
+-- ----------------------------
+INSERT INTO `admin_nav` VALUES (1, 'top', 'home', '首页', '🏠', 1, 1);
+INSERT INTO `admin_nav` VALUES (2, 'top', 'food', '美食', '🍽️', 2, 1);
+INSERT INTO `admin_nav` VALUES (3, 'top', 'order', '订单', '🧾', 3, 1);
+INSERT INTO `admin_nav` VALUES (4, 'top', 'mine', '我的', '👤', 4, 1);
+INSERT INTO `admin_nav` VALUES (5, 'top', 'cart', '购物车', '🛒', 5, 1);
+INSERT INTO `admin_nav` VALUES (6, 'bottom', 'home', '首页', '🏠', 1, 1);
+INSERT INTO `admin_nav` VALUES (7, 'bottom', 'food', '美食', '🍽️', 2, 1);
+INSERT INTO `admin_nav` VALUES (8, 'bottom', 'order', '订单', '🧾', 3, 1);
+INSERT INTO `admin_nav` VALUES (9, 'bottom', 'mine', '我的', '👤', 4, 1);
+
+-- ----------------------------
+-- Table structure for admin_order
+-- ----------------------------
+DROP TABLE IF EXISTS `admin_order`;
+CREATE TABLE `admin_order`  (
+  `id` bigint NOT NULL COMMENT '订单id(源自orders)',
+  `order_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '订单编号',
+  `account` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT '下单账号',
+  `restaurant` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT '店铺名称',
+  `items` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT '菜品明细快照',
+  `amount` decimal(10, 2) NULL DEFAULT 0.00 COMMENT '订单金额',
+  `status_code` tinyint NULL DEFAULT 0 COMMENT '状态码 0-3',
+  `status` varchar(8) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT '状态中文',
+  `receiver_name` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT '收货人',
+  `receiver_phone` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT '收货电话',
+  `address` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT '收货地址快照',
+  `created_at` datetime NULL DEFAULT NULL COMMENT '下单时间',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '后台订单管理-数据快照(非实时数据源,后台实时CRUD走orders表)' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of admin_order
+-- ----------------------------
+INSERT INTO `admin_order` VALUES (1, '17929862034082201', 'www', '蜀大火锅', '蜀大鲜切黄喉 x1, 蜀大手打虾滑 x1', 74.00, 3, '已取消', 'wwwwww', '123456789092', 'js sr 是哪个不知道什么村', '2026-10-26 11:43:23');
+INSERT INTO `admin_order` VALUES (2, '17929863292598620', 'www', '糖潮甜品铺', '现烤舒芙蕾 x2, 海盐提拉米苏 x2, 莓果千层 x2', 180.00, 2, '已完成', 'wwwwww', '123456789092', 'js sr 是哪个不知道什么村', '2026-10-26 11:45:29');
+INSERT INTO `admin_order` VALUES (3, '17933476306833235', 'www', '暖糖甜品', '暖糖海盐提拉米苏 x2', 56.00, 3, '已取消', 'wwwwww', '123456789092', 'js sr 是哪个不知道什么村', '2026-10-30 16:07:10');
+INSERT INTO `admin_order` VALUES (4, 'SG20261025001', 'user001', '阿婆云吞面', '红油抄手 x3', 66.00, 2, '已完成', '', '', '', '2026-10-25 09:40:05');
+INSERT INTO `admin_order` VALUES (5, 'SG20261028002', 'user010', '麦奇轻食沙拉', '藜麦时蔬碗 x3, 红油抄手 x3', 156.00, 3, '已取消', '', '', '', '2026-10-28 18:34:04');
+INSERT INTO `admin_order` VALUES (6, 'SG20261024003', 'user005', '糖潮甜品铺', '现烤舒芙蕾 x3', 96.00, 3, '已取消', '', '', '', '2026-10-24 17:34:27');
+INSERT INTO `admin_order` VALUES (7, 'SG20261026004', 'user008', '脆脆炸鸡铺', '韩式雪花炸鸡 x2, 深烘手冲单品 x1', 100.00, 1, '已支付', '', '', '', '2026-10-26 20:56:01');
+INSERT INTO `admin_order` VALUES (8, 'SG20261029005', 'user005', '脆脆炸鸡铺', '韩式雪花炸鸡 x2', 72.00, 2, '已完成', '', '', '', '2026-10-29 09:17:19');
+INSERT INTO `admin_order` VALUES (9, 'SG20261025006', 'user003', '阿婆云吞面', '红油抄手 x3', 66.00, 3, '已取消', '', '', '', '2026-10-25 16:04:49');
+INSERT INTO `admin_order` VALUES (10, 'SG20261021007', 'user011', '老成都火锅', '麻辣牛油锅 x2', 116.00, 1, '已支付', '', '', '', '2026-10-21 21:45:11');
+INSERT INTO `admin_order` VALUES (11, 'SG20261025008', 'user001', '老成都火锅', '麻辣牛油锅 x2, 生椰拿铁 x3', 182.00, 2, '已完成', '', '', '', '2026-10-25 20:26:33');
+INSERT INTO `admin_order` VALUES (12, 'SG20261029009', 'user004', '麦奇轻食沙拉', '藜麦时蔬碗 x1', 30.00, 2, '已完成', '', '', '', '2026-10-29 15:56:04');
+INSERT INTO `admin_order` VALUES (13, 'SG20261024010', 'user010', '莓日茶研', '生椰拿铁 x1, 安格斯牛肉堡 x1', 50.00, 2, '已完成', '', '', '', '2026-10-24 19:24:07');
+INSERT INTO `admin_order` VALUES (14, 'SG20261028011', 'user009', '拾光咖啡', '深烘手冲单品 x2', 56.00, 2, '已完成', '', '', '', '2026-10-28 13:24:32');
+INSERT INTO `admin_order` VALUES (15, 'SG20261030012', 'user012', '糖潮甜品铺', '现烤舒芙蕾 x2, 深烘手冲单品 x2, 藜麦时蔬碗 x3', 210.00, 2, '已完成', '', '', '', '2026-10-30 18:44:25');
+INSERT INTO `admin_order` VALUES (16, 'SG20261101013', 'user006', '莓日茶研', '深烘手冲单品 x2, 招牌牛肉面 x2', 112.00, 2, '已完成', '', '', '', '2026-11-01 16:11:03');
+INSERT INTO `admin_order` VALUES (17, 'SG20261102014', 'user008', '糖潮甜品铺', '现烤舒芙蕾 x1, 韩式雪花炸鸡 x2, 鸡胸蔬菜沙拉 x1', 130.00, 3, '已取消', '', '', '', '2026-11-02 10:52:00');
+INSERT INTO `admin_order` VALUES (18, 'SG20261024015', 'user012', '莓日茶研', '生椰拿铁 x3, 藜麦时蔬碗 x1, 红油抄手 x1', 118.00, 2, '已完成', '', '', '', '2026-10-24 12:25:25');
+INSERT INTO `admin_order` VALUES (19, 'SG20261031016', 'user012', '拾光咖啡', '深烘手冲单品 x3, 韩式雪花炸鸡 x3, 招牌牛肉面 x2', 248.00, 1, '已支付', '', '', '', '2026-10-31 11:02:26');
+INSERT INTO `admin_order` VALUES (20, 'SG20261028017', 'user002', '脆脆炸鸡铺', '安格斯牛肉堡 x3, 藜麦时蔬碗 x3, 深烘手冲单品 x1', 202.00, 2, '已完成', '', '', '', '2026-10-28 13:45:59');
+INSERT INTO `admin_order` VALUES (21, 'SG20261026018', 'user001', '麦奇轻食沙拉', '藜麦时蔬碗 x3, 深烘手冲单品 x3', 174.00, 3, '已取消', '', '', '', '2026-10-26 19:42:14');
+INSERT INTO `admin_order` VALUES (22, 'SG20261027019', 'user002', '脆脆炸鸡铺', '安格斯牛肉堡 x1', 28.00, 1, '已支付', '', '', '', '2026-10-27 09:09:33');
+INSERT INTO `admin_order` VALUES (23, 'SG20261022020', 'user003', '老成都火锅', '麻辣牛油锅 x1, 招牌牛肉面 x2, 韩式雪花炸鸡 x1', 150.00, 3, '已取消', '', '', '', '2026-10-22 20:15:31');
+INSERT INTO `admin_order` VALUES (24, 'SG20261021021', 'user003', '老成都火锅', '麻辣牛油锅 x3', 174.00, 3, '已取消', '', '', '', '2026-10-21 19:02:05');
+INSERT INTO `admin_order` VALUES (25, 'SG20261101022', 'user006', '麦奇轻食沙拉', '藜麦时蔬碗 x1, 生椰拿铁 x1, 鸡胸蔬菜沙拉 x3', 130.00, 2, '已完成', '', '', '', '2026-11-01 13:50:13');
+INSERT INTO `admin_order` VALUES (26, '17937573875403050', 'demo', '巷子口牛肉面', '招牌牛肉面 x2', 56.00, 1, '已支付', '演示用户', '13800000000', '广东省 深圳市 科技园南路 8 号 3 栋 501', '2026-11-04 09:56:27');
+INSERT INTO `admin_order` VALUES (27, '17937574461047919', 'demo', '巷子口牛肉面', '招牌牛肉面 x1', 28.00, 0, '待支付', '演示用户', '13800000000', '广东省 深圳市 科技园南路 8 号 3 栋 501', '2026-11-04 09:57:26');
+INSERT INTO `admin_order` VALUES (41, '17941944651139942', 'www', '糖潮甜品铺', '焦糖布丁（正常） x1, 芋泥啵啵杯（正常） x1', 44.00, 3, '已取消', 'wwwwww', '123456789092', 'js sr 是哪个不知道什么村', '2026-11-09 11:21:05');
+INSERT INTO `admin_order` VALUES (42, '17943605744754076', 'www', '糖潮甜品铺', '现烤舒芙蕾（正常 / 加水果） x1, 莓果千层（正常） x1', 67.00, 3, '已取消', 'wwwwww', '123456789092', 'js sr 是哪个不知道什么村', '2026-11-11 09:29:34');
+INSERT INTO `admin_order` VALUES (43, '17947966255342507', 'www', '糖潮甜品铺', '现烤舒芙蕾（无糖 / 加水果） x1', 37.00, 1, '已支付', 'www', '12345678901', 'jxs www 00', '2026-11-16 10:37:06');
+INSERT INTO `admin_order` VALUES (46, '17947982398008404', 'www', '芋见甜品', '芋见大福团子（正常） x2', 32.00, 2, '已完成', 'www', '12345678901', 'jxs www 00', '2026-11-16 11:04:00');
+INSERT INTO `admin_order` VALUES (47, '17949622405753793', 'www', '渝记火锅', '渝记手打虾滑（牛油锅 / 微辣 / 虾滑） x1, 渝记现炸酥肉（牛油锅 / 微辣 / 虾滑） x1', 92.00, 3, '已取消', 'wwwwww', '123456789092', 'js sr 是哪个不知道什么村', '2026-11-18 08:37:21');
+INSERT INTO `admin_order` VALUES (48, '17949622727992878', 'www', '莓好甜品', '莓好焦糖布丁（正常） x1, 莓好大福团子（正常） x1', 36.00, 0, '待支付', 'wwwwww', '123456789092', 'js sr 是哪个不知道什么村', '2026-11-18 08:37:53');
+INSERT INTO `admin_order` VALUES (49, '17949622803023566', 'www', '茶叔茶饮', '茶叔茉莉奶绿（正常 / 正常冰） x1, 茶叔白桃乌龙（正常 / 正常冰） x1', 38.00, 0, '待支付', 'wwwwww', '123456789092', 'js sr 是哪个不知道什么村', '2026-11-18 08:38:00');
+INSERT INTO `admin_order` VALUES (50, '17949647199191684', 'www', '糖潮甜品铺', '现烤舒芙蕾（正常） x1, 海盐提拉米苏（正常） x1', 60.00, 3, '已取消', 'wwwwww', '123456789092', 'js sr 是哪个不知道什么村', '2026-11-18 09:18:40');
+
+-- ----------------------------
+-- Table structure for admin_recommend
+-- ----------------------------
+DROP TABLE IF EXISTS `admin_recommend`;
+CREATE TABLE `admin_recommend`  (
+  `restaurant_id` bigint NOT NULL COMMENT '店铺id(源自restaurant)',
+  `name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '店铺名称',
+  `emoji` varchar(8) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT '图标 emoji',
+  `cat` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT '分类',
+  `rating` decimal(2, 1) NULL DEFAULT 0.0 COMMENT '评分',
+  `distance` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT '距离',
+  `recommended` tinyint NULL DEFAULT 0 COMMENT '是否推荐 1-是 0-否',
+  `sort` int NULL DEFAULT 0 COMMENT '推荐顺序(0-未推荐)',
+  PRIMARY KEY (`restaurant_id`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '后台推荐管理-数据快照(非实时数据源,重跑sync脚本刷新)' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of admin_recommend
+-- ----------------------------
+INSERT INTO `admin_recommend` VALUES (1, '巷子口牛肉面', '🍜', '面食', 4.8, '320m', 0, 0);
+INSERT INTO `admin_recommend` VALUES (2, '麦奇轻食沙拉', '🥗', '轻食', 4.6, '680m', 0, 0);
+INSERT INTO `admin_recommend` VALUES (3, '糖潮甜品铺', '🍰', '甜点', 4.9, '1.1km', 1, 1);
+INSERT INTO `admin_recommend` VALUES (4, '拾光咖啡', '☕', '饮品', 4.7, '450m', 0, 0);
+INSERT INTO `admin_recommend` VALUES (5, '老成都火锅', '🍲', '火锅', 4.8, '2.3km', 0, 0);
+INSERT INTO `admin_recommend` VALUES (6, '脆脆炸鸡铺', '🍔', '快餐', 4.5, '900m', 0, 0);
+INSERT INTO `admin_recommend` VALUES (7, '阿婆云吞面', '🍜', '面食', 4.7, '1.5km', 0, 0);
+INSERT INTO `admin_recommend` VALUES (8, '莓日茶研', '🧋', '饮品', 4.6, '700m', 0, 0);
+INSERT INTO `admin_recommend` VALUES (9, '老街口面馆', '🍜', '面食', 4.8, '1.3km', 0, 0);
+INSERT INTO `admin_recommend` VALUES (10, '小满面馆', '🍜', '面食', 4.7, '320m', 0, 0);
+INSERT INTO `admin_recommend` VALUES (11, '见一面面馆', '🍜', '面食', 4.6, '450m', 0, 0);
+INSERT INTO `admin_recommend` VALUES (12, '煮意面馆', '🍜', '面食', 4.9, '1.5km', 1, 2);
+INSERT INTO `admin_recommend` VALUES (13, '汤先生面馆', '🍜', '面食', 4.5, '1.8km', 0, 0);
+INSERT INTO `admin_recommend` VALUES (14, '暖食面馆', '🍜', '面食', 4.8, '1.2km', 0, 0);
+INSERT INTO `admin_recommend` VALUES (15, '晨光面馆', '🍜', '面食', 4.7, '3.1km', 0, 0);
+INSERT INTO `admin_recommend` VALUES (16, '巷尾面馆', '🍜', '面食', 4.6, '760m', 0, 0);
+INSERT INTO `admin_recommend` VALUES (17, '面香居面馆', '🍜', '面食', 4.9, '2.9km', 1, 3);
+INSERT INTO `admin_recommend` VALUES (18, '北方味面馆', '🍜', '面食', 4.8, '610m', 0, 0);
+INSERT INTO `admin_recommend` VALUES (19, '饱饱快餐', '🍔', '快餐', 4.7, '1.3km', 0, 0);
+INSERT INTO `admin_recommend` VALUES (20, '大口快餐', '🍔', '快餐', 4.6, '320m', 0, 0);
+INSERT INTO `admin_recommend` VALUES (21, '急急快餐', '🍔', '快餐', 4.9, '450m', 1, 4);
+INSERT INTO `admin_recommend` VALUES (22, '饱嗝快餐', '🍔', '快餐', 4.7, '1.5km', 0, 0);
+INSERT INTO `admin_recommend` VALUES (23, '快乐快餐', '🍔', '快餐', 4.8, '1.8km', 0, 0);
+INSERT INTO `admin_recommend` VALUES (24, '薯叔快餐', '🍔', '快餐', 4.5, '1.2km', 0, 0);
+INSERT INTO `admin_recommend` VALUES (25, '炸物快餐', '🍔', '快餐', 4.9, '3.1km', 1, 5);
+INSERT INTO `admin_recommend` VALUES (26, '饱了快餐', '🍔', '快餐', 4.6, '760m', 0, 0);
+INSERT INTO `admin_recommend` VALUES (27, '嗨吃快餐', '🍔', '快餐', 4.7, '2.9km', 0, 0);
+INSERT INTO `admin_recommend` VALUES (28, '速达快餐', '🍔', '快餐', 4.8, '610m', 0, 0);
+INSERT INTO `admin_recommend` VALUES (29, '汉堡侠快餐', '🍔', '快餐', 4.6, '1.3km', 0, 0);
+INSERT INTO `admin_recommend` VALUES (30, '甜心甜品', '🍰', '甜点', 4.8, '320m', 0, 0);
+INSERT INTO `admin_recommend` VALUES (31, '奶油甜品', '🍰', '甜点', 4.6, '450m', 0, 0);
+INSERT INTO `admin_recommend` VALUES (32, '莓好甜品', '🍰', '甜点', 4.9, '1.5km', 1, 6);
+INSERT INTO `admin_recommend` VALUES (33, '半糖甜品', '🍰', '甜点', 4.7, '1.8km', 0, 0);
+INSERT INTO `admin_recommend` VALUES (34, '糯糯甜品', '🍰', '甜点', 4.8, '1.2km', 0, 0);
+INSERT INTO `admin_recommend` VALUES (35, '焙焙甜品', '🍰', '甜点', 4.5, '3.1km', 0, 0);
+INSERT INTO `admin_recommend` VALUES (36, '小甜甜品', '🍰', '甜点', 4.7, '760m', 0, 0);
+INSERT INTO `admin_recommend` VALUES (37, '糖罐甜品', '🍰', '甜点', 4.6, '2.9km', 0, 0);
+INSERT INTO `admin_recommend` VALUES (38, '芋见甜品', '🍰', '甜点', 4.9, '610m', 1, 7);
+INSERT INTO `admin_recommend` VALUES (39, '暖糖甜品', '🍰', '甜点', 4.8, '1.3km', 0, 0);
+INSERT INTO `admin_recommend` VALUES (40, '半杯茶饮', '🧋', '饮品', 4.7, '320m', 0, 0);
+INSERT INTO `admin_recommend` VALUES (41, '柠夏茶饮', '🧋', '饮品', 4.6, '450m', 0, 0);
+INSERT INTO `admin_recommend` VALUES (42, '椰岛茶饮', '🧋', '饮品', 4.9, '1.5km', 1, 8);
+INSERT INTO `admin_recommend` VALUES (43, '煮茶茶饮', '🧋', '饮品', 4.5, '1.8km', 0, 0);
+INSERT INTO `admin_recommend` VALUES (44, '鲜果茶饮', '🧋', '饮品', 4.8, '1.2km', 0, 0);
+INSERT INTO `admin_recommend` VALUES (45, '慢茶茶饮', '🧋', '饮品', 4.7, '3.1km', 0, 0);
+INSERT INTO `admin_recommend` VALUES (46, '青柚茶饮', '🧋', '饮品', 4.6, '760m', 0, 0);
+INSERT INTO `admin_recommend` VALUES (47, '茶叔茶饮', '🧋', '饮品', 4.9, '2.9km', 1, 9);
+INSERT INTO `admin_recommend` VALUES (48, '一杯茶饮', '🧋', '饮品', 4.8, '610m', 0, 0);
+INSERT INTO `admin_recommend` VALUES (49, '柚见茶饮', '🧋', '饮品', 4.7, '1.3km', 0, 0);
+INSERT INTO `admin_recommend` VALUES (50, '甘露茶饮', '🧋', '饮品', 4.6, '320m', 0, 0);
+INSERT INTO `admin_recommend` VALUES (51, '绿野轻食', '🥗', '轻食', 4.9, '450m', 1, 10);
+INSERT INTO `admin_recommend` VALUES (52, '轻氧轻食', '🥗', '轻食', 4.7, '1.5km', 0, 0);
+INSERT INTO `admin_recommend` VALUES (53, '纤纤轻食', '🥗', '轻食', 4.8, '1.8km', 0, 0);
+INSERT INTO `admin_recommend` VALUES (54, '每日轻食', '🥗', '轻食', 4.5, '1.2km', 0, 0);
+INSERT INTO `admin_recommend` VALUES (55, '鲜野轻食', '🥗', '轻食', 4.9, '3.1km', 1, 11);
+INSERT INTO `admin_recommend` VALUES (56, '素拾轻食', '🥗', '轻食', 4.6, '760m', 0, 0);
+INSERT INTO `admin_recommend` VALUES (57, '轻拌轻食', '🥗', '轻食', 4.7, '2.9km', 0, 0);
+INSERT INTO `admin_recommend` VALUES (58, '藜麦轻食', '🥗', '轻食', 4.8, '610m', 0, 0);
+INSERT INTO `admin_recommend` VALUES (59, '元气轻食', '🥗', '轻食', 4.6, '1.3km', 0, 0);
+INSERT INTO `admin_recommend` VALUES (60, '青蔬轻食', '🥗', '轻食', 4.8, '320m', 0, 0);
+INSERT INTO `admin_recommend` VALUES (61, '巴蜀火锅', '🍲', '火锅', 4.6, '450m', 0, 0);
+INSERT INTO `admin_recommend` VALUES (62, '椒麻火锅', '🍲', '火锅', 4.9, '1.5km', 1, 12);
+INSERT INTO `admin_recommend` VALUES (63, '渝味火锅', '🍲', '火锅', 4.7, '1.8km', 0, 0);
+INSERT INTO `admin_recommend` VALUES (64, '锅气火锅', '🍲', '火锅', 4.8, '1.2km', 0, 0);
+INSERT INTO `admin_recommend` VALUES (65, '辣府火锅', '🍲', '火锅', 4.5, '3.1km', 0, 0);
+INSERT INTO `admin_recommend` VALUES (66, '红汤火锅', '🍲', '火锅', 4.7, '760m', 0, 0);
+INSERT INTO `admin_recommend` VALUES (67, '沸腾火锅', '🍲', '火锅', 4.6, '2.9km', 0, 0);
+INSERT INTO `admin_recommend` VALUES (68, '渝记火锅', '🍲', '火锅', 4.9, '610m', 0, 0);
+INSERT INTO `admin_recommend` VALUES (69, '椒香火锅', '🍲', '火锅', 4.8, '1.3km', 0, 0);
+INSERT INTO `admin_recommend` VALUES (70, '蜀大火锅', '🍲', '火锅', 4.7, '320m', 0, 0);
+
+-- ----------------------------
+-- Table structure for admin_search
+-- ----------------------------
+DROP TABLE IF EXISTS `admin_search`;
+CREATE TABLE `admin_search`  (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `cfg_key` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT 'search' COMMENT '配置键',
+  `placeholder` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '搜索框占位文案',
+  `hotwords` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '热门搜索词(逗号分隔)',
+  `hotword_count` int NULL DEFAULT 0 COMMENT '热词数量',
+  `synced_at` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '同步时间',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 2 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '后台搜索管理-数据快照(非实时数据源,重跑sync脚本刷新)' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of admin_search
+-- ----------------------------
+INSERT INTO `admin_search` VALUES (1, 'search', '搜美食、搜好店，回车进入美食页…', '牛肉面，火锅，轻食，奶茶，沙拉，炸鸡', 6, '2026-11-18 09:35:04');
+
+-- ----------------------------
+-- Table structure for admin_user
+-- ----------------------------
+DROP TABLE IF EXISTS `admin_user`;
+CREATE TABLE `admin_user`  (
+  `id` bigint NOT NULL COMMENT '用户id(源自user)',
+  `account` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '登录账号',
+  `nickname` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT '昵称',
+  `avatar` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT '头像 emoji',
+  `gender` varchar(8) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT '性别',
+  `phone` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT '手机号',
+  `bio` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT '个性签名',
+  `account_type` tinyint NULL DEFAULT 0 COMMENT '账号类型 0-用户名 1-手机 2-邮箱',
+  `status` tinyint NULL DEFAULT 1 COMMENT '状态 1-正常 0-禁用',
+  `created_at` datetime NULL DEFAULT NULL COMMENT '注册时间',
+  `address_count` int NULL DEFAULT 0 COMMENT '收货地址数量',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '后台用户管理-数据快照(不含密码,非实时数据源,重跑sync脚本刷新)' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of admin_user
+-- ----------------------------
+INSERT INTO `admin_user` VALUES (1, 'demo', '演示用户', '🦊', '女', '13800001234', '热爱生活，热爱美食 🍜', 0, 1, '2026-10-23 16:31:59', 1);
+INSERT INTO `admin_user` VALUES (2, 'www', '美食家', '', '', '', '', 0, 1, '2026-10-26 11:42:42', 1);
+INSERT INTO `admin_user` VALUES (5, 'user001', '小美', '', '', '', '', 0, 1, '2026-10-23 17:04:24', 0);
+INSERT INTO `admin_user` VALUES (6, 'user002', '阿强', '', '', '', '', 0, 1, '2026-10-24 18:41:10', 0);
+INSERT INTO `admin_user` VALUES (7, 'user003', '食客王', '', '', '', '', 0, 1, '2026-10-25 09:26:02', 0);
+INSERT INTO `admin_user` VALUES (8, 'user004', '馋猫', '', '', '', '', 0, 1, '2026-10-26 20:53:41', 0);
+INSERT INTO `admin_user` VALUES (9, 'user005', '甜甜', '', '', '', '', 0, 1, '2026-10-27 11:49:59', 0);
+INSERT INTO `admin_user` VALUES (10, 'user006', '老饕', '', '', '', '', 0, 1, '2026-10-28 14:33:39', 0);
+INSERT INTO `admin_user` VALUES (11, 'user007', '小鹿', '', '', '', '', 0, 1, '2026-10-29 15:12:50', 0);
+INSERT INTO `admin_user` VALUES (12, 'user008', '大胃王', '', '', '', '', 0, 1, '2026-10-30 22:38:11', 0);
+INSERT INTO `admin_user` VALUES (13, 'user009', '阿杰', '', '', '', '', 0, 1, '2026-10-31 19:35:26', 0);
+INSERT INTO `admin_user` VALUES (14, 'user010', '丸子', '', '', '', '', 0, 1, '2026-10-31 17:51:28', 0);
+INSERT INTO `admin_user` VALUES (15, 'user011', '果果', '', '', '', '', 0, 1, '2026-10-31 17:20:51', 0);
+INSERT INTO `admin_user` VALUES (17, 'Z123', '嘤嘤嘤', '', '', '', '', 0, 1, '2026-11-11 09:34:40', 0);
+INSERT INTO `admin_user` VALUES (18, 'Zxc', 'xx', '', '', '', '', 0, 1, '2026-11-16 11:30:11', 0);
 
 -- ----------------------------
 -- Table structure for category
@@ -113,7 +745,7 @@ CREATE TABLE `category`  (
   INDEX `idx_parent`(`parent_id` ASC) USING BTREE,
   INDEX `idx_path`(`path` ASC) USING BTREE,
   INDEX `idx_level`(`level` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 26 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '分类表（三级分类 + 物化路径，支撑分级分类搜索）' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 38 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '分类表（三级分类 + 物化路径，支撑分级分类搜索）' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of category
@@ -162,16 +794,16 @@ CREATE TABLE `dish`  (
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_rest`(`restaurant_id` ASC) USING BTREE,
   INDEX `idx_dish_category`(`category_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 353 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '菜品表（店内美食）' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 354 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '菜品表（店内美食）' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of dish
 -- ----------------------------
-INSERT INTO `dish` VALUES (1, 1, '招牌牛肉面', 28.00, '🍜', '牛骨熬汤 8 小时，手工现拉，一勺辣油封神。', 1, '[{\"name\":\"分量\",\"type\":\"single\",\"options\":[{\"label\":\"标准\",\"price\":0},{\"label\":\"大份\",\"price\":5}]},{\"name\":\"辣度\",\"type\":\"single\",\"options\":[{\"label\":\"不辣\",\"price\":0},{\"label\":\"微辣\",\"price\":0},{\"label\":\"中辣\",\"price\":0},{\"label\":\"特辣\",\"price\":1}]},{\"name\":\"加料\",\"type\":\"multi\",\"options\":[{\"label\":\"加蛋\",\"price\":2},{\"label\":\"加牛肉\",\"price\":8},{\"label\":\"加青菜\",\"price\":3}]}]', 8, 1);
-INSERT INTO `dish` VALUES (2, 1, '红油抄手', 22.00, '🥟', '皮薄馅大，麻辣鲜香直冲天灵盖。', 2, '[{\"name\":\"分量\",\"type\":\"single\",\"options\":[{\"label\":\"标准\",\"price\":0},{\"label\":\"大份\",\"price\":5}]},{\"name\":\"辣度\",\"type\":\"single\",\"options\":[{\"label\":\"不辣\",\"price\":0},{\"label\":\"微辣\",\"price\":0},{\"label\":\"中辣\",\"price\":0},{\"label\":\"特辣\",\"price\":1}]},{\"name\":\"加料\",\"type\":\"multi\",\"options\":[{\"label\":\"加蛋\",\"price\":2},{\"label\":\"加牛肉\",\"price\":8},{\"label\":\"加青菜\",\"price\":3}]}]', 10, 1);
-INSERT INTO `dish` VALUES (3, 1, '酸辣肥肠面', 26.00, '🍜', '肥肠处理干净无异味，酸辣开胃。', 3, '[{\"name\":\"分量\",\"type\":\"single\",\"options\":[{\"label\":\"标准\",\"price\":0},{\"label\":\"大份\",\"price\":5}]},{\"name\":\"辣度\",\"type\":\"single\",\"options\":[{\"label\":\"不辣\",\"price\":0},{\"label\":\"微辣\",\"price\":0},{\"label\":\"中辣\",\"price\":0},{\"label\":\"特辣\",\"price\":1}]},{\"name\":\"加料\",\"type\":\"multi\",\"options\":[{\"label\":\"加蛋\",\"price\":2},{\"label\":\"加牛肉\",\"price\":8},{\"label\":\"加青菜\",\"price\":3}]}]', 8, 1);
-INSERT INTO `dish` VALUES (4, 1, '卤香豆干', 10.00, '🍢', '老卤慢浸，越嚼越香的下饭小菜。', 4, '[{\"name\":\"分量\",\"type\":\"single\",\"options\":[{\"label\":\"标准\",\"price\":0},{\"label\":\"大份\",\"price\":5}]},{\"name\":\"辣度\",\"type\":\"single\",\"options\":[{\"label\":\"不辣\",\"price\":0},{\"label\":\"微辣\",\"price\":0},{\"label\":\"中辣\",\"price\":0},{\"label\":\"特辣\",\"price\":1}]},{\"name\":\"加料\",\"type\":\"multi\",\"options\":[{\"label\":\"加蛋\",\"price\":2},{\"label\":\"加牛肉\",\"price\":8},{\"label\":\"加青菜\",\"price\":3}]}]', 11, 1);
-INSERT INTO `dish` VALUES (5, 1, '冰镇酸梅汤', 8.00, '🥤', '古法熬煮，解辣神器。', 5, '[{\"name\":\"分量\",\"type\":\"single\",\"options\":[{\"label\":\"标准\",\"price\":0},{\"label\":\"大份\",\"price\":5}]},{\"name\":\"辣度\",\"type\":\"single\",\"options\":[{\"label\":\"不辣\",\"price\":0},{\"label\":\"微辣\",\"price\":0},{\"label\":\"中辣\",\"price\":0},{\"label\":\"特辣\",\"price\":1}]},{\"name\":\"加料\",\"type\":\"multi\",\"options\":[{\"label\":\"加蛋\",\"price\":2},{\"label\":\"加牛肉\",\"price\":8},{\"label\":\"加青菜\",\"price\":3}]}]', 11, 1);
+INSERT INTO `dish` VALUES (1, 1, '招牌牛肉面', 21.00, '🍜', '牛骨熬汤 8 小时，手工现拉，一勺辣油封神。', 1, '[{\"name\":\"分量\",\"type\":\"single\",\"options\":[{\"label\":\"标准\",\"price\":0},{\"label\":\"大份\",\"price\":5}]},{\"name\":\"辣度\",\"type\":\"single\",\"options\":[{\"label\":\"不辣\",\"price\":0},{\"label\":\"微辣\",\"price\":0},{\"label\":\"中辣\",\"price\":0},{\"label\":\"特辣\",\"price\":1}]},{\"name\":\"加料\",\"type\":\"multi\",\"options\":[{\"label\":\"加蛋\",\"price\":2},{\"label\":\"加牛肉\",\"price\":8},{\"label\":\"加青菜\",\"price\":3}]}]', 8, 1);
+INSERT INTO `dish` VALUES (2, 1, '红油抄手', 15.00, '🥟', '皮薄馅大，麻辣鲜香直冲天灵盖。', 2, '[{\"name\":\"分量\",\"type\":\"single\",\"options\":[{\"label\":\"标准\",\"price\":0},{\"label\":\"大份\",\"price\":5}]},{\"name\":\"辣度\",\"type\":\"single\",\"options\":[{\"label\":\"不辣\",\"price\":0},{\"label\":\"微辣\",\"price\":0},{\"label\":\"中辣\",\"price\":0},{\"label\":\"特辣\",\"price\":1}]},{\"name\":\"加料\",\"type\":\"multi\",\"options\":[{\"label\":\"加蛋\",\"price\":2},{\"label\":\"加牛肉\",\"price\":8},{\"label\":\"加青菜\",\"price\":3}]}]', 10, 1);
+INSERT INTO `dish` VALUES (3, 1, '酸辣肥肠面', 19.00, '🍜', '肥肠处理干净无异味，酸辣开胃。', 3, '[{\"name\":\"分量\",\"type\":\"single\",\"options\":[{\"label\":\"标准\",\"price\":0},{\"label\":\"大份\",\"price\":5}]},{\"name\":\"辣度\",\"type\":\"single\",\"options\":[{\"label\":\"不辣\",\"price\":0},{\"label\":\"微辣\",\"price\":0},{\"label\":\"中辣\",\"price\":0},{\"label\":\"特辣\",\"price\":1}]},{\"name\":\"加料\",\"type\":\"multi\",\"options\":[{\"label\":\"加蛋\",\"price\":2},{\"label\":\"加牛肉\",\"price\":8},{\"label\":\"加青菜\",\"price\":3}]}]', 8, 1);
+INSERT INTO `dish` VALUES (4, 1, '卤香豆干', 3.00, '🍢', '老卤慢浸，越嚼越香的下饭小菜。', 4, '[{\"name\":\"分量\",\"type\":\"single\",\"options\":[{\"label\":\"标准\",\"price\":0},{\"label\":\"大份\",\"price\":5}]},{\"name\":\"辣度\",\"type\":\"single\",\"options\":[{\"label\":\"不辣\",\"price\":0},{\"label\":\"微辣\",\"price\":0},{\"label\":\"中辣\",\"price\":0},{\"label\":\"特辣\",\"price\":1}]},{\"name\":\"加料\",\"type\":\"multi\",\"options\":[{\"label\":\"加蛋\",\"price\":2},{\"label\":\"加牛肉\",\"price\":8},{\"label\":\"加青菜\",\"price\":3}]}]', 11, 1);
+INSERT INTO `dish` VALUES (5, 1, '冰镇酸梅汤', 1.00, '🥤', '古法熬煮，解辣神器。', 5, '[{\"name\":\"分量\",\"type\":\"single\",\"options\":[{\"label\":\"标准\",\"price\":0},{\"label\":\"大份\",\"price\":5}]},{\"name\":\"辣度\",\"type\":\"single\",\"options\":[{\"label\":\"不辣\",\"price\":0},{\"label\":\"微辣\",\"price\":0},{\"label\":\"中辣\",\"price\":0},{\"label\":\"特辣\",\"price\":1}]},{\"name\":\"加料\",\"type\":\"multi\",\"options\":[{\"label\":\"加蛋\",\"price\":2},{\"label\":\"加牛肉\",\"price\":8},{\"label\":\"加青菜\",\"price\":3}]}]', 11, 1);
 INSERT INTO `dish` VALUES (6, 2, '鸡胸蔬菜沙拉', 26.00, '🥗', '高蛋白低脂，油醋汁现拌。', 1, '[{\"name\":\"分量\",\"type\":\"single\",\"options\":[{\"label\":\"标准\",\"price\":0},{\"label\":\"大份\",\"price\":8}]},{\"name\":\"酱汁\",\"type\":\"single\",\"options\":[{\"label\":\"油醋汁\",\"price\":0},{\"label\":\"凯撒酱\",\"price\":2},{\"label\":\"蜂蜜芥末\",\"price\":2},{\"label\":\"芝麻酱\",\"price\":2}]}]', 20, 1);
 INSERT INTO `dish` VALUES (7, 2, '牛油果鸡蛋三明治', 24.00, '🥪', '全麦面包夹现切牛油果，给得慷慨。', 2, '[{\"name\":\"分量\",\"type\":\"single\",\"options\":[{\"label\":\"标准\",\"price\":0},{\"label\":\"大份\",\"price\":8}]},{\"name\":\"酱汁\",\"type\":\"single\",\"options\":[{\"label\":\"油醋汁\",\"price\":0},{\"label\":\"凯撒酱\",\"price\":2},{\"label\":\"蜂蜜芥末\",\"price\":2},{\"label\":\"芝麻酱\",\"price\":2}]}]', 21, 1);
 INSERT INTO `dish` VALUES (8, 2, '藜麦时蔬碗', 30.00, '🍚', '藜麦配当季时蔬，饱腹无负担。', 3, '[{\"name\":\"分量\",\"type\":\"single\",\"options\":[{\"label\":\"标准\",\"price\":0},{\"label\":\"大份\",\"price\":8}]},{\"name\":\"酱汁\",\"type\":\"single\",\"options\":[{\"label\":\"油醋汁\",\"price\":0},{\"label\":\"凯撒酱\",\"price\":2},{\"label\":\"蜂蜜芥末\",\"price\":2},{\"label\":\"芝麻酱\",\"price\":2}]}]', 21, 1);
@@ -533,7 +1165,7 @@ CREATE TABLE `order_item`  (
   `created_at` datetime NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_order`(`order_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 75 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '订单明细表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 83 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '订单明细表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of order_item
@@ -595,6 +1227,14 @@ INSERT INTO `order_item` VALUES (66, 42, 11, '现烤舒芙蕾（正常 / 加水�
 INSERT INTO `order_item` VALUES (67, 42, 13, '莓果千层（正常）', 30.00, 1, 30.00, '2026-11-11 09:29:34');
 INSERT INTO `order_item` VALUES (71, 43, 11, '现烤舒芙蕾（无糖 / 加水果）', 37.00, 1, 37.00, '2026-11-16 10:37:05');
 INSERT INTO `order_item` VALUES (74, 46, 189, '芋见大福团子（正常）', 16.00, 2, 32.00, '2026-11-16 11:03:59');
+INSERT INTO `order_item` VALUES (75, 47, 336, '渝记手打虾滑（牛油锅 / 微辣 / 虾滑）', 48.00, 1, 48.00, '2026-11-18 08:37:20');
+INSERT INTO `order_item` VALUES (76, 47, 337, '渝记现炸酥肉（牛油锅 / 微辣 / 虾滑）', 44.00, 1, 44.00, '2026-11-18 08:37:20');
+INSERT INTO `order_item` VALUES (77, 48, 160, '莓好焦糖布丁（正常）', 20.00, 1, 20.00, '2026-11-18 08:37:52');
+INSERT INTO `order_item` VALUES (78, 48, 156, '莓好大福团子（正常）', 16.00, 1, 16.00, '2026-11-18 08:37:52');
+INSERT INTO `order_item` VALUES (79, 49, 235, '茶叔茉莉奶绿（正常 / 正常冰）', 18.00, 1, 18.00, '2026-11-18 08:38:00');
+INSERT INTO `order_item` VALUES (80, 49, 231, '茶叔白桃乌龙（正常 / 正常冰）', 20.00, 1, 20.00, '2026-11-18 08:38:00');
+INSERT INTO `order_item` VALUES (81, 50, 11, '现烤舒芙蕾（正常）', 32.00, 1, 32.00, '2026-11-18 09:18:39');
+INSERT INTO `order_item` VALUES (82, 50, 12, '海盐提拉米苏（正常）', 28.00, 1, 28.00, '2026-11-18 09:18:39');
 
 -- ----------------------------
 -- Table structure for orders
@@ -619,14 +1259,14 @@ CREATE TABLE `orders`  (
   UNIQUE INDEX `uk_order_no`(`order_no` ASC) USING BTREE,
   INDEX `idx_account`(`account` ASC) USING BTREE,
   INDEX `idx_rest`(`restaurant_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 47 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '订单主表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 51 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '订单主表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of orders
 -- ----------------------------
-INSERT INTO `orders` VALUES (1, '17929862034082201', 2, 'www', 70, '蜀大火锅', 74.00, 2, 3, '2026-10-26 11:43:23', '2026-10-26 11:43:27', '', '', '');
-INSERT INTO `orders` VALUES (2, '17929863292598620', 2, 'www', 3, '糖潮甜品铺', 180.00, 6, 2, '2026-10-26 11:45:29', '2026-10-26 11:45:34', '', '', '');
-INSERT INTO `orders` VALUES (3, '17933476306833235', 2, 'www', 39, '暖糖甜品', 56.00, 2, 3, '2026-10-30 16:07:10', '2026-10-30 16:07:17', '', '', '');
+INSERT INTO `orders` VALUES (1, '17929862034082201', 2, 'www', 70, '蜀大火锅', 74.00, 2, 3, '2026-10-26 11:43:23', '2026-11-18 08:57:35', 'wwwwww', '123456789092', 'js sr 是哪个不知道什么村');
+INSERT INTO `orders` VALUES (2, '17929863292598620', 2, 'www', 3, '糖潮甜品铺', 180.00, 6, 2, '2026-10-26 11:45:29', '2026-11-18 08:57:35', 'wwwwww', '123456789092', 'js sr 是哪个不知道什么村');
+INSERT INTO `orders` VALUES (3, '17933476306833235', 2, 'www', 39, '暖糖甜品', 56.00, 2, 3, '2026-10-30 16:07:10', '2026-11-18 08:57:35', 'wwwwww', '123456789092', 'js sr 是哪个不知道什么村');
 INSERT INTO `orders` VALUES (4, 'SG20261025001', 5, 'user001', 7, '阿婆云吞面', 66.00, 3, 2, '2026-10-25 09:40:05', '2026-10-25 09:40:05', '', '', '');
 INSERT INTO `orders` VALUES (5, 'SG20261028002', 6, 'user010', 2, '麦奇轻食沙拉', 156.00, 6, 3, '2026-10-28 18:34:04', '2026-10-28 18:34:04', '', '', '');
 INSERT INTO `orders` VALUES (6, 'SG20261024003', 10, 'user005', 3, '糖潮甜品铺', 96.00, 3, 3, '2026-10-24 17:34:27', '2026-10-24 17:34:27', '', '', '');
@@ -651,10 +1291,14 @@ INSERT INTO `orders` VALUES (24, 'SG20261021021', 15, 'user003', 5, '老成都�
 INSERT INTO `orders` VALUES (25, 'SG20261101022', 13, 'user006', 2, '麦奇轻食沙拉', 130.00, 5, 2, '2026-11-01 13:50:13', '2026-11-01 13:50:13', '', '', '');
 INSERT INTO `orders` VALUES (26, '17937573875403050', 1, 'demo', 1, '巷子口牛肉面', 56.00, 2, 1, '2026-11-04 09:56:27', '2026-11-11 09:34:32', '演示用户', '13800000000', '广东省 深圳市 科技园南路 8 号 3 栋 501');
 INSERT INTO `orders` VALUES (27, '17937574461047919', 1, 'demo', 1, '巷子口牛肉面', 28.00, 1, 0, '2026-11-04 09:57:26', '2026-11-11 09:34:32', '演示用户', '13800000000', '广东省 深圳市 科技园南路 8 号 3 栋 501');
-INSERT INTO `orders` VALUES (41, '17941944651139942', 2, 'www', 3, '糖潮甜品铺', 44.00, 2, 3, '2026-11-09 11:21:05', '2026-11-09 11:21:08', '', '', '');
-INSERT INTO `orders` VALUES (42, '17943605744754076', 2, 'www', 3, '糖潮甜品铺', 67.00, 2, 3, '2026-11-11 09:29:34', '2026-11-16 10:37:18', '', '', '');
-INSERT INTO `orders` VALUES (43, '17947966255342507', 2, 'www', 3, '糖潮甜品铺', 37.00, 1, 1, '2026-11-16 10:37:06', '2026-11-16 10:37:10', 'www', '12345678901', 'jxs www 00');
-INSERT INTO `orders` VALUES (46, '17947982398008404', 2, 'www', 38, '芋见甜品', 32.00, 2, 0, '2026-11-16 11:04:00', '2026-11-16 11:03:59', 'www', '12345678901', 'jxs www 00');
+INSERT INTO `orders` VALUES (41, '17941944651139942', 2, 'www', 3, '糖潮甜品铺', 44.00, 2, 3, '2026-11-09 11:21:05', '2026-11-18 08:57:35', 'wwwwww', '123456789092', 'js sr 是哪个不知道什么村');
+INSERT INTO `orders` VALUES (42, '17943605744754076', 2, 'www', 3, '糖潮甜品铺', 67.00, 2, 3, '2026-11-11 09:29:34', '2026-11-18 08:57:35', 'wwwwww', '123456789092', 'js sr 是哪个不知道什么村');
+INSERT INTO `orders` VALUES (43, '17947966255342507', 2, 'www', 3, '糖潮甜品铺', 37.00, 1, 3, '2026-11-16 10:37:06', '2026-11-18 09:39:50', 'www', '12345678901', 'jxs www 00');
+INSERT INTO `orders` VALUES (46, '17947982398008404', 2, 'www', 38, '芋见甜品', 32.00, 2, 2, '2026-11-16 11:04:00', '2026-11-18 08:37:08', 'www', '12345678901', 'jxs www 00');
+INSERT INTO `orders` VALUES (47, '17949622405753793', 2, 'www', 68, '渝记火锅', 92.00, 2, 3, '2026-11-18 08:37:21', '2026-11-18 08:37:24', 'wwwwww', '123456789092', 'js sr 是哪个不知道什么村');
+INSERT INTO `orders` VALUES (48, '17949622727992878', 2, 'www', 32, '莓好甜品', 36.00, 2, 3, '2026-11-18 08:37:53', '2026-11-18 09:39:48', 'wwwwww', '123456789092', 'js sr 是哪个不知道什么村');
+INSERT INTO `orders` VALUES (49, '17949622803023566', 2, 'www', 47, '茶叔茶饮', 38.00, 2, 3, '2026-11-18 08:38:00', '2026-11-18 09:39:46', 'wwwwww', '123456789092', 'js sr 是哪个不知道什么村');
+INSERT INTO `orders` VALUES (50, '17949647199191684', 2, 'www', 3, '糖潮甜品铺', 60.00, 2, 3, '2026-11-18 09:18:40', '2026-11-18 09:18:43', 'wwwwww', '123456789092', 'js sr 是哪个不知道什么村');
 
 -- ----------------------------
 -- Table structure for restaurant
@@ -1160,10 +1804,8 @@ INSERT INTO `user` VALUES (9, 'user005', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdjw
 INSERT INTO `user` VALUES (10, 'user006', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdjwJZgpO60ObfiAvvvbslm9ey', '老饕', '', '', '', '', 0, 1, '2026-10-28 14:33:39', '2026-10-28 14:33:39');
 INSERT INTO `user` VALUES (11, 'user007', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdjwJZgpO60ObfiAvvvbslm9ey', '小鹿', '', '', '', '', 0, 1, '2026-10-29 15:12:50', '2026-10-29 15:12:50');
 INSERT INTO `user` VALUES (12, 'user008', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdjwJZgpO60ObfiAvvvbslm9ey', '大胃王', '', '', '', '', 0, 1, '2026-10-30 22:38:11', '2026-10-30 22:38:11');
-INSERT INTO `user` VALUES (13, 'user009', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdjwJZgpO60ObfiAvvvbslm9ey', '阿杰', '', '', '', '', 0, 1, '2026-10-31 19:35:26', '2026-10-31 19:35:26');
 INSERT INTO `user` VALUES (14, 'user010', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdjwJZgpO60ObfiAvvvbslm9ey', '丸子', '', '', '', '', 0, 1, '2026-10-31 17:51:28', '2026-10-31 17:51:28');
 INSERT INTO `user` VALUES (15, 'user011', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdjwJZgpO60ObfiAvvvbslm9ey', '果果', '', '', '', '', 0, 1, '2026-10-31 17:20:51', '2026-10-31 17:20:51');
-INSERT INTO `user` VALUES (16, 'user012', '$2a$10$z3AJZVEowSWv/f0EA5LSkOOe0JMvdjwJZgpO60ObfiAvvvbslm9ey', '阿橙', '', '', '', '', 0, 1, '2026-10-31 11:34:42', '2026-10-31 11:34:42');
 INSERT INTO `user` VALUES (17, 'Z123', '$2a$10$oiH4qgqx1vv1LNc2OVUbqezzik6u8QEV3LjTjeVa/D4G8XsJzteRy', '嘤嘤嘤', '', '', '', '', 0, 1, '2026-11-11 09:34:40', '2026-11-11 09:34:40');
 INSERT INTO `user` VALUES (18, 'Zxc', '$2a$10$QDzRZFvDf5aXeLoxMOfGvesw8oiOXblnFQG2We6jg8LRi/wFMj9ym', 'xx', '', '', '', '', 0, 1, '2026-11-16 11:30:11', '2026-11-16 11:30:11');
 
@@ -1185,26 +1827,12 @@ CREATE TABLE `user_address`  (
   `updated_at` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_account`(`account` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 8 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '用户收货地址' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 9 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '用户收货地址' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of user_address
 -- ----------------------------
 INSERT INTO `user_address` VALUES (1, 'demo', '演示用户', '13800000000', '家', '广东省', '深圳市', '科技园南路 8 号 3 栋 501', 0, '2026-11-04 09:52:48', '2026-11-06 15:58:34');
-INSERT INTO `user_address` VALUES (7, 'www', 'www', '12345678901', '家', 'jxs', 'www', '00', 0, '2026-11-11 09:40:46', '2026-11-11 09:40:46');
+INSERT INTO `user_address` VALUES (8, 'www', 'wwwwww', '123456789092', '家', 'js', 'sr', '是哪个不知道什么村', 0, '2026-11-18 08:36:29', '2026-11-18 08:36:29');
 
--- ----------------------------
--- Table structure for admin_dish
--- ----------------------------
-DROP TABLE IF EXISTS `admin_dish`;
-CREATE TABLE `admin_dish`  (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `name` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
-  `price` decimal(10, 2) NULL DEFAULT NULL,
-  `emoji` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
-  `category_id` bigint NULL DEFAULT NULL,
-  `description` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
-  `sort` int NULL DEFAULT NULL,
-  `enabled` tinyint(1) NULL DEFAULT NULL,
-  PRIMARY KEY (`id`) USING BTREE
-);
+SET FOREIGN_KEY_CHECKS = 1;

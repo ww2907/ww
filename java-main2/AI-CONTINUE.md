@@ -17,7 +17,7 @@
 | 前端 | `shiguang-food-login`（Vue 3.4 + Vite 5.4 + vue-router 4，依赖仅 axios/vue/vue-router） |
 | 后端 | `springBootTest`（Spring Boot 3.4.5 + MyBatis-Plus 3.5.9 + MySQL 8，Java 17） |
 | 后端包名 | `com.fenglin.springboottest`，启动类 `SpringBootTestApplication` |
-| 数据库 | `shiguang_food` @ `127.0.0.1:3306`，root / 123456，profile=`dev`；14 张表（8 业务 + 6 `admin_*`） |
+| 数据库 | `shiguang_food` @ `127.0.0.1:3306`，root / 123456，profile=`dev`；17 张表（10 业务 + 7 `admin_*`，其中 7 张 admin_* 是 Navicat 可见快照表，见 §6 末） |
 | 端口 | 后端 **8081**；前端 dev **5173**（`vite.config.js` 把 `/api` 代理到 8081） |
 | **访问地址** | 前后端都绑本机局域网 IP **192.168.68.31**，`localhost` **已不监听**。前端 `http://192.168.68.31:5173/#/login`，后端 `http://192.168.68.31:8081`。换网络后要同步改 `vite.config.js` 的 `LAN_HOST` 与 `application-dev.properties` 的 `server.address` |
 | 测试账号 | 用户 `demo` / `123456`；管理员 `admin` / `admin123`（bcrypt 哈希与 SQL 一致）；后台白名单账号 `www` |
@@ -66,7 +66,7 @@ $mvn = (Get-ChildItem "$env:USERPROFILE\.m2\wrapper\dists\apache-maven-*\*\bin\m
 # 3) 前端（PowerShell 禁止 npm.ps1，要写 npm.cmd；cmd/bat 不受影响）
 cd "D:/workSpace/ww/java-main2/shiguang-food-login" && npm install && npm run dev   # 构建用 npm run build
 
-# 4) 数据库（全量导入会清数据：15 张表都带 DROP TABLE，先问用户）
+# 4) 数据库（全量导入会清数据：17 张表都带 DROP TABLE，先问用户）
 #    shiguang_food.sql **不含 CREATE DATABASE / USE**，必须先建库并在命令行指定库名，
 #    否则 mysql 直接报 "No database selected"
 mysql -uroot -p123456 -e "CREATE DATABASE IF NOT EXISTS shiguang_food DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
@@ -79,6 +79,7 @@ mysql -uroot -p123456 --default-character-set=utf8mb4 shiguang_food < java-main2
 |---|---|---|
 | `food.js` | GET `/api/restaurants/search` `/recommended` `/food` `/categories` `/category-tree` | RestaurantController |
 | `food.js` | 上述 search/food 支持 `sort=default\|price\|distance` + `order=asc\|desc` + `categoryId` | 同文件 |
+| `food.js` | search/food 的 `keyword` **同时匹配店名/简介/标签 + 菜品名**（命中在售菜 `dish.name` 即反查其店铺返回，2026-11-18 加） | RestaurantServiceImpl `restaurantIdsByDishName` |
 | `restaurant.js` | GET `/api/restaurants/search/suggest?keyword=&limit=8` | 同文件，**声明在 `/{id}` 之前** |
 | `restaurant.js` | GET `/api/restaurants/{id}` → `{menu,reviews,avgRating,reviewCount}` | 同文件 |
 | `order.js` | POST `/api/orders` `{restaurantId,restaurantName,account,addressId,items:[{dishId,name,price,qty}]}` | OrderController |
@@ -299,6 +300,58 @@ ALTER TABLE `dish` ADD `enabled` tinyint NOT NULL DEFAULT 1 COMMENT '上架状�
   `start-backend.bat` / `start-frontend.bat` 引用。
 - 顺手修：`App.vue` 的 `WIDE_SHELL_PAGES` 加了 `buy`（此前立即下单页被当窄壳渲染，还叠了一层品牌头）。
 
+### 2026-11-18 后台分类统一到 category（修「后台分类改动对前台无效」）
+
+原状：后台分类 CRUD 读写 `admin_category` 镜像表，前台分类树与 `/search`、`/food` 的子树筛选读 `category`，
+后台改名/新增/移动对顾客端完全无效（与第八轮 `admin_dish` 同一个病根）。现在后台直接操作 `category`，
+接口路径不变（仍为 `/api/admin/category`），前端 `api/admin.js` 无需改契约。
+
+- `AdminService`：`listCategories/saveCategory/removeCategory` 全部走 `CategoryMapper`（字段 `bizCategoryMapper`），
+  `AdminCategory` 实体/Mapper 已删；`Category` 实体补 `level/path/code/icon/enabled`。
+- **path 维护**（分级搜索依赖 `path LIKE '/1/2/%'`，绝不能让前端传）：新增时先插占位 `/` 拿到自增 id，
+  再写 `/父path/{id}/`；编辑时若换父节点，按 `path LIKE '{旧path}%'` 捞整棵子树，
+  前缀替换 + `level` 按 `newLevel-oldLevel` 平移，并用 `maxChildDepth` 拦截「移动后超过三级」；
+  禁止挂到自身子孙（`parent.path.startsWith(oldPath)`）与自环。写操作加 `@Transactional`。
+- **删除保护**：有子分类 / 挂有菜品（`dish.category_id`）/ 挂有店铺（`restaurant.category_id`）一律拒绝，
+  返回中文提示，避免删二级业态后子树和菜品变孤儿。
+- `uk_cat_parent_name(parent_id,name)` 唯一键：同名自动加 ` 2/3…` 后缀，后缀长度按 `varchar(32)` 截断。
+- 验收脚本 `python verify_category_crud.py`（在 `springBootTest/`，需后端已在 192.168.68.31:8081 跑着；
+  脚本会先探测 `127.0.0.1` 再回退局域网 IP）：14 项全 PASS，覆盖新增/移动/子树 path 级联/非法移动/
+  删除保护/重名/清理，临时分类按 id 精确删除。跑完 `SELECT COUNT(*) FROM category` 应回到 25。
+- 遗留表清理（同日收尾）：`admin_category`（25 条）与误留在全量 SQL 里的 `admin_dish`（0 条）均已从
+  `shiguang_food.sql` 与线上库删除，代码零引用。旧表数据可从 git 历史
+  `git show 3268af3:java-main2/shiguang_food.sql` 找回，**不再单独存备份/迁移 SQL**。
+  现在库里 **17 张表**：admin_account, admin_config, category, dish, order_item, orders,
+  restaurant, review, user, user_address，以及 7 张 admin_* 快照表（见本节末）。
+  `springBootTest/sql/2026-11-11_category_hierarchy_v2.sql`
+  与 `scripts/migrate_category_v3_dump.py` 是历史一次性迁移脚本，仍会提到/重建旧表，**别再重跑**。
+- **唯一数据库文件约定（2026-11-18 用户明确要求）**：`java-main2/shiguang_food.sql` 是数据库内容的
+  唯一落点，必须是线上库 `shiguang_food` 的**原样 mysqldump**（`--default-character-set=utf8mb4`，
+  不含 `CREATE DATABASE/USE`，17 张表带 `DROP TABLE`）。任何库结构/数据变更直接改库后重新 dump 覆盖该文件，
+  **不要再创建备份、增量迁移或其它 SQL 文件**。校验口径：临时库导入后 17 张表 `CHECKSUM TABLE` 与线上逐一相等。
+  （坑：2026-11-18 收尾校验曾发现 dump 比线上多一条 user id=13「user009」，是 dump 之后线上删了该用户；
+  按「文件严格镜像线上库」直接用当前线上库重新 dump 覆盖即可，别手动编辑 SQL。）
+- 2026-11-18 数据补全（用户截图指订单红字「未填写地址」）：导航/搜索/数字/用户四模块种子数据本就齐全，未动。
+  实际只改三处：① `orders` 中 www 的 5 条空地址按地址簿回填 `wwwwww/123456789092/js sr 是哪个不知道什么村`
+  （其余 22 条其它用户订单按用户要求保留空地址）；② `admin_config.recommend` = `{"ids":[3,12,17,21,25,32]}`
+  （评分 top6）；③ 删 dish id=353 验收残留，菜品回 350 条。改完已重新 dump 覆盖 shiguang_food.sql。
+  注意 www 老订单 id=43/46 的地址是旧格式 `jxs www 00`，新补 5 条按现行地址簿，格式不统一属历史遗留，别据此判定数据错。
+
+### 2026-11-18 7 张 admin_* 快照表（Navicat 可见，勿当实时数据源）
+
+用户要求「后台 7 个模块在 Navicat 里能看到数据表和数据」而建：**admin_nav / admin_search /
+admin_recommend / admin_dish / admin_dashboard_stat / admin_user / admin_order**。由 `java-main2/sync_admin_snapshot_tables.py`
+从真实业务表 SELECT 同步（脚本可重复跑，先删后建再填充）。要点：
+
+- **仅快照、非数据源**：后台实时 CRUD 仍走 `category`/`dish`/`user`/`orders`/`admin_config` 真实表，
+  千万别让后台读写这些快照表，否则又是「后台改了前台无效」的病根。
+- **刷新链路**：真实表变化 → `python sync_admin_snapshot_tables.py` → mysqldump 原样覆盖 `shiguang_food.sql`
+  → 临时库导入 + 全表 `CHECKSUM TABLE` 对比。
+- **导航顺序唯一源头是 `admin_config` 表 `config_key='nav'` 行的 `config_value` JSON**（不是名为 nav 的列，
+  也没有 nav 列）；`admin_nav` 只是它的快照。当前 top 顺序 home/food/order/mine/cart
+  （购物车在「我的」后，cart sort=5，是浮层入口非路由）。改顺序要同时更新该 JSON + 前端 `store/admin.js`
+  的 `DEFAULT_NAV_TOP` 兜底 + 重跑 sync 刷新快照 + 重新 dump。
+
 ## 7. 已知坑
 
 | 现象 | 原因 / 解法 |
@@ -353,9 +406,11 @@ ALTER TABLE `dish` ADD `enabled` tinyint NOT NULL DEFAULT 1 COMMENT '上架状�
 - [x] 2026-11-16 后台菜品统一到 `dish`（原先读 `admin_dish` 导致后台改价对前台无效），
       补 `dish.enabled` 上架字段、后台按店铺筛选、前台 6 处过滤下架菜
 - [ ] `HomeView` / auth / admin 页的本地 `showToast` 统一到 `composables/useToast.js`
-- [ ] 可选：`admin_category` 仍是独立表（后台分类管理只写它，前台搜索读 `category`，同样存在「改了不生效」）。
-      要统一得顺带维护 `level/path`（分级搜索依赖 `path LIKE '/1/2/%'`），改父节点要重算整棵子树，属独立任务
-- [ ] 可选：后台「店铺管理」（营业状态/公告/配送费）——前端展示已支持，后台编辑入口未做
+- [x] 2026-11-18 后台分类统一到真实 `category`（原 `admin_category` 镜像表读写对前台无效）。
+      `AdminService` 的 list/save/remove 全走 `CategoryMapper`；`level/path` 由后端生成与级联维护
+      （新增写 `/1/{id}/`，换父节点整棵子树改 path 前缀并平移 level，禁止挂到自身子孙/超三级）；
+      `uk_cat_parent_name` 重名自动加序号；删除前检查子分类/菜品/店铺引用；加 `@Transactional` 保证原子性。
+      验收 `python verify_category_crud.py` 14 项全 PASS，临时数据自动清理。
 - [ ] 可选：后台「店铺管理」（营业状态/公告/配送费）——前端展示已支持，后台编辑入口未做
 - [ ] 可选：地址表单换省市区级联
 - [ ] 可选：头像改文件上传

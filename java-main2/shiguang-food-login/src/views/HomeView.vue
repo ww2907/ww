@@ -9,7 +9,6 @@ import AppHeader from '../components/layout/AppHeader.vue'
 import AppNav from '../components/layout/AppNav.vue'
 import AppSearch from '../components/layout/AppSearch.vue'
 import AppTabbar from '../components/layout/AppTabbar.vue'
-import CartEntry from '../components/layout/CartEntry.vue'
 import LocationBar from '../components/LocationBar.vue'
 import { buyNow } from '../store/buyNow.js'
 
@@ -168,12 +167,11 @@ onUnmounted(() => {
     <!-- 顶部导航栏（四页统一） -->
     <AppHeader :account="account" :show-admin="showAdmin" @logout="logout" @admin="goAdmin" />
 
-    <!-- 顶部横向导航（桌面端）+ 购物车入口（与店铺页共用一个购物车） -->
+    <!-- 顶部横向导航（桌面端）：购物车已并入导航项，与店铺页共用一个购物车 -->
     <div class="sh-nav-row">
       <div class="sh-nav-grow">
         <AppNav :items="topNav" :active="activeNav" @select="handleNav" />
       </div>
-      <CartEntry />
     </div>
 
     <!-- 搜索栏（尺寸四页统一） -->

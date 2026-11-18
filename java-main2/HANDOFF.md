@@ -77,7 +77,7 @@ npm run build    # 构建校验（已通过，158 modules）
 ```bash
 # 注意：shiguang_food.sql 只有表结构+数据，**没有 CREATE DATABASE / USE**，必须先建库并指定库名
 mysql -uroot -p123456 -e "CREATE DATABASE IF NOT EXISTS shiguang_food DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
-# 全新导入（必须是 utf8mb4，否则中文默认值报 Invalid default value；15 张表都带 DROP，会清数据）
+# 全新导入（必须是 utf8mb4，否则中文默认值报 Invalid default value；17 张表都带 DROP，会清数据）
 mysql -uroot -p123456 --default-character-set=utf8mb4 shiguang_food < shiguang_food.sql
 # 已有库只补迁移
 mysql -uroot -p123456 --default-character-set=utf8mb4 shiguang_food < springBootTest/sql/2026-11-04_profile_address.sql
@@ -197,14 +197,23 @@ hover 质感、响应式（860/600/520/380 断点 + 安全区）。
 - **下单必须有收货地址**：`orders.address / receiver_name / receiver_phone` 是**快照**（不是外键），
   用户改/删地址不影响历史订单；`resolveAddress()` 找不到地址就抛业务异常，前端据此提示。
   新增下单入口时记得带 `addressId`，或确认该账号有地址（后端会自动取默认地址）。
+- **唯一数据库文件**：`java-main2/shiguang_food.sql` 是数据库内容的唯一落点，内容为线上库原样 dump
+  （不加工、不增删数据）。以后所有库结构/数据变更都直接改库并重新 dump 覆盖这个文件，**不另建备份或迁移 SQL**。
+- **7 张 `admin_*` 快照表（Navicat 可见，仅此用途）**：`admin_nav` / `admin_search` / `admin_recommend` /
+  `admin_dish` / `admin_dashboard_stat` / `admin_user` / `admin_order`，共 17 张表。它们是为满足「后台各模块
+  在 Navicat 里能看到数据表和数据」而建的**静态快照**，**不是后台实时数据源**——后台 CRUD 仍读写真实业务表
+  （`category`/`dish`/`user`/`orders`/`admin_config`），切勿让后台去读写这些快照表，否则重蹈「改了前台无效」。
+  真实表变化后重跑 `python sync_admin_snapshot_tables.py`（在 `java-main2/`）刷新快照，再重新 dump 覆盖 SQL 文件。
 - **`user` 表新增字段**：`avatar / gender / phone / bio`；地址在 `user_address` 表（`is_default` 唯一默认）。
 
 ## 6. 剩余待办
 
 **唯一清单在 `AI-CONTINUE.md` §8**（两份待办各自维护只会互相过期，2026-11-16 已合并）。
 
-人看的一句话版本：功能已齐，剩下的都是"可选优化"——Toast 统一、`admin_category` 与前台 `category` 对齐、
-后台店铺管理、地址省市区级联、头像上传、接口鉴权。另外 `start-all.bat` 用的 `mvnw.cmd` 在本机有问题，
+人看的一句话版本：功能已齐，剩下的都是"可选优化"——Toast 统一、
+后台店铺管理、地址省市区级联、头像上传、接口鉴权。后台分类已在 2026-11-18 统一到真实 `category`
+（level/path 由后端维护、有引用时拒绝删除，`verify_category_crud.py` 14 项全 PASS；
+遗留表 `admin_category` 也已删除，现为 17 张表，含 7 张 `admin_*` 快照表）。另外 `start-all.bat` 用的 `mvnw.cmd` 在本机有问题，
 需要实测一次，不行就改成调 `restart_backend.py`。
 
 ## 7. 备份清单（重置系统前务必做）

@@ -8,8 +8,10 @@ Spring Boot + Vue3 的外卖点单练习项目：注册登录、店铺与菜品�
 java-main2\
 ├─ springBootTest\          后端：Spring Boot 3.4.5 + MyBatis-Plus 3.5.9 + MySQL 8.0，端口 8081
 ├─ shiguang-food-login\     前端：Vue3 + Vite，端口 5173（/api 代理到 8081）
-├─ shiguang_food.sql        建库数据脚本（15 张表结构 + 种子数据，含 DROP TABLE，重跑会清数据；
-│                           不含 CREATE DATABASE，首次导入见 AI-CONTINUE.md §3）
+├─ shiguang_food.sql        数据库内容唯一文件（线上库原样 dump，17 张表 + 种子数据；
+│                           含 DROP TABLE，重跑会清数据；不含 CREATE DATABASE，首次导入见 AI-CONTINUE.md §3。
+│                           库有变更就重新 dump 覆盖本文件，不另建备份/迁移 SQL；
+│                           其中 7 张 admin_* 表是 Navicat 可见快照表，见 HANDOFF.md §5）
 ├─ start-all.bat            一键启动（GBK 编码：检查数据库 → 起后端 → 起前端）
 ├─ stop-all.bat             一键停止前后端（MySQL 保持运行）
 ├─ HANDOFF.md               项目交接说明：做过什么、还剩什么（人读）

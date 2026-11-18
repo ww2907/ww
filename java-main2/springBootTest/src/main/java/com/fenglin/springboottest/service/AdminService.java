@@ -217,6 +217,7 @@ public class AdminService implements CommandLineRunner {
      * level 与 path（物化路径 /1/2/8/）由后端维护，不接受前端传值——
      * 分级搜索靠 path LIKE 取子树，一旦写错整棵子树的筛选就全歪。
      */
+    @Transactional(rollbackFor = Exception.class)
     public void saveCategory(Category cat) {
         if (cat == null) {
             throw new BusinessException("缺少分类信息");
@@ -322,6 +323,7 @@ public class AdminService implements CommandLineRunner {
      * 删除分类：子分类 / 菜品 / 店铺还挂着就不让删。
      * 以前是无条件 deleteById，删掉一个二级分类会让子树和菜品变成孤儿，前台筛选直接空掉。
      */
+    @Transactional(rollbackFor = Exception.class)
     public void removeCategory(Long id) {
         if (id == null) {
             throw new BusinessException("缺少分类 id");
@@ -364,8 +366,11 @@ public class AdminService implements CommandLineRunner {
             if (bizCategoryMapper.selectCount(qw) == 0) {
                 return candidate;
             }
-            String base = name.length() > 28 ? name.substring(0, 28) : name;
-            candidate = base + " " + n;
+            // category.name 是 varchar(32)，自动编号后缀不能把候选名撑爆
+            String suffix = " " + n;
+            String base = name.length() + suffix.length() > 32
+                    ? name.substring(0, 32 - suffix.length()) : name;
+            candidate = base + suffix;
             if (++n > 99) {
                 throw new BusinessException("同名分类太多了，换个名字吧");
             }

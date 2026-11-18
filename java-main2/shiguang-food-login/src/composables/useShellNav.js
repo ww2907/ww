@@ -35,6 +35,8 @@ export function useShellNav(initial = 'home') {
 
   // 返回 true 表示已处理；false 表示该入口尚未开发（页面可自行提示）
   function onNav(item) {
+    // 购物车项由 AppNav 内部展开浮层处理，这里只确认已消费，不做路由跳转
+    if (item.key === 'cart') return true
     const path = NAV_PATH[item.key]
     if (!path) return false
     activeNav.value = item.key

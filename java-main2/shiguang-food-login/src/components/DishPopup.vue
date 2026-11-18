@@ -11,9 +11,11 @@ const props = defineProps({
   // 'cart' = 加入购物车（店铺页默认）；'direct' = 加入「立即下单」本单（不经过购物车）
   mode: { type: String, default: 'cart' },
   // 是否额外显示「立即下单」按钮（店铺页用：选好这道菜直接去下单页）
-  showBuyNow: { type: Boolean, default: false }
+  showBuyNow: { type: Boolean, default: false },
+  // direct 模式下是否额外显示「加入购物车」按钮（立即下单页用：本单/购物车二选一）
+  showAddToCart: { type: Boolean, default: false }
 })
-const emit = defineEmits(['close', 'added', 'buy'])
+const emit = defineEmits(['close', 'added', 'buy', 'cart-added'])
 
 const isDirect = computed(() => props.mode === 'direct')
 
@@ -110,6 +112,20 @@ function addToBag() {
   emit('close')
 }
 
+// 立即下单页：把这道菜（含规格）直接加入购物车，而不是本单草稿
+function addToCart() {
+  if (!props.dish) return
+  const item = {
+    ...props.dish,
+    restaurantName: props.restaurantName,
+    price: unitPrice.value,
+    specText: specText.value
+  }
+  cart.addItem(props.restaurantId, item, qty.value)
+  emit('cart-added', { dish: props.dish, qty: qty.value, specText: specText.value, price: unitPrice.value })
+  emit('close')
+}
+
 // 店铺页的「立即下单」：交给父组件带着这道菜跳去下单页（不进购物车）
 function buyNowOrder() {
   if (!props.dish) return
@@ -168,9 +184,13 @@ function close() {
               <span class="dp-qnum">{{ qty }}</span>
               <button class="dp-step" @click="plus">+</button>
             </div>
-            <div class="dp-btns">
+            <div class="dp-btns" :class="{ 'dp-btns-dual': isDirect && showAddToCart }">
               <button class="dp-add" @click="addToBag">
                 {{ isDirect ? '加入本单' : '加入购物车' }} · ¥{{ (unitPrice * qty).toFixed(2) }}
+              </button>
+              <!-- 立即下单页：也可把这道菜存进购物车，稍后一起结算 -->
+              <button v-if="isDirect && showAddToCart" class="dp-buy" @click="addToCart">
+                🛒 加入购物车 · ¥{{ (unitPrice * qty).toFixed(2) }}
               </button>
               <!-- 店铺页：选好规格直接进入「立即下单」页，不经过购物车 -->
               <button v-if="showBuyNow && !isDirect" class="dp-buy" @click="buyNowOrder">
@@ -272,6 +292,9 @@ function close() {
 .dp-qnum { font-size: 16px; font-weight: 800; color: var(--deep); min-width: 20px; text-align: center; }
 
 .dp-btns { flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+/* 立即下单页：加入本单 / 加入购物车 并排 */
+.dp-btns-dual { flex-direction: row; }
+.dp-btns-dual .dp-add, .dp-btns-dual .dp-buy { flex: 1; padding: 13px 6px; font-size: 13px; }
 
 .dp-add {
   flex: 1; border: none; cursor: pointer; padding: 13px 0; border-radius: 14px;

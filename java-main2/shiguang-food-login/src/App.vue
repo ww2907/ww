@@ -11,7 +11,7 @@ const bgRef = ref(null)
 // 前台宽壳页面（1100px）：主页面 + 店铺详情 / 立即下单 / 结算。
 // 详情页此前落到登录页那套 460px 居中壳里，导致和首页宽度、排版完全对不上。
 // 注意：这些页面自带 AppHeader，showBrand 会关掉 App.vue 的品牌头，避免叠两层。
-const WIDE_SHELL_PAGES = ['home', 'food', 'orders', 'profile', 'restaurant', 'order', 'buy']
+const WIDE_SHELL_PAGES = ['home', 'food', 'orders', 'profile', 'restaurant', 'order', 'buy', 'checkout-all']
 
 // 后台管理页面：不显示漂浮背景与品牌头，使用全宽 shell
 const isAdmin = computed(() => !!(route.meta && route.meta.admin))
