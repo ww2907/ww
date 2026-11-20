@@ -28,7 +28,8 @@ const keyword = ref('')
 const detailShow = ref(false)
 const detailOrder = ref(null)
 
-// 状态筛选：null=全部；0 待支付 / 1 已支付 / 2 已完成 / 3 已取消
+// 状态筛选：null=全部；0 待支付（仅历史订单）/ 1 已支付 / 2 已完成 / 3 已取消
+// 新订单提交即支付，不会再产生 status=0；保留该筛选项只是为了兼容库里的老订单
 const tabs = [
   { label: '全部', status: null },
   { label: '待支付', status: 0 },
@@ -135,6 +136,13 @@ function openDetail(o) {
   detailShow.value = true
 }
 
+// 去对话：按订单打开与商家的聊天页（任何状态都能聊）
+function goChat(o) {
+  if (!o || o.id == null) return
+  detailShow.value = false
+  router.push('/chat/' + o.id)
+}
+
 // 搜索：与首页一致，跳转到美食页检索
 function onSearch() {
   const k = keyword.value.trim()
@@ -231,7 +239,8 @@ onMounted(loadOrders)
             <span class="oc-time">{{ o.createdAt }}</span>
             <span class="oc-total">合计 <b>¥{{ Number(o.totalAmount || 0).toFixed(2) }}</b></span>
           </div>
-          <div class="oc-actions" v-if="actionsFor(o.status).length">
+          <!-- 任何状态都能找商家沟通；待支付/已支付另有状态操作 -->
+          <div class="oc-actions">
             <button
               v-for="a in actionsFor(o.status)"
               :key="a.status"
@@ -240,10 +249,9 @@ onMounted(loadOrders)
               :disabled="acting"
               @click.stop="changeStatus(o, a.status)"
             >{{ a.label }}</button>
+            <button class="act chat" :disabled="acting" @click.stop="goChat(o)">💬 去对话</button>
             <button class="act reorder" :disabled="acting" @click.stop="reorder(o)">再来一单</button>
           </div>
-          <div class="oc-final" v-else-if="o.status === 2">✅ 订单已完成 · <button class="link-btn" :disabled="acting" @click.stop="reorder(o)">再来一单</button></div>
-          <div class="oc-final" v-else>⛔ 订单已取消 · <button class="link-btn" :disabled="acting" @click.stop="reorder(o)">再来一单</button></div>
           <div class="oc-no">订单号：{{ o.orderNo }}</div>
         </article>
       </div>
@@ -263,6 +271,7 @@ onMounted(loadOrders)
       @pay="onModalPay"
       @cancel="onModalCancel"
       @reorder="reorder"
+      @chat="goChat"
     />
   </div>
 </template>
@@ -297,7 +306,7 @@ onMounted(loadOrders)
 
 /* 订单操作区 */
 .oc-actions {
-  display: flex; gap: 8px; justify-content: flex-end;
+  display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end;
   margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line);
 }
 .act {
@@ -318,10 +327,11 @@ onMounted(loadOrders)
 .act.done:hover:not(:disabled) { background: rgba(0, 184, 148, 0.24); }
 .act.cancel { background: rgba(120, 120, 120, 0.12); color: #777; }
 .act.cancel:hover:not(:disabled) { background: rgba(120, 120, 120, 0.22); }
-.oc-final {
-  margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line);
-  text-align: right; font-size: 12px; font-weight: 700; color: var(--muted);
+.act.chat {
+  background: rgba(0, 184, 148, 0.1); color: var(--deep);
+  border: 1px solid rgba(0, 184, 148, 0.3);
 }
+.act.chat:hover:not(:disabled) { background: rgba(0, 184, 148, 0.2); }
 .oc-actions .reorder {
   background: rgba(255, 255, 255, 0.9); color: var(--deep); border: 1px solid var(--line);
 }

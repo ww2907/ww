@@ -3,7 +3,7 @@
 > 只给 AI 读：纯事实、命令、契约、约束，不含叙事。人看的版本见 `HANDOFF.md`，项目门面见 `README.md`。
 > **全项目只保留这三份 md**（2026-11-16 已把原 `AI-启动必读.md`、`沙箱联调手册.md` 合并进本文件，
 > 不要再新建平行文档，否则同一份命令会被抄成四份、然后各自过期）。
-> 最近更新：2026-11-16（立即下单 + 仓库清理）。
+> 最近更新：2026-11-20（提交订单即支付 + 用户/商家订单聊天）。
 
 ## 0. 开工前 3 步
 
@@ -17,7 +17,7 @@
 | 前端 | `shiguang-food-login`（Vue 3.4 + Vite 5.4 + vue-router 4，依赖仅 axios/vue/vue-router） |
 | 后端 | `springBootTest`（Spring Boot 3.4.5 + MyBatis-Plus 3.5.9 + MySQL 8，Java 17） |
 | 后端包名 | `com.fenglin.springboottest`，启动类 `SpringBootTestApplication` |
-| 数据库 | `shiguang_food` @ `127.0.0.1:3306`，root / 123456，profile=`dev`；17 张表（10 业务 + 7 `admin_*`，其中 7 张 admin_* 是 Navicat 可见快照表，见 §6 末） |
+| 数据库 | `shiguang_food` @ `127.0.0.1:3306`，root / 123456，profile=`dev`；19 张表（12 业务 + 7 `admin_*`，其中 7 张 admin_* 是 Navicat 可见快照表，见 §6 末；新增 `chat_conversation` / `chat_message`） |
 | 端口 | 后端 **8081**；前端 dev **5173**（`vite.config.js` 把 `/api` 代理到 8081） |
 | **访问地址** | 前后端都绑本机局域网 IP **192.168.68.31**，`localhost` **已不监听**。前端 `http://192.168.68.31:5173/#/login`，后端 `http://192.168.68.31:8081`。换网络后要同步改 `vite.config.js` 的 `LAN_HOST` 与 `application-dev.properties` 的 `server.address` |
 | 测试账号 | 用户 `demo` / `123456`；管理员 `admin` / `admin123`（bcrypt 哈希与 SQL 一致）；后台白名单账号 `www` |
@@ -28,12 +28,12 @@
 ## 2. 目录约定
 
 ```
-frontend: src/api/{food,restaurant,order,profile,admin,auth}.js      # 契约层
+frontend: src/api/{food,restaurant,order,chat,profile,admin,auth}.js # 契约层
           src/store/{cart,buyNow,profile,admin}.js                   # reactive + localStorage
           src/components/{DishPopup,OrderDetailModal,AddressManageModal,LocationBar,ToastHost,...}.vue
           src/components/layout/{AppHeader,CartEntry,...}.vue
-          src/views/*.vue   src/views/admin/*.vue
-backend:  controller/{Auth,Restaurant,Order,UserProfile,Admin}Controller.java
+          src/views/*.vue   src/views/admin/*.vue                    # ChatView.vue / admin/ChatManageView.vue
+backend:  controller/{Auth,Restaurant,Order,Chat,UserProfile,Admin,AdminChat}Controller.java
           service/**ServiceImpl.java   entity/ mapper/ vo/ controller/dto/
           sql/          增量迁移（2026-11-04 / 11-06 / 11-11 分类 / 11-11 地址）
           scripts/      一次性数据迁移脚本（migrate_*.py、gen_incremental.py）——平时不用跑
@@ -66,7 +66,7 @@ $mvn = (Get-ChildItem "$env:USERPROFILE\.m2\wrapper\dists\apache-maven-*\*\bin\m
 # 3) 前端（PowerShell 禁止 npm.ps1，要写 npm.cmd；cmd/bat 不受影响）
 cd "D:/workSpace/ww/java-main2/shiguang-food-login" && npm install && npm run dev   # 构建用 npm run build
 
-# 4) 数据库（全量导入会清数据：17 张表都带 DROP TABLE，先问用户）
+# 4) 数据库（全量导入会清数据：19 张表都带 DROP TABLE，先问用户）
 #    shiguang_food.sql **不含 CREATE DATABASE / USE**，必须先建库并在命令行指定库名，
 #    否则 mysql 直接报 "No database selected"
 mysql -uroot -p123456 -e "CREATE DATABASE IF NOT EXISTS shiguang_food DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
@@ -82,12 +82,15 @@ mysql -uroot -p123456 --default-character-set=utf8mb4 shiguang_food < java-main2
 | `food.js` | search/food 的 `keyword` **同时匹配店名/简介/标签 + 菜品名**（命中在售菜 `dish.name` 即反查其店铺返回，2026-11-18 加） | RestaurantServiceImpl `restaurantIdsByDishName` |
 | `restaurant.js` | GET `/api/restaurants/search/suggest?keyword=&limit=8` | 同文件，**声明在 `/{id}` 之前** |
 | `restaurant.js` | GET `/api/restaurants/{id}` → `{menu,reviews,avgRating,reviewCount}` | 同文件 |
-| `order.js` | POST `/api/orders` `{restaurantId,restaurantName,account,addressId,items:[{dishId,name,price,qty}]}` | OrderController |
-| `order.js` | POST `/api/orders/direct` `{restaurantId,account,addressId?,items:[{dishId,qty,specText}]}` → 立即下单，单价由后端按 `dish` 表核价（基础价 + 规格加价） | 同文件（2026-11-16 新增） |
+| `order.js` | POST `/api/orders` `{restaurantId,restaurantName,account,addressId,items:[{dishId,name,price,qty}]}` → **提交即支付，返回 status=1** | OrderController |
+| `order.js` | POST `/api/orders/direct` `{restaurantId,account,addressId?,items:[{dishId,qty,specText}]}` → 立即下单，单价由后端按 `dish` 表核价（基础价 + 规格加价），同样返回 status=1 | 同文件（2026-11-16 新增） |
 | `order.js` | GET `/api/orders?account=&status=`、GET `/api/orders/{id}`、GET `/api/orders/stats?account=`、POST `/api/orders/{id}/status?status=` | 同文件 |
+| `chat.js` | POST `/api/chat/conversations` `{orderId,account}` → 打开/创建订单会话（首条为商家欢迎语） | ChatController（2026-11-20 新增） |
+| `chat.js` | GET `/api/chat/conversations?account=`、GET `/api/chat/conversations/{id}/messages?account=`、POST `/api/chat/conversations/{id}/messages` `{account,content}` | 同文件 |
 | `profile.js` | GET/PUT `/api/users/profile`、CRUD `/api/users/addresses`、POST `/api/users/addresses/{id}/default` | UserProfileController |
 | `admin.js` | `/api/admin/{login,nav,search,recommend,category,dish,stats,user,order}` + `/api/admin/dish/{id}/price`、`/api/admin/dish/price/batch`、`/api/admin/order/{id}/status` | AdminController |
 | `admin.js` | GET `/api/admin/user/{id}/address`、DELETE `/api/admin/user/{id}/address/{addressId}` | 同文件 |
+| `admin.js` | GET `/api/admin/chat/conversations`、GET/POST `/api/admin/chat/conversations/{id}/messages` | AdminChatController（客服消息） |
 
 返回统一 `{code,message,data}`，`code===0` 成功。异常走 `BusinessException` + `GlobalExceptionHandler`。
 
@@ -109,7 +112,15 @@ mysql -uroot -p123456 --default-character-set=utf8mb4 shiguang_food < java-main2
 11. 菜品规格 `dish.specs` 是 JSON 文本 `[{name,type,options:[{label,price}]}]`，`type` 为 `single`(单选)/`multi`(多选)。
     后端 `RestaurantServiceImpl.parseSpecs` 解析成 `List<DishSpecVO>`；前端购物车按 `id#specText` 区分不同规格条目。
 12. 前端宽壳页面清单在 `App.vue` 的 `WIDE_SHELL_PAGES`：自带 `AppHeader` 的页面**必须**登记进去，
-    否则会被当窄壳（460px）渲染、并叠一层品牌头。当前含 `home/food/orders/profile/restaurant/order/buy`。
+    否则会被当窄壳（460px）渲染、并叠一层品牌头。当前含 `home/food/orders/profile/restaurant/order/buy/checkout-all/chat`。
+13. **提交订单即支付（2026-11-20）**：`saveOrder` 落库固定 `status=1 / 已支付`，购物车结算、立即下单、
+    再来一单、多店合并结算全部走这一入口；结算按钮显示「提交并支付」，新订单详情时间线从「已支付」起。
+    `status=0` 只保留给库里的历史订单，`/status` 接口仍允许 0→1 / 0→3 收尾，前端「待支付」筛选和
+    「去支付」按钮也只为兼容老单而保留——**不要再把新单写成 0，也不要删掉老单的收尾路径**。
+14. **订单聊天（2026-11-20）**：`chat_conversation.order_id` 唯一，一单一会话；`chat_message.sender_type`
+    只有 `user` / `merchant` 两种。用户只能开/读自己账号（`order.account`）的会话；后台接口不校验账号，
+    入口由后台登录态控制。未读数用 `user_unread` / `merchant_unread` 两个计数器，**拉消息时清零**：
+    用户 GET 清 user_unread，后台 GET 清 merchant_unread；发消息给对方 +1。前端 3~4 秒轮询，不用 WebSocket。
 
 ## 5.1 验收与自测
 
@@ -130,13 +141,25 @@ python verify_via_vite.py          # 经 Vite 代理(5173/5174→8081) 验证前
 **数据卫生（验收脚本会写库，跑完必须清）**
 
 ```sql
-DELETE oi FROM order_item oi WHERE oi.dish_name LIKE '%自测%' OR oi.dish_name LIKE '%代理链路%';
-DELETE FROM orders WHERE created_at >= '2026-11-06 00:00:00';
+-- 1) 先查出验收订单 id（不要按 created_at 一刀切，会删掉用户当天真实订单）
+SELECT DISTINCT order_id FROM order_item
+WHERE dish_name LIKE '%自测%' OR dish_name LIKE '%代理链路%';
+
+-- 2) 把上面查到的 id 填进 IN (...)：
+--    聊天先删消息再删会话（后台删订单不级联删会话）
+DELETE FROM chat_message WHERE conversation_id IN
+  (SELECT id FROM chat_conversation WHERE order_id IN (/* 验收订单 id */));
+DELETE FROM chat_conversation WHERE order_id IN (/* 验收订单 id */);
+DELETE FROM order_item WHERE order_id IN (/* 验收订单 id */);
+DELETE FROM orders WHERE id IN (/* 验收订单 id */);
+
 DELETE FROM user_address WHERE name LIKE '接口自测%';
 ```
 
-- 按 `created_at >= 今天` 删会**连带删掉用户当天真实下的单**，删前先 `SELECT` 或按 `dish_name` 精确删。
-- 测头像修改会把 `demo` 的 avatar 改成别的值，**记得改回 🦊**。
+- 按 `created_at >= 今天` 删会**连带删掉用户当天真实下的单**，必须先 `SELECT` 再按 id 精确删。
+- 测头像修改会把 `demo` 的 avatar 改成 🐼，**记得改回 🦊**；地址 CRUD 会把默认地址顶掉，
+  跑完用 `POST /api/users/addresses/{id}/default?account=demo` 把 `demo` 的 id=1 恢复成默认。
+- 聊天验收会建会话，**也要按上面的 order_id 清掉**，否则后台客服列表会留测试会话。
 
 **真实浏览器验证（2026-11-16 已跑通，本机有 Chrome）**
 
@@ -321,14 +344,15 @@ ALTER TABLE `dish` ADD `enabled` tinyint NOT NULL DEFAULT 1 COMMENT '上架状�
 - 遗留表清理（同日收尾）：`admin_category`（25 条）与误留在全量 SQL 里的 `admin_dish`（0 条）均已从
   `shiguang_food.sql` 与线上库删除，代码零引用。旧表数据可从 git 历史
   `git show 3268af3:java-main2/shiguang_food.sql` 找回，**不再单独存备份/迁移 SQL**。
-  现在库里 **17 张表**：admin_account, admin_config, category, dish, order_item, orders,
+  当时库里 17 张表；2026-11-20 新增 `chat_conversation` / `chat_message` 后为 **19 张**：
+  admin_account, admin_config, category, chat_conversation, chat_message, dish, order_item, orders,
   restaurant, review, user, user_address，以及 7 张 admin_* 快照表（见本节末）。
   `springBootTest/sql/2026-11-11_category_hierarchy_v2.sql`
   与 `scripts/migrate_category_v3_dump.py` 是历史一次性迁移脚本，仍会提到/重建旧表，**别再重跑**。
 - **唯一数据库文件约定（2026-11-18 用户明确要求）**：`java-main2/shiguang_food.sql` 是数据库内容的
   唯一落点，必须是线上库 `shiguang_food` 的**原样 mysqldump**（`--default-character-set=utf8mb4`，
-  不含 `CREATE DATABASE/USE`，17 张表带 `DROP TABLE`）。任何库结构/数据变更直接改库后重新 dump 覆盖该文件，
-  **不要再创建备份、增量迁移或其它 SQL 文件**。校验口径：临时库导入后 17 张表 `CHECKSUM TABLE` 与线上逐一相等。
+  不含 `CREATE DATABASE/USE`，19 张表带 `DROP TABLE`）。任何库结构/数据变更直接改库后重新 dump 覆盖该文件，
+  **不要再创建备份、增量迁移或其它 SQL 文件**。校验口径：临时库导入后 19 张表 `CHECKSUM TABLE` 与线上逐一相等。
   （坑：2026-11-18 收尾校验曾发现 dump 比线上多一条 user id=13「user009」，是 dump 之后线上删了该用户；
   按「文件严格镜像线上库」直接用当前线上库重新 dump 覆盖即可，别手动编辑 SQL。）
 - 2026-11-18 数据补全（用户截图指订单红字「未填写地址」）：导航/搜索/数字/用户四模块种子数据本就齐全，未动。
@@ -351,6 +375,35 @@ admin_recommend / admin_dish / admin_dashboard_stat / admin_user / admin_order**
   也没有 nav 列）；`admin_nav` 只是它的快照。当前 top 顺序 home/food/order/mine/cart
   （购物车在「我的」后，cart sort=5，是浮层入口非路由）。改顺序要同时更新该 JSON + 前端 `store/admin.js`
   的 `DEFAULT_NAV_TOP` 兜底 + 重跑 sync 刷新快照 + 重新 dump。
+
+### 2026-11-20 订单聊天（用户 ↔ 商家）
+
+需求：在订单上点「去对话」，用户能和商家围绕这一单沟通。
+
+```sql
+-- 已应用到线上库，并已重新 dump 进 shiguang_food.sql（19 张表）
+chat_conversation : id, order_id(唯一), order_no, account, restaurant_id, restaurant_name,
+                    user_name, last_message, last_message_at, user_unread, merchant_unread,
+                    created_at, updated_at
+chat_message      : id, conversation_id, sender_type('user'/'merchant'), sender_name,
+                    content, created_at
+```
+
+- **一单一会话**：`chat_conversation.order_id` 唯一键；`ChatServiceImpl.openConversation` 首次打开时建会话，
+  并写入一条商家欢迎语（`sender_type=merchant`，`user_unread=1`）。重复打开直接返回原会话。
+- **权限**：用户侧所有接口都校验 `conversation.account == 入参 account`，且开会话时校验
+  `order.account == account`；后台接口不校验账号（入口由后台登录态控制）。
+- **未读**：用户发消息 `merchant_unread+1`，商家回复 `user_unread+1`；拉消息即清零对应未读。
+  消息内容 trim 后 1~500 字，空消息/超长直接业务异常。
+- **接口**：用户 `POST /api/chat/conversations`、`GET /api/chat/conversations?account=`、
+  `GET/POST /api/chat/conversations/{id}/messages`；后台 `GET /api/admin/chat/conversations`、
+  `GET/POST /api/admin/chat/conversations/{id}/messages`。
+- **前端入口**：`OrdersView` 卡片和 `OrderDetailModal` 都有「💬 去对话」（任何订单状态都有），
+  跳 `/chat/:orderId`（`ChatView.vue`）：3 秒轮询、快捷话术、Enter 发送、Shift+Enter 换行。
+  后台侧栏新增「💬 客服消息」（`/admin/chat`，`ChatManageView.vue`）：左侧会话列表 + 商家未读角标，
+  右侧聊天与回复，4 秒轮询；窄屏上下堆叠。
+- **注意**：不建 WebSocket，轮询即可；后台删除订单不会级联删会话（保留历史沟通记录）。
+  验收可用 `verify_features.py` 之外的一次性脚本走「开会话 → 用户发 → 后台回 → 用户收」链路。
 
 ## 7. 已知坑
 
@@ -415,6 +468,9 @@ admin_recommend / admin_dish / admin_dashboard_stat / admin_user / admin_order**
 - [ ] 可选：地址表单换省市区级联
 - [ ] 可选：头像改文件上传
 - [ ] 可选：接口鉴权（当前全开放，token 未校验）
+- [x] 2026-11-20 提交订单即支付：新单落库 status=1，前端按钮/时间线/mock 同步，历史待支付单保留收尾能力
+- [x] 2026-11-20 订单聊天：`chat_conversation` / `chat_message` + 用户 `/chat/:orderId` + 后台 `/admin/chat`；
+      订单卡片/详情「去对话」，一单一会话、未读角标、3~4 秒轮询，接口链路与无头浏览器均验证通过
 
 ## 9. 备份（机器重置前）
 

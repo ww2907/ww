@@ -6,7 +6,7 @@ const props = defineProps({
   order: { type: Object, default: null },
   acting: { type: Boolean, default: false }
 })
-const emit = defineEmits(['close', 'pay', 'cancel', 'reorder'])
+const emit = defineEmits(['close', 'pay', 'cancel', 'reorder', 'chat'])
 
 function statusClass(s) {
   if (s === 1 || s === 2) return 'paid'
@@ -15,20 +15,29 @@ function statusClass(s) {
 }
 
 function timelineSteps(s) {
+  // 提交即支付：新单一落库就是「已支付」，不再展示待支付节点
   if (s === 3) {
     return [
-      { label: '待支付', state: 'done' },
+      { label: s === 0 ? '待支付' : '已支付', state: 'done' },
       { label: '已取消', state: 'cancel' }
     ]
   }
+  // status=0 只剩历史订单，保留原来的流转展示
+  if (s === 0) {
+    return [
+      { label: '待支付', state: 'active' },
+      { label: '已支付', state: 'todo' },
+      { label: '已完成', state: 'todo' }
+    ]
+  }
   return [
-    { label: '待支付', state: s === 0 ? 'active' : 'done' },
-    { label: '已支付', state: s < 1 ? 'todo' : s === 1 ? 'active' : 'done' },
-    { label: '已完成', state: s < 2 ? 'todo' : 'active' }
+    { label: '已支付', state: s === 1 ? 'active' : 'done' },
+    { label: '已完成', state: 'active' }
   ]
 }
 
 function actionsFor(s) {
+  // 历史待支付单仍可支付/取消；新订单不会再走到 s === 0
   if (s === 0) return [{ label: '去支付', status: 1, cls: 'pay' }, { label: '取消订单', status: 3, cls: 'cancel' }]
   if (s === 1) return [{ label: '确认完成', status: 2, cls: 'done' }, { label: '取消订单', status: 3, cls: 'cancel' }]
   return []
@@ -103,8 +112,10 @@ const canReorder = computed(() => props.order && props.order.items && props.orde
             <div class="info-row"><span>下单时间</span><span>{{ order.createdAt }}</span></div>
           </section>
 
-          <!-- 操作 -->
-          <div class="actions" v-if="actionsFor(order.status).length">
+          <!-- 操作：任何状态都可以找商家沟通 -->
+          <div class="final-tip" v-if="order.status === 2">✅ 订单已完成</div>
+          <div class="final-tip" v-else-if="order.status === 3">⛔ 订单已取消</div>
+          <div class="actions">
             <button
               v-for="a in actionsFor(order.status)"
               :key="a.status"
@@ -113,10 +124,9 @@ const canReorder = computed(() => props.order && props.order.items && props.orde
               :disabled="acting"
               @click="emit(a.cls === 'pay' ? 'pay' : 'cancel', order)"
             >{{ a.label }}</button>
+            <button class="act chat" :disabled="acting" @click="emit('chat', order)">💬 去对话</button>
             <button class="act reorder" :disabled="acting" @click="emit('reorder', order)">再来一单</button>
           </div>
-          <div class="final-tip" v-else-if="order.status === 2">✅ 订单已完成</div>
-          <div class="final-tip" v-else>⛔ 订单已取消</div>
         </div>
       </transition>
     </div>
@@ -217,6 +227,8 @@ const canReorder = computed(() => props.order && props.order.items && props.orde
 .act.pay:hover:not(:disabled) { transform: translateY(-1px); }
 .act.done { background: rgba(0,184,148,0.14); color: var(--deep); border: 1px solid rgba(0,184,148,0.35); }
 .act.done:hover:not(:disabled) { background: rgba(0,184,148,0.24); }
+.act.chat { background: rgba(0,184,148,0.1); color: var(--deep); border: 1px solid rgba(0,184,148,0.3); }
+.act.chat:hover:not(:disabled) { background: rgba(0,184,148,0.2); }
 .act.cancel { background: rgba(120,120,120,0.12); color: #777; }
 .act.cancel:hover:not(:disabled) { background: rgba(120,120,120,0.22); }
 .act.reorder { background: rgba(255,255,255,0.9); color: var(--deep); border: 1px solid var(--line); }

@@ -96,7 +96,7 @@ async function submitAll() {
     }
     // 全部成功：只清空已成功下单的店铺
     for (const g of snapshot) cart.clearRestaurant(g.restaurantId)
-    toast(`已提交 ${created.length} 笔订单 🎉`, 'success')
+    toast(`已提交并支付 ${created.length} 笔订单 🎉`, 'success')
     setTimeout(() => router.replace('/orders'), 900)
   } catch (e) {
     // 有失败：已成功的那几单保留（后端已落库），提示用户去订单页核对
@@ -221,7 +221,7 @@ onMounted(() => {
       </div>
       <button class="submit" :disabled="submitting || !currentAddress" @click="submitAll">
         <span v-if="submitting" class="btn-spin"></span>
-        {{ submitting ? '提交中…' : '提交全部订单' }}
+        {{ submitting ? '支付中…' : '提交并支付全部订单' }}
       </button>
     </div>
 

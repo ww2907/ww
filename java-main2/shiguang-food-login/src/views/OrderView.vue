@@ -84,7 +84,7 @@ async function submitOrder() {
       addressId: currentAddress.value.id,
       items: orderItems
     })
-    toast(`下单成功 🎉 订单号 ${order.orderNo}`, 'success')
+    toast(`下单并支付成功 🎉 订单号 ${order.orderNo}`, 'success')
     cart.clearRestaurant(rid.value)
     setTimeout(() => router.replace('/orders'), 900)
   } catch (e) {
@@ -242,7 +242,7 @@ onMounted(async () => {
       </div>
       <button class="submit" :disabled="submitting || !currentAddress" @click="submitOrder">
         <span v-if="submitting" class="btn-spin"></span>
-        {{ submitting ? '提交中…' : '提交订单' }}
+        {{ submitting ? '支付中…' : '提交并支付' }}
       </button>
     </div>
 

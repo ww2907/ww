@@ -1,28 +1,30 @@
 # HANDOFF.md · 食光美食（外卖点单）项目交接说明
 
 > 用途：换机器 / 重装系统 / 隔一段时间再回来继续做时，让新会话（或新同学）5 分钟内接上上下文。
-> 最后更新：2026-11-16
+> 最后更新：2026-11-20
 > 姊妹文件：`AI-CONTINUE.md`（给 AI 的命令/契约/坑，**技术细节以它为准**）、`README.md`（门面）。
 
 ---
 
 ## 1. 一句话说明
 
-一个「美食外卖点单」全栈练习项目：Vue3 前端 + Spring Boot 3 后端 + MySQL，已完成六轮需求（交互补齐 → UX 打磨 → 后端与后台管理落地 → 分级分类 → 下单收货地址 → 立即下单），当前处于**收尾/可选优化**阶段。
+一个「美食外卖点单」全栈练习项目：Vue3 前端 + Spring Boot 3 后端 + MySQL，已完成多轮需求
+（交互补齐 → UX 打磨 → 后端与后台管理落地 → 分级分类 → 下单收货地址 → 立即下单 → 提交即支付 → 订单聊天），
+当前处于**收尾/可选优化**阶段。
 
 ## 2. 目录与技术栈
 
 ```
 D:\workSpace\ww\java-main2\
 ├─ shiguang-food-login\        # 前端 Vue3 + Vite5 + vue-router（含 PC 后台管理）
-│  ├─ src\api\                 # 接口层（food / restaurant / order / profile / admin / auth）
+│  ├─ src\api\                 # 接口层（food / restaurant / order / chat / profile / admin / auth）
 │  ├─ src\store\               # 全局 store（cart / buyNow / profile / admin，reactive + localStorage）
 │  ├─ src\components\          # 通用组件（DishPopup / OrderDetailModal / EmptyState / ToastHost …）
 │  ├─ src\views\               # 用户端页面 + views\admin\* 后台页面
 │  └─ vite.config.js           # dev 代理 /api -> http://192.168.68.31:8081（host 也绑定该 IP）
 ├─ springBootTest\             # 后端 Spring Boot 3.4 + MyBatis-Plus 3.5 + MySQL
 │  ├─ src\main\java\com\fenglin\springboottest\
-│  │  ├─ controller\           # Auth / Restaurant / Order / UserProfile / Admin
+│  │  ├─ controller\           # Auth / Restaurant / Order / Chat / UserProfile / Admin / AdminChat
 │  │  ├─ service\ + service\impl\
 │  │  ├─ entity\ mapper\ vo\ controller\dto\
 │  ├─ sql\                     # 增量迁移（11-04 资料地址 / 11-06 经营字段 / 11-11 分类 / 11-11 地址）
@@ -77,7 +79,7 @@ npm run build    # 构建校验（已通过，158 modules）
 ```bash
 # 注意：shiguang_food.sql 只有表结构+数据，**没有 CREATE DATABASE / USE**，必须先建库并指定库名
 mysql -uroot -p123456 -e "CREATE DATABASE IF NOT EXISTS shiguang_food DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
-# 全新导入（必须是 utf8mb4，否则中文默认值报 Invalid default value；17 张表都带 DROP，会清数据）
+# 全新导入（必须是 utf8mb4，否则中文默认值报 Invalid default value；19 张表都带 DROP，会清数据）
 mysql -uroot -p123456 --default-character-set=utf8mb4 shiguang_food < shiguang_food.sql
 # 已有库只补迁移
 mysql -uroot -p123456 --default-character-set=utf8mb4 shiguang_food < springBootTest/sql/2026-11-04_profile_address.sql
@@ -88,7 +90,7 @@ mysql -uroot -p123456 --default-character-set=utf8mb4 shiguang_food < springBoot
 ### 第一轮：五类交互/功能
 1. 美食卡片：点击进店铺详情、菜品弹窗、加入购物车（`store/cart.js` 按店铺维度）
 2. 筛选：分类筛选 + 人均价格/距离排序（`food.js` 的 `price` / `distanceM`）
-3. 订单：详情弹窗、待支付去支付、取消、再来一单（`OrderDetailModal.vue`）
+3. 订单：详情弹窗、提交即支付、取消、再来一单（`OrderDetailModal.vue`）
 4. 搜索：实时联想（`AppSearch.vue` + `/restaurants/search/suggest`）、无结果空态
 5. 我的：头像修改、资料编辑、收货地址管理（`ProfileEditModal` / `AddressManageModal`）
 
@@ -187,6 +189,30 @@ hover 质感、响应式（860/600/520/380 断点 + 安全区）。
 - 11 张存活表全部带 `COMMENT`
 - `shiguang_food.sql` 同步，临时库导入比对：11 张表、`dish` 10 列、数据 CHECKSUM 与线上库完全一致
 
+### 第九轮：提交订单即支付（2026-11-20）
+
+需求：「订单提交就是支付」，不再单独点「去支付」。
+
+- 后端 `OrderServiceImpl.saveOrder` 新单一落库就是 `status=1 / 已支付`，购物车结算、立即下单、再来一单、
+  多店合并结算共用；`status=0` 只保留给历史订单，仍可 0→1 / 0→3 收尾
+- 前端结算按钮改「提交并支付」，订单详情时间线从「已支付」起；mock 新单同步为已支付；
+  「待支付」筛选 / 「去支付」按钮只为兼容老单保留
+- `verify_features.py` 改为校验新单 status=1、已支付→已完成、不可重复支付、已支付→取消，60 项全 PASS
+
+### 第十轮：订单聊天（2026-11-20）
+
+需求：点击订单可以选择「去对话」，用户和商家围绕这一单沟通。
+
+- 数据库新增 `chat_conversation`（一单一会话，`order_id` 唯一）和 `chat_message`（`user`/`merchant` 两类发送方），
+  共 19 张表；已重新 dump 覆盖 `shiguang_food.sql`，临时库 19 表 CHECKSUM 全等
+- 后端 `ChatController`（`/api/chat`）+ `AdminChatController`（`/api/admin/chat`）：
+  用户开会话/拉消息/发消息，后台列会话/拉消息/回复；首次打开自动写商家欢迎语；
+  用户侧校验订单与账号归属，消息 1~500 字；未读数按 `user_unread` / `merchant_unread` 双向计数，拉取清零
+- 前端用户端 `/chat/:orderId`（`ChatView.vue`）：订单卡片和详情弹窗都有「💬 去对话」，3 秒轮询、
+  快捷话术、Enter 发送；后台侧栏新增「💬 客服消息」（`/admin/chat`，`ChatManageView.vue`）：
+  左侧会话 + 未读角标，右侧回复，4 秒轮询，窄屏上下堆叠
+- 验证：接口链路 12 项全 PASS（开会话/欢迎语/双端收发/未读/越权/空消息），无头 Chrome 两端页面无控制台报错
+
 ## 5. 关键约定（改代码前务必看）
 
 - **契约优先**：所有 `src/api/*.js` 的 `ENDPOINTS` 就是前后端契约，后端路径不要单方面改。
@@ -194,13 +220,19 @@ hover 质感、响应式（860/600/520/380 断点 + 安全区）。
 - **Spring 路由顺序**：`/search/suggest` 必须声明在 `/{id}` **之前**，否则被路径变量吃掉。
 - **统一返回**：`Result<T>{code,message,data}`，`code === 0` 成功；异常走 `BusinessException` + `GlobalExceptionHandler`。
 - **购物车按店铺隔离**：同一店铺加购合并，下单后只清该店铺。
+- **提交订单即支付（2026-11-20）**：两个下单入口共用 `saveOrder()`，新单一落库就是 `status=1 / 已支付`，
+  结算按钮是「提交并支付」，详情时间线从「已支付」开始。`status=0` 只存在于历史订单，
+  「待支付」筛选 / 「去支付」按钮仅为兼容老单保留（老单仍可 0→1 或 0→3）。验收脚本已按新口径更新。
+- **订单聊天**：一单一会话（`chat_conversation.order_id` 唯一），用户只能操作自己账号的会话；
+  未读用 `user_unread` / `merchant_unread` 双向计数，拉消息即清零。前端 3~4 秒轮询，不用 WebSocket；
+  后台删订单不级联删会话（保留沟通记录）。
 - **下单必须有收货地址**：`orders.address / receiver_name / receiver_phone` 是**快照**（不是外键），
   用户改/删地址不影响历史订单；`resolveAddress()` 找不到地址就抛业务异常，前端据此提示。
   新增下单入口时记得带 `addressId`，或确认该账号有地址（后端会自动取默认地址）。
 - **唯一数据库文件**：`java-main2/shiguang_food.sql` 是数据库内容的唯一落点，内容为线上库原样 dump
   （不加工、不增删数据）。以后所有库结构/数据变更都直接改库并重新 dump 覆盖这个文件，**不另建备份或迁移 SQL**。
 - **7 张 `admin_*` 快照表（Navicat 可见，仅此用途）**：`admin_nav` / `admin_search` / `admin_recommend` /
-  `admin_dish` / `admin_dashboard_stat` / `admin_user` / `admin_order`，共 17 张表。它们是为满足「后台各模块
+  `admin_dish` / `admin_dashboard_stat` / `admin_user` / `admin_order`，共 19 张表（真实业务 12 + 快照 7）。它们是为满足「后台各模块
   在 Navicat 里能看到数据表和数据」而建的**静态快照**，**不是后台实时数据源**——后台 CRUD 仍读写真实业务表
   （`category`/`dish`/`user`/`orders`/`admin_config`），切勿让后台去读写这些快照表，否则重蹈「改了前台无效」。
   真实表变化后重跑 `python sync_admin_snapshot_tables.py`（在 `java-main2/`）刷新快照，再重新 dump 覆盖 SQL 文件。
@@ -213,7 +245,7 @@ hover 质感、响应式（860/600/520/380 断点 + 安全区）。
 人看的一句话版本：功能已齐，剩下的都是"可选优化"——Toast 统一、
 后台店铺管理、地址省市区级联、头像上传、接口鉴权。后台分类已在 2026-11-18 统一到真实 `category`
 （level/path 由后端维护、有引用时拒绝删除，`verify_category_crud.py` 14 项全 PASS；
-遗留表 `admin_category` 也已删除，现为 17 张表，含 7 张 `admin_*` 快照表）。另外 `start-all.bat` 用的 `mvnw.cmd` 在本机有问题，
+遗留表 `admin_category` 也已删除，现为 19 张表，含 7 张 `admin_*` 快照表与 2 张聊天表）。另外 `start-all.bat` 用的 `mvnw.cmd` 在本机有问题，
 需要实测一次，不行就改成调 `restart_backend.py`。
 
 ## 7. 备份清单（重置系统前务必做）

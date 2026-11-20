@@ -209,7 +209,9 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
                 ? restaurantName.trim() : restaurant.getName());
         order.setTotalAmount(total);
         order.setItemCount(itemCount);
-        order.setStatus(0); // 待支付
+        // 提交订单即支付：新单直接落「已支付」，不再有独立的待支付步骤。
+        // status=0 仅保留给库里的历史订单，仍可通过 /status?status=1 或 3 收尾。
+        order.setStatus(1);
         // 地址以「快照」写入订单：之后用户改/删地址，历史订单不受影响
         order.setReceiverName(address.getName() == null ? "" : address.getName());
         order.setReceiverPhone(address.getPhone() == null ? "" : address.getPhone());

@@ -1,6 +1,6 @@
 # 食光美食（外卖点单）
 
-Spring Boot + Vue3 的外卖点单练习项目：注册登录、店铺与菜品、购物车、立即下单、收货地址、我的订单、后台管理。
+Spring Boot + Vue3 的外卖点单练习项目：注册登录、店铺与菜品、购物车、立即下单、收货地址、我的订单、订单聊天（用户 ↔ 商家）、后台管理。提交订单即支付（新单直接是「已支付」）。
 
 ## 项目结构
 
@@ -8,7 +8,7 @@ Spring Boot + Vue3 的外卖点单练习项目：注册登录、店铺与菜品�
 java-main2\
 ├─ springBootTest\          后端：Spring Boot 3.4.5 + MyBatis-Plus 3.5.9 + MySQL 8.0，端口 8081
 ├─ shiguang-food-login\     前端：Vue3 + Vite，端口 5173（/api 代理到 8081）
-├─ shiguang_food.sql        数据库内容唯一文件（线上库原样 dump，17 张表 + 种子数据；
+├─ shiguang_food.sql        数据库内容唯一文件（线上库原样 dump，19 张表 + 种子数据；
 │                           含 DROP TABLE，重跑会清数据；不含 CREATE DATABASE，首次导入见 AI-CONTINUE.md §3。
 │                           库有变更就重新 dump 覆盖本文件，不另建备份/迁移 SQL；
 │                           其中 7 张 admin_* 表是 Navicat 可见快照表，见 HANDOFF.md §5）

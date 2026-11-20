@@ -134,7 +134,7 @@ async function submitOrder() {
       addressId: currentAddress.value.id,
       items: orderItems
     })
-    toast(`下单成功 🎉 订单号 ${order.orderNo}`, 'success')
+    toast(`下单并支付成功 🎉 订单号 ${order.orderNo}`, 'success')
     // 本单已提交：清掉草稿，购物车不受影响
     buyNow.clearDraft(rid.value)
     setTimeout(() => router.replace('/orders'), 900)
@@ -315,7 +315,7 @@ onMounted(async () => {
       </div>
       <button class="submit" :disabled="!canSubmit" @click="submitOrder">
         <span v-if="submitting" class="btn-spin"></span>
-        {{ submitting ? '提交中…' : isClosed ? '已打烊' : !reachable ? '还差起送' : '提交订单' }}
+        {{ submitting ? '支付中…' : isClosed ? '已打烊' : !reachable ? '还差起送' : '提交并支付' }}
       </button>
     </div>
 

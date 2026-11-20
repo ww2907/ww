@@ -12,7 +12,8 @@ const menus = [
   { to: '/admin/dish', icon: '🍱', label: '菜品管理', desc: '分类与下单菜品' },
   { to: '/admin/price', icon: '📊', label: '数字管理', desc: '经营数据看板' },
   { to: '/admin/user', icon: '👥', label: '用户管理', desc: '用户信息展示' },
-  { to: '/admin/order', icon: '🧾', label: '订单管理', desc: '下单点餐记录' }
+  { to: '/admin/order', icon: '🧾', label: '订单管理', desc: '下单点餐记录' },
+  { to: '/admin/chat', icon: '💬', label: '客服消息', desc: '与用户沟通' }
 ]
 
 function logout() {

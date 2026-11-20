@@ -24,7 +24,7 @@ public class OrderVO {
 
     private Integer itemCount;
 
-    /** 订单状态：0=待支付 1=已支付 2=已完成 3=已取消 */
+    /** 订单状态：0=待支付（仅历史订单） 1=已支付（提交即支付） 2=已完成 3=已取消 */
     private Integer status;
 
     /** 状态中文文案 */

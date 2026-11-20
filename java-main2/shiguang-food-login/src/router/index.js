@@ -9,6 +9,7 @@ import OrderView from '../views/OrderView.vue'
 import BuyNowView from '../views/BuyNowView.vue'
 import CheckoutAllView from '../views/CheckoutAllView.vue'
 import OrdersView from '../views/OrdersView.vue'
+import ChatView from '../views/ChatView.vue'
 import FoodView from '../views/FoodView.vue'
 import ProfileView from '../views/ProfileView.vue'
 import AdminLoginView from '../views/AdminLoginView.vue'
@@ -20,6 +21,7 @@ import DishManageView from '../views/admin/DishManageView.vue'
 import PriceManageView from '../views/admin/PriceManageView.vue'
 import UserManageView from '../views/admin/UserManageView.vue'
 import OrderManageView from '../views/admin/OrderManageView.vue'
+import ChatManageView from '../views/admin/ChatManageView.vue'
 import { isLoggedIn, session } from '../store.js'
 import { isAdminLoggedIn, canEnterAdmin, adminSession, clearAdminSession } from '../store/admin.js'
 
@@ -37,6 +39,8 @@ const routes = [
   // 合并结算：一次性付清所有店铺的购物车
   { path: '/checkout-all', name: 'checkout-all', component: CheckoutAllView },
   { path: '/orders', name: 'orders', component: OrdersView },
+  // 订单聊天：一单一会话，入口在「我的订单」卡片 / 详情弹窗
+  { path: '/chat/:orderId', name: 'chat', component: ChatView },
   { path: '/profile', name: 'profile', component: ProfileView },
 
   // ---------- 后台管理系统 ----------
@@ -53,7 +57,8 @@ const routes = [
       { path: 'dish', name: 'admin-dish', component: DishManageView, meta: { admin: true } },
       { path: 'price', name: 'admin-price', component: PriceManageView, meta: { admin: true } },
       { path: 'user', name: 'admin-user', component: UserManageView, meta: { admin: true } },
-      { path: 'order', name: 'admin-order', component: OrderManageView, meta: { admin: true } }
+      { path: 'order', name: 'admin-order', component: OrderManageView, meta: { admin: true } },
+      { path: 'chat', name: 'admin-chat', component: ChatManageView, meta: { admin: true } }
     ]
   }
 ]
@@ -68,7 +73,7 @@ const router = createRouter({
 //  - 后台受保护页面未登录 / 账号不在白名单 → 后台登录页
 //  - 非白名单账号访问后台登录页 → 首页（后台只对 www 开放）
 //  - 已登录访问进入页 → 首页
-const PROTECTED = ['home', 'food', 'restaurant', 'buy', 'order', 'checkout-all', 'orders', 'profile']
+const PROTECTED = ['home', 'food', 'restaurant', 'buy', 'order', 'checkout-all', 'orders', 'chat', 'profile']
 router.beforeEach((to) => {
   if (PROTECTED.includes(to.name) && !isLoggedIn()) {
     return { name: 'login' }

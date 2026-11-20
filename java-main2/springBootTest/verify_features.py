@@ -138,7 +138,7 @@ check("搜索实时联想 /search/suggest", d.get("code") == 0 and len(sg) > 0,
       "命中 %d 条：%s" % (len(sg), [s.get("name") for s in sg[:4]]))
 
 # ---------------------------------------------------------------- 3 订单
-head("3. 订单详情 / 待支付去支付 / 取消 / 再来一单")
+head("3. 订单详情 / 提交即支付 / 完成 / 取消 / 再来一单")
 ACC = "demo"
 d = call("POST", "/api/orders", {
     "restaurantId": 1, "restaurantName": "巷子口牛肉面", "account": ACC,
@@ -147,7 +147,8 @@ d = call("POST", "/api/orders", {
 new_order = d.get("data") or {}
 check("POST /api/orders 下单", d.get("code") == 0, d.get("message"))
 oid = new_order.get("id")
-check("新订单初始状态=0 待支付", new_order.get("status") == 0, "status=%s no=%s" % (new_order.get("status"), new_order.get("orderNo")))
+check("新订单提交即支付 status=1 已支付", new_order.get("status") == 1 and new_order.get("statusText") == "已支付",
+      "status=%s text=%s no=%s" % (new_order.get("status"), new_order.get("statusText"), new_order.get("orderNo")))
 check("订单带 restaurantId", new_order.get("restaurantId") is not None, new_order.get("restaurantId"))
 items = new_order.get("items") or []
 check("订单明细带 dishId 字段(再来一单依赖)", bool(items) and "dishId" in items[0],
@@ -156,18 +157,20 @@ check("订单明细带 dishId 字段(再来一单依赖)", bool(items) and "dish
 d = call("GET", "/api/orders/%s" % oid)
 check("GET /api/orders/{id} 订单详情", d.get("code") == 0 and (d.get("data") or {}).get("id") == oid)
 
-d = call("POST", "/api/orders/%s/status?status=1" % oid)
-check("待支付 → 已支付（去支付）", d.get("code") == 0 and (d.get("data") or {}).get("status") == 1,
+d = call("POST", "/api/orders/%s/status?status=2" % oid)
+check("已支付 → 已完成（确认完成）", d.get("code") == 0 and (d.get("data") or {}).get("status") == 2,
       d.get("message"))
 
-# 再建一单测取消
+# 再建一单测「已支付不可重复支付」+ 取消
 d = call("POST", "/api/orders", {
     "restaurantId": 2, "restaurantName": "麦奇轻食沙拉", "account": ACC,
     "items": [{"dishId": None, "name": "自测菜品B", "price": 20, "qty": 1}]
 })
 oid2 = (d.get("data") or {}).get("id")
+d = call("POST", "/api/orders/%s/status?status=1" % oid2)
+check("已支付订单不可重复支付", d.get("code") not in (0, None), d.get("message"))
 d = call("POST", "/api/orders/%s/status?status=3" % oid2)
-check("待支付 → 已取消（取消订单）", d.get("code") == 0 and (d.get("data") or {}).get("status") == 3,
+check("已支付 → 已取消（取消订单）", d.get("code") == 0 and (d.get("data") or {}).get("status") == 3,
       d.get("message"))
 
 # 非法流转：已取消的不能再支付
@@ -182,8 +185,12 @@ check("列表项也带 restaurantId", all("restaurantId" in r for r in lst),
       "缺失数=%d" % sum(1 for r in lst if "restaurantId" not in r))
 d = call("GET", "/api/orders?account=%s&status=0" % ACC)
 lst0 = d.get("data") or []
-check("按状态筛选 status=0", d.get("code") == 0 and all(r.get("status") == 0 for r in lst0),
+check("按状态筛选 status=0（历史待支付单）", d.get("code") == 0 and all(r.get("status") == 0 for r in lst0),
       "%d 单" % len(lst0))
+d = call("GET", "/api/orders?account=%s&status=1" % ACC)
+lst1 = d.get("data") or []
+check("按状态筛选 status=1（新单直接已支付）", d.get("code") == 0 and all(r.get("status") == 1 for r in lst1),
+      "%d 单" % len(lst1))
 
 # 再来一单：拿上面已支付订单的明细重新下单
 d = call("GET", "/api/orders/%s" % oid)
@@ -290,6 +297,47 @@ if other:
     oid_ = other[0]["id"]
     d = call("DELETE", "/api/users/addresses/%s?account=%s" % (oid_, ACC))
     check("越权删除他人地址被拦截", d.get("code") not in (0, None), d.get("message"))
+
+# ---------------------------------------------------------------- 6 订单聊天
+head("6. 订单聊天：用户 ↔ 商家（一单一会话）")
+d = call("POST", "/api/chat/conversations", {"orderId": oid, "account": ACC})
+conv = d.get("data") or {}
+cid = conv.get("id")
+check("POST /api/chat/conversations 打开订单会话", d.get("code") == 0 and cid is not None, d.get("message"))
+
+d = call("GET", "/api/chat/conversations/%s/messages?account=%s" % (cid, ACC))
+chat_msgs = d.get("data") or []
+check("首次打开有商家欢迎语", d.get("code") == 0 and chat_msgs and chat_msgs[0].get("senderType") == "merchant",
+      chat_msgs[0].get("content") if chat_msgs else d.get("message"))
+
+d = call("POST", "/api/chat/conversations/%s/messages" % cid,
+         {"account": ACC, "content": "接口自测：请问多久出餐？"})
+check("用户发送消息", d.get("code") == 0 and (d.get("data") or {}).get("senderType") == "user", d.get("message"))
+
+d = call("GET", "/api/admin/chat/conversations")
+target = next((c for c in (d.get("data") or []) if c.get("id") == cid), None)
+check("后台会话列表可见", d.get("code") == 0 and target is not None)
+check("用户发消息后商家未读=1", target is not None and target.get("merchantUnread") == 1,
+      target.get("merchantUnread") if target else None)
+
+d = call("GET", "/api/admin/chat/conversations/%s/messages" % cid)
+check("后台拉取会话消息", d.get("code") == 0 and len(d.get("data") or []) >= 2,
+      "%d 条" % len(d.get("data") or []))
+d = call("POST", "/api/admin/chat/conversations/%s/messages" % cid,
+         {"content": "接口自测：马上就好～"})
+check("商家回复", d.get("code") == 0 and (d.get("data") or {}).get("senderType") == "merchant", d.get("message"))
+
+d = call("GET", "/api/chat/conversations/%s/messages?account=%s" % (cid, ACC))
+user_msgs = d.get("data") or []
+check("用户能拉到商家回复", d.get("code") == 0 and user_msgs and user_msgs[-1].get("content") == "接口自测：马上就好～",
+      user_msgs[-1].get("content") if user_msgs else d.get("message"))
+
+d = call("POST", "/api/chat/conversations", {"orderId": oid, "account": "www"})
+check("他人不能打开该订单会话", d.get("code") not in (0, None), d.get("message"))
+d = call("GET", "/api/chat/conversations/%s/messages?account=www" % cid)
+check("他人不能读该会话消息", d.get("code") not in (0, None), d.get("message"))
+d = call("POST", "/api/chat/conversations/%s/messages" % cid, {"account": ACC, "content": "   "})
+check("空消息被拦截", d.get("code") not in (0, None), d.get("message"))
 
 # ---------------------------------------------------------------- 汇总
 head("汇总")

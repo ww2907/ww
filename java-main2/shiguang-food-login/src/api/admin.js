@@ -23,7 +23,8 @@ export const ADMIN_ENDPOINTS = {
   restaurantOptions: '/admin/restaurant/options',
   stats: '/admin/stats',
   user: '/admin/user',
-  order: '/admin/order'
+  order: '/admin/order',
+  chat: '/admin/chat'
 }
 
 // 后台管理员（mock）：只有白名单账号 www / 密码 admin123（与后端播种一致）
@@ -389,4 +390,30 @@ export async function updateOrderStatus(id, status) {
     return { ok: true }
   }
   return httpReq('put', ADMIN_ENDPOINTS.order + '/' + id + '/status', { status })
+}
+
+// ============ 7. 客服消息（用户 ↔ 商家）============
+// 聊天必须有真实会话与两侧消息，mock 模式下没有可联动的数据，返回空列表让页面正常渲染空态。
+export async function listChatConversations() {
+  if (ADMIN_USE_MOCK) {
+    await delay(150)
+    return []
+  }
+  return httpReq('get', ADMIN_ENDPOINTS.chat + '/conversations')
+}
+
+export async function listChatMessages(conversationId) {
+  if (ADMIN_USE_MOCK) {
+    await delay(150)
+    return []
+  }
+  return httpReq('get', ADMIN_ENDPOINTS.chat + '/conversations/' + conversationId + '/messages')
+}
+
+export async function sendChatReply(conversationId, content) {
+  if (ADMIN_USE_MOCK) {
+    await delay(200)
+    return { id: Date.now(), conversationId, senderType: 'merchant', content, createdAt: '' }
+  }
+  return httpReq('post', ADMIN_ENDPOINTS.chat + '/conversations/' + conversationId + '/messages', { content })
 }

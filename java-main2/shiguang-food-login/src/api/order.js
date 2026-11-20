@@ -73,8 +73,9 @@ function buildMockOrder({ restaurantId, restaurantName, account, items }) {
     restaurantName: restaurantName || ('店铺' + restaurantId),
     totalAmount: Number(total.toFixed(2)),
     itemCount,
-    status: 0,
-    statusText: '待支付',
+    // 提交订单即支付：mock 与真实后端保持一致，新单一落库就是已支付
+    status: 1,
+    statusText: '已支付',
     createdAt: formatNow(),
     items: valid.map((it) => ({
       dishName: it.name,
@@ -129,7 +130,7 @@ async function httpGet(path, params) {
 // ============================================================
 
 /**
- * 提交订单。参数：{ restaurantId, restaurantName, account, items, addressId }
+ * 提交订单（提交即支付，返回的 status 直接是 1）。参数：{ restaurantId, restaurantName, account, items, addressId }
  *   items: [{ dishId, name, price, qty }]
  *   addressId: 收货地址 id（user_address.id）。不传时后端自动取该账号默认地址；
  *              账号一条地址都没有会返回「请先填写收货地址，再提交订单」。
@@ -297,7 +298,7 @@ export async function getOrderStats(account) {
 }
 
 /**
- * 变更订单状态（去支付 / 确认完成 / 取消订单）。
+ * 变更订单状态（历史待支付单支付 / 确认完成 / 取消订单）。
  * 参数：id（订单 id）、status（1=已支付 2=已完成 3=已取消）
  * 策略：mock 模式直接改内存订单状态；真实模式请求 POST /api/orders/{id}/status?status=。
  */
